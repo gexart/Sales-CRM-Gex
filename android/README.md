@@ -24,8 +24,8 @@ Every change to this folder is built by GitHub Actions (`.github/workflows/andro
 `android-v1.0.<run>` release. The CRM imports new builds every hour. On the phone, open
 **CRM → Settings → Phone app** and tap **Download APK**, or scan the QR code there from a computer.
 
-Signing: add the repository secrets `ANDROID_KEYSTORE_BASE64` and `ANDROID_KEYSTORE_PASSWORD` (the key was generated
-into `android/signing/`, which is not committed) so every build installs over the previous one. Without them CI signs
+Signing (set up 2026-10-30): the repository secrets `ANDROID_KEYSTORE_BASE64` and `ANDROID_KEYSTORE_PASSWORD` (the key was generated
+into `android/signing/`, which is not committed) make every build install over the previous one. Without them CI signs
 with a temporary debug key, and phones must uninstall the old app before installing a new build.
 
 ## Build and install (Android Studio)
