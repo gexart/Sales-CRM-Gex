@@ -42,6 +42,20 @@ jobs:
             echo "::warning::ANDROID_KEYSTORE_BASE64 is not set, so this build uses a temporary debug key. Phones must uninstall the old app before installing it."
           fi
 
+      - name: Check signing key
+        if: env.ANDROID_KEYSTORE_PATH != ''
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          # Prints only a fingerprint of the keystore file and the password length, never the values.
+          FP=$(sha256sum "$ANDROID_KEYSTORE_PATH" | cut -c1-12)
+          if keytool -list -keystore "$ANDROID_KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias gexart >/dev/null 2>&1; then
+            echo "::notice::Signing key OK (keystore $FP)"
+          else
+            echo "::error::Signing key could not be opened (keystore $FP, password length ${#ANDROID_KEYSTORE_PASSWORD}). Re-check the two ANDROID_KEYSTORE_* secrets."
+            exit 1
+          fi
+
       - name: Build APK
         working-directory: android
         env:
