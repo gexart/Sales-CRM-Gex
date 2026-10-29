@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "gexart-crm",
+  "name": "sales-crm-gexart",
   "main": "worker/index.ts",
   "compatibility_date": "2026-10-20",
   "compatibility_flags": ["nodejs_compat"],
@@ -13,8 +13,7 @@
     {
       "binding": "DB",
       "database_name": "gexart-crm",
-      // Replace with the id printed by `wrangler d1 create gexart-crm` before deploying.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "56669216-a487-4ede-ae85-091db0a7757f",
       "migrations_dir": "migrations"
     }
   ],
