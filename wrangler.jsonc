@@ -1,0 +1,43 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gexart-crm",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "gexart-crm",
+      // Replace with the id printed by `wrangler d1 create gexart-crm` before deploying.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "gexart-crm-files" }],
+  // Background jobs (audits, call transcription). Without the binding the Worker falls back to waitUntil.
+  "queues": {
+    "producers": [{ "binding": "JOBS", "queue": "gexart-crm-jobs" }],
+    "consumers": [{ "queue": "gexart-crm-jobs", "max_batch_size": 1, "max_retries": 3 }]
+  },
+  // Speech-to-text for call recordings (Whisper on Workers AI). Runs remotely; needs `wrangler login` even in dev.
+  "ai": { "binding": "AI" },
+  // Task reminders, notification generation and Google Places result purging.
+  "triggers": { "crons": ["*/15 * * * *"] },
+  "vars": {
+    "APP_NAME": "Gexart CRM",
+    "DEMO_MODE": "false",
+    // Verified sender for Brevo transactional email (must be verified in your Brevo account).
+    "BREVO_SENDER_EMAIL": "",
+    "BREVO_SENDER_NAME": "Gexart",
+    // Daily call caps per external provider (protects paid credits). 0 disables the provider.
+    "QUOTA_GOOGLE_PLACES": "100",
+    "QUOTA_ENRICHMENT": "50",
+    "QUOTA_CLAUDE": "200",
+    "QUOTA_YOUTUBE": "200"
+  }
+}

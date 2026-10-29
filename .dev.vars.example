@@ -1,0 +1,13 @@
+# Copy to .dev.vars for local development. Never commit real secrets.
+# Optional: Brevo transactional email (Phase 5). Leave unset to use the manual email workflow only.
+# BREVO_API_KEY=
+# Optional: AI provider for pitch/insight drafting (Phase D).
+# ANTHROPIC_API_KEY=
+# Optional: Google Places lead discovery (Phase E).
+# GOOGLE_PLACES_API_KEY=
+# BREVO_WEBHOOK_SECRET=
+# YOUTUBE_API_KEY=
+# HUNTER_API_KEY=
+# APOLLO_API_KEY=
+# ROCKETREACH_API_KEY=
+# LUSHA_API_KEY=
