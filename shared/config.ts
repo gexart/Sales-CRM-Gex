@@ -71,7 +71,7 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
   {
     id: "phone",
     title: "Phone app builds",
-    description: "Where the CRM picks up new Android app builds. New GitHub releases are imported automatically every hour.",
+    description: "Where the CRM picks up new Android app builds. New GitHub releases are imported automatically within minutes.",
     fields: [
       { key: "GITHUB_REPO", label: "GitHub repository", kind: "repo", placeholder: "owner/name", help: "The repository whose Actions publish android-v* releases." },
       { key: "GITHUB_TOKEN", label: "GitHub token", kind: "secret", placeholder: "github_pat_…", help: "Only needed if the repository is private (fine-grained token, Contents: read)." },

@@ -1,6 +1,6 @@
 // Android app builds: stored privately in R2 and downloadable by signed-in users, or through a
 // short-lived signed link (for the QR code a phone scans). Builds come from an admin upload or from
-// the GitHub Actions workflow's android-v* releases (imported on demand and hourly by the cron).
+// the GitHub Actions workflow's android-v* releases (imported when the page is opened, by the cron, or on demand).
 import { Hono } from "hono";
 import type { AppEnv, Env } from "../env";
 import { ApiError, notFound } from "../lib/http";
@@ -77,6 +77,23 @@ export async function syncGithubRelease(env: Env, userId: string | null): Promis
   return { imported: true, message: `Imported ${release?.version_name}`, release };
 }
 
+const SYNC_ROW = "__github_sync_at";
+const SYNC_EVERY_MS = 5 * 60_000;
+
+/** Imports a newer GitHub build if the last check is older than 5 minutes. Never throws. */
+export async function syncGithubReleaseIfDue(env: Env) {
+  if (!env.GITHUB_REPO) return;
+  try {
+    const last = await env.DB.prepare("SELECT value FROM app_settings WHERE key = ?").bind(SYNC_ROW).first<{ value: string }>();
+    if (last && Date.now() - Date.parse(last.value) < SYNC_EVERY_MS) return;
+    const t = now();
+    await env.DB.prepare("INSERT INTO app_settings (key, value, is_secret, updated_at) VALUES (?,?,0,?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at").bind(SYNC_ROW, t, t).run();
+    await syncGithubRelease(env, null);
+  } catch (e) {
+    console.warn("app build sync", e instanceof Error ? e.message : e);
+  }
+}
+
 function present(r: Release) {
   const { file_key: _k, ...rest } = r;
   return rest;
@@ -99,6 +116,8 @@ async function streamApk(env: Env, r: Release) {
 export const appReleaseRoutes = new Hono<AppEnv>();
 
 appReleaseRoutes.get("/", async (c) => {
+  // New GitHub builds show up as soon as someone opens the Phone app page.
+  await syncGithubReleaseIfDue(c.env);
   const rows = await c.env.DB.prepare(`${SELECT} WHERE r.platform = 'android' ORDER BY r.created_at DESC LIMIT 10`).all<Release>();
   return c.json({ data: rows.results.map(present) });
 });

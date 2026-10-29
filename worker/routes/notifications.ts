@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { AppEnv, Env } from "../env";
 import { newId, now } from "../lib/util";
-import { syncGithubRelease } from "./app-releases";
+import { syncGithubReleaseIfDue } from "./app-releases";
 
 export const notificationRoutes = new Hono<AppEnv>();
 
@@ -26,8 +26,8 @@ notificationRoutes.post("/:id/read", async (c) => {
 
 /** Cron (every 15 min): task reminders, housekeeping and Places data retention. */
 export async function scheduled(env: Env) {
-  // Pick up new Android app builds from GitHub once an hour (best effort; manual import is in Settings).
-  if (env.GITHUB_REPO && new Date().getUTCMinutes() < 15) await syncGithubRelease(env, null).catch((e) => console.warn("app build sync", e instanceof Error ? e.message : e));
+  // Pick up new Android app builds from GitHub (best effort; also done when the Phone app page opens).
+  await syncGithubReleaseIfDue(env);
   const db = env.DB;
   const t = now();
   const soon = new Date(Date.now() + 60 * 60_000).toISOString();

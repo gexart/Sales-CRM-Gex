@@ -360,7 +360,7 @@ check("reps cannot publish builds", (await upload(repC, "/app-releases", { versi
 const apk = await upload(adminC, "/app-releases", { version_name: `9.9.${run}`.slice(0, 20), notes: "Smoke build" }, { bytes: pptxBytes, type: "application/vnd.android.package-archive", name: "app.apk" });
 check("admin publishes an APK", apk.status === 201 && apk.body.data.size_bytes === pptxBytes.byteLength && /^[0-9a-f]{64}$/.test(apk.body.data.sha256) && !("file_key" in apk.body.data), apk.body);
 const relList = await repClient.get("/app-releases");
-check("every user sees the latest build", relList.status === 200 && relList.body.data[0]?.id === apk.body.data.id);
+check("every user sees published builds", relList.status === 200 && relList.body.data.some((r) => r.id === apk.body.data.id));
 const apkDl = await fetch(`${BASE}/api/v1/app-releases/${apk.body.data.id}/download`, { headers: repC.headers });
 check("signed-in download is served as an Android package", apkDl.status === 200 && apkDl.headers.get("content-type") === "application/vnd.android.package-archive" && (await apkDl.arrayBuffer()).byteLength === pptxBytes.byteLength);
 check("download needs sign-in", (await fetch(`${BASE}/api/v1/app-releases/${apk.body.data.id}/download`)).status === 401);

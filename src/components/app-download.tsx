@@ -113,7 +113,7 @@ export function AndroidAppCard() {
           <div className="flex flex-wrap items-center gap-2 px-5 py-3">
             <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold">Publish a build</div>
-              <div className="text-[11px] text-muted">GitHub Actions builds the app on every change to the android folder. New builds are imported every hour, or now:</div>
+              <div className="text-[11px] text-muted">GitHub Actions builds the app on every change to the android folder. New builds appear here automatically within minutes, or import now:</div>
             </div>
             <Button size="sm" icon={CloudDownload} loading={sync.isPending} onClick={() => sync.mutate()}>Get latest from GitHub</Button>
             <Button size="sm" icon={Upload} onClick={() => setUploading(true)}>Upload .apk</Button>
