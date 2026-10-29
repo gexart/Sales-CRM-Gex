@@ -6,7 +6,7 @@ import { api, ApiError, type Row } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import * as E from "../../shared/enums";
 import { dateTime, money, moneyList, pct, relative } from "../lib/format";
-import { GxMark, Logo, PageHeader } from "../components/layout";
+import { BrandMark, Logo, PageHeader } from "../components/layout";
 import { Badge, Button, Card, CardHeader, Dialog, ErrorState, Field, Select, Skeleton, StatusBadge, Tabs, useToast } from "../components/ui";
 import { Bars, PeriodPicker, useDashboard, type PeriodKey } from "./Dashboard";
 import { DevicesSettings } from "./Calls";
@@ -33,13 +33,14 @@ export function AuthPage({ mode }: { mode: "login" | "setup" }) {
   };
   return (
     <div className="grid min-h-dvh bg-canvas lg:grid-cols-[1.05fr_1fr]">
-      <aside className="relative hidden overflow-hidden bg-night p-12 text-white lg:flex lg:flex-col">
-        <Logo dark />
-        <GxMark tile={false} className="pointer-events-none absolute -right-24 bottom-[-6%] w-[78%] text-white/[0.04]" />
+      <aside className="relative hidden overflow-hidden bg-night p-12 text-snow lg:flex lg:flex-col">
+        <Logo onDark />
+        <BrandMark variant="dark" className="pointer-events-none absolute -right-28 bottom-[-12%] w-[80%] opacity-[0.07]" />
+        <div className="pointer-events-none absolute -top-40 -left-40 size-[480px] rounded-full bg-brand-500/20 blur-3xl" />
         <div className="relative mt-auto max-w-md">
-          <p className="text-[11px] font-semibold tracking-[0.2em] text-white/40 uppercase">Gexart Sales CRM</p>
+          <p className="text-[11px] font-semibold tracking-[0.2em] text-brand-400 uppercase">Gexart Sales CRM</p>
           <h2 className="mt-3 text-3xl leading-tight font-semibold">Every account, audit, pitch and call in one place.</h2>
-          <p className="mt-3 text-sm text-white/55">Research prospects, run audits, send proposals and track every deal from first touch to close.</p>
+          <p className="mt-3 text-sm text-snow/55">Research prospects, run audits, send proposals and track every deal from first touch to close.</p>
         </div>
       </aside>
       <main className="flex items-center justify-center p-6">

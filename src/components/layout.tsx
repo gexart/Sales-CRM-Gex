@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  BarChart3, Bell, Briefcase, Building2, CheckSquare, ChevronRight, FolderOpen, LayoutDashboard, LogOut, Megaphone, Menu as MenuIcon,
+  BarChart3, Bell, Briefcase, Building2, CheckSquare, ChevronRight, FolderOpen, LayoutDashboard, LogOut, Megaphone, Menu as MenuIcon, Moon, Sun,
   Package, Plus, Search, Send, Settings, Users, X, Telescope, type LucideIcon,
 } from "lucide-react";
 import { api, qs, type Page, type Row } from "../lib/api";
@@ -10,7 +10,8 @@ import { useAuth } from "../lib/auth";
 import { CONFIGS, type EntityConfig } from "../lib/entities";
 import { dateTime, isOverdue, relative } from "../lib/format";
 import { ROLES, labelOf } from "../../shared/enums";
-import { GX_PATH, GX_VIEWBOX } from "../../shared/brand";
+import { markSvg, type MarkVariant } from "../../shared/brand";
+import { useTheme } from "../lib/theme";
 import { Avatar, Button, Menu, MenuItem, cn } from "./ui";
 import { EntityForm, useDebounced } from "./forms";
 
@@ -35,49 +36,55 @@ const NAV: { group?: string; items: NavItem[] }[] = [
   { group: "System", items: [{ to: "/settings", label: "Settings", icon: Settings }] },
 ];
 
-/** The Gexart GX monogram. */
-export function GxMark({ className, tile = true }: { className?: string; tile?: boolean }) {
-  const { x, y, w, h } = GX_VIEWBOX;
-  if (!tile) {
-    return (
-      <svg viewBox={`${x} ${y} ${w} ${h}`} className={className} aria-hidden>
-        <path d={GX_PATH} fill="currentColor" />
-      </svg>
-    );
-  }
-  return (
-    <span className={cn("inline-flex items-center justify-center rounded-[9px] bg-black ring-1 ring-white/10", className)}>
-      <svg viewBox={`${x} ${y} ${w} ${h}`} className="w-[62%] text-white" aria-hidden>
-        <path d={GX_PATH} fill="currentColor" />
-      </svg>
-    </span>
-  );
+/** The Gexart hexagon "G". `variant="dark"` is the version for navy/black backgrounds. */
+export function BrandMark({ className, variant = "light" }: { className?: string; variant?: MarkVariant }) {
+  const uid = useId();
+  const html = useMemo(() => markSvg({ variant, uid: `m${uid}` }), [variant, uid]);
+  return <span aria-hidden className={cn("inline-block shrink-0 [&>svg]:block [&>svg]:h-full [&>svg]:w-full", className)} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-export function Logo({ dark = false }: { dark?: boolean }) {
+/** Mark + "Gexart" wordmark. `onDark` for the navy sidebar and sign-in panel; otherwise it follows the theme. */
+export function Logo({ onDark = false, subtitle = true }: { onDark?: boolean; subtitle?: boolean }) {
+  const { resolved } = useTheme();
+  const dark = onDark || resolved === "dark";
   return (
     <span className="flex items-center gap-2.5">
-      <GxMark className="size-8" />
+      <BrandMark variant={dark ? "dark" : "light"} className="h-9 w-[34px]" />
       <span className="leading-none">
-        <span className={cn("block text-[15px] font-semibold tracking-[0.08em] uppercase", dark ? "text-white" : "text-ink")}>Gexart</span>
-        <span className={cn("mt-0.5 block text-[10px] font-medium tracking-[0.18em] uppercase", dark ? "text-white/45" : "text-muted")}>Sales CRM</span>
+        <span className={cn("block font-brand text-[19px] font-semibold tracking-[-0.01em]", onDark ? "text-snow" : "text-ink")}>Gexart</span>
+        {subtitle && <span className={cn("mt-1 block text-[9.5px] font-semibold tracking-[0.2em] uppercase", onDark ? "text-snow/45" : "text-muted")}>Sales CRM</span>}
       </span>
     </span>
   );
 }
 
+function ThemeToggle() {
+  const { resolved, setPref } = useTheme();
+  const next = resolved === "dark" ? "light" : "dark";
+  return (
+    <button
+      aria-label={`Switch to ${next} mode`}
+      title={`Switch to ${next} mode`}
+      onClick={() => setPref(next)}
+      className="flex size-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-ink"
+    >
+      {resolved === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+    </button>
+  );
+}
+
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav aria-label="Main" className="flex h-full flex-col bg-night text-white">
+    <nav aria-label="Main" className="flex h-full flex-col bg-night text-snow">
       <div className="flex h-16 items-center px-4">
         <Link to="/" onClick={onNavigate} className="rounded-md">
-          <Logo dark />
+          <Logo onDark />
         </Link>
       </div>
       <div className="flex-1 overflow-y-auto px-2.5 pb-4">
         {NAV.map((g, i) => (
           <div key={i} className={g.group ? "mt-4" : "mt-1"}>
-            {g.group && <div className="mb-1.5 px-2 text-[10px] font-semibold tracking-[0.16em] text-white/35 uppercase">{g.group}</div>}
+            {g.group && <div className="mb-1.5 px-2 text-[10px] font-semibold tracking-[0.16em] text-snow/35 uppercase">{g.group}</div>}
             {g.items.map((it) => (
               <NavLink
                 key={it.to}
@@ -87,14 +94,14 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 className={({ isActive }) =>
                   cn(
                     "group relative flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors",
-                    isActive ? "bg-white/10 font-medium text-white" : "text-white/60 hover:bg-white/[0.06] hover:text-white",
+                    isActive ? "bg-snow/10 font-medium text-snow" : "text-snow/60 hover:bg-snow/[0.06] hover:text-snow",
                   )
                 }
               >
                 {({ isActive }) => (
                   <>
-                    {isActive && <span className="absolute top-1.5 bottom-1.5 left-0 w-0.5 rounded-full bg-white" />}
-                    <it.icon className={cn("size-4", isActive ? "text-white" : "text-white/40 group-hover:text-white/70")} />
+                    {isActive && <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-brand-500" />}
+                    <it.icon className={cn("size-4", isActive ? "text-brand-400" : "text-snow/40 group-hover:text-snow/70")} />
                     {it.label}
                   </>
                 )}
@@ -352,14 +359,14 @@ export function AppShell() {
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   return (
     <div className="flex h-dvh overflow-hidden">
-      <aside className="hidden w-[212px] shrink-0 bg-night lg:block">
+      <aside className="hidden w-[220px] shrink-0 border-r border-line/0 bg-night lg:block dark:border-line">
         <Sidebar />
       </aside>
       {mobileNav && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 animate-fade-in bg-slate-900/25" onClick={() => setMobileNav(false)} />
           <aside className="relative h-full w-64 animate-slide-in bg-night shadow-[var(--shadow-pop)]">
-            <button aria-label="Close menu" onClick={() => setMobileNav(false)} className="absolute top-4 right-3 rounded p-1 text-white/60 hover:bg-white/10">
+            <button aria-label="Close menu" onClick={() => setMobileNav(false)} className="absolute top-4 right-3 rounded p-1 text-snow/60 hover:bg-snow/10">
               <X className="size-4" />
             </button>
             <Sidebar onNavigate={() => setMobileNav(false)} />
@@ -381,6 +388,7 @@ export function AppShell() {
           </button>
           <div className="ml-auto flex items-center gap-1.5">
             <QuickCreate />
+            <ThemeToggle />
             <Reminders />
             <UserMenu />
           </div>

@@ -20,7 +20,7 @@ export const cn = clsx;
 // ─── Buttons ───
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "subtle";
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-ink text-white hover:bg-black active:bg-black shadow-[0_1px_2px_rgb(0_0_0/0.2),inset_0_1px_0_rgb(255_255_255/0.08)] border border-black",
+  primary: "bg-ink text-white hover:bg-ink/90 active:bg-ink shadow-[0_1px_2px_rgb(0_0_0/0.2),inset_0_1px_0_rgb(255_255_255/0.08)] border border-ink",
   secondary: "bg-white text-ink border border-line hover:bg-slate-50 hover:border-slate-300 shadow-[var(--shadow-card)]",
   ghost: "text-slate-600 hover:bg-slate-100 hover:text-ink",
   subtle: "bg-brand-50 text-ink hover:bg-brand-100",
@@ -102,7 +102,7 @@ export function Select({ options, placeholder, className, ...rest }: { options: 
 // ─── Display ───
 const TONES = {
   gray: "bg-slate-100 text-slate-700 ring-slate-200",
-  brand: "bg-ink text-white ring-ink",
+  brand: "bg-brand-50 text-brand-700 ring-brand-200",
   green: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   amber: "bg-amber-50 text-amber-800 ring-amber-200",
   red: "bg-red-50 text-red-700 ring-red-200",

@@ -1,1 +1,71 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14.08" fill="#0A0A0A"/><path fill="#FFFFFF" transform="translate(-1.21 -1.37) scale(0.06191)" d="M255 356H620L888 694V722H812L585 436H258V642H453V588H380V510H528V652A70 70 0 0 1 458 722H255A70 70 0 0 1 185 652V426A70 70 0 0 1 255 356ZM812 356H888V384L620 722H545V694Z"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><style>.d{display:none}@media (prefers-color-scheme:dark){.l{display:none}.d{display:inline}}</style><g class="l"><g transform="translate(-27.25 -8.70) scale(0.12241)">
+<defs>
+<mask id="fl-ring" maskUnits="userSpaceOnUse" x="258" y="92" width="452" height="481">
+<path d="M454.57 117.03Q484 100 513.43 117.03L670.57 207.97Q700 225 700 259L700 406Q700 440 670.57 457.03L513.43 547.97Q484 565 454.57 547.97L297.43 457.03Q268 440 268 406L268 259Q268 225 297.43 207.97Z" fill="#fff"/>
+<path d="M477.08 251.02Q484 247 490.92 251.02L551.08 285.98Q558 290 558 298L558 367Q558 375 551.08 379.02L490.92 413.98Q484 418 477.08 413.98L416.92 379.02Q410 375 410 367L410 298Q410 290 416.92 285.98Z" fill="#000"/>
+<path d="M548 290H720V376L548 314Z" fill="#000"/>
+</mask>
+<linearGradient id="fl-navy" gradientUnits="userSpaceOnUse" x1="300" y1="540" x2="690" y2="330">
+<stop offset="0" stop-color="#2A4870"/><stop offset=".45" stop-color="#1A2940"/><stop offset="1" stop-color="#121B2B"/>
+</linearGradient>
+<linearGradient id="fl-orange" gradientUnits="userSpaceOnUse" x1="268" y1="330" x2="700" y2="230">
+<stop offset="0" stop-color="#EE6E14"/><stop offset=".35" stop-color="#F47A20"/><stop offset=".62" stop-color="#F68A3A"/><stop offset=".82" stop-color="#F4B888"/><stop offset="1" stop-color="#EADFD3"/>
+</linearGradient>
+<linearGradient id="fl-fold" gradientUnits="userSpaceOnUse" x1="447" y1="268" x2="398" y2="184">
+<stop offset="0" stop-color="#0E1626" stop-opacity=".88"/><stop offset=".5" stop-color="#0E1626" stop-opacity=".4"/><stop offset="1" stop-color="#0E1626" stop-opacity="0"/>
+</linearGradient>
+<linearGradient id="fl-foldfade" gradientUnits="userSpaceOnUse" x1="300" y1="0" x2="540" y2="0">
+<stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".55" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+</linearGradient>
+<mask id="fl-foldmask" maskUnits="userSpaceOnUse" x="258" y="92" width="452" height="481"><rect x="258" y="92" width="452" height="481" fill="url(#fl-foldfade)"/></mask>
+<clipPath id="fl-hex"><path d="M454.57 117.03Q484 100 513.43 117.03L670.57 207.97Q700 225 700 259L700 406Q700 440 670.57 457.03L513.43 547.97Q484 565 454.57 547.97L297.43 457.03Q268 440 268 406L268 259Q268 225 297.43 207.97Z"/></clipPath>
+<linearGradient id="fl-accent" gradientUnits="userSpaceOnUse" x1="500" y1="420" x2="680" y2="470">
+<stop offset="0" stop-color="#F9A15C"/><stop offset=".55" stop-color="#F47A20"/><stop offset="1" stop-color="#C9570C"/>
+</linearGradient>
+<linearGradient id="fl-bar" gradientUnits="userSpaceOnUse" x1="510" y1="320" x2="690" y2="390">
+<stop offset="0" stop-color="#4A5F80"/><stop offset="1" stop-color="#1A2940"/>
+</linearGradient>
+</defs>
+<g mask="url(#fl-ring)">
+<rect x="258" y="92" width="452" height="481" fill="url(#fl-navy)"/>
+<path d="M250 90H720V290H410L250 427Z" fill="url(#fl-orange)"/>
+<path d="M410 290L484 247L560 120L250 120L250 427Z" fill="url(#fl-fold)" mask="url(#fl-foldmask)"/>
+<path d="M496 431L585 382L700 437V455L612 493Z" fill="url(#fl-accent)"/>
+</g>
+<path d="M530 329L760 412" clip-path="url(#fl-hex)" stroke="url(#fl-bar)" stroke-width="45" stroke-linecap="round"/>
+</g></g><g class="d"><g transform="translate(-27.25 -8.70) scale(0.12241)">
+<defs>
+<mask id="fd-ring" maskUnits="userSpaceOnUse" x="258" y="92" width="452" height="481">
+<path d="M454.57 117.03Q484 100 513.43 117.03L670.57 207.97Q700 225 700 259L700 406Q700 440 670.57 457.03L513.43 547.97Q484 565 454.57 547.97L297.43 457.03Q268 440 268 406L268 259Q268 225 297.43 207.97Z" fill="#fff"/>
+<path d="M477.08 251.02Q484 247 490.92 251.02L551.08 285.98Q558 290 558 298L558 367Q558 375 551.08 379.02L490.92 413.98Q484 418 477.08 413.98L416.92 379.02Q410 375 410 367L410 298Q410 290 416.92 285.98Z" fill="#000"/>
+<path d="M548 290H720V376L548 314Z" fill="#000"/>
+</mask>
+<linearGradient id="fd-navy" gradientUnits="userSpaceOnUse" x1="300" y1="540" x2="690" y2="330">
+<stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#E4E9F1"/><stop offset="1" stop-color="#C3CEDF"/>
+</linearGradient>
+<linearGradient id="fd-orange" gradientUnits="userSpaceOnUse" x1="268" y1="330" x2="700" y2="230">
+<stop offset="0" stop-color="#EE6E14"/><stop offset=".35" stop-color="#F47A20"/><stop offset=".62" stop-color="#F68A3A"/><stop offset=".82" stop-color="#F4B888"/><stop offset="1" stop-color="#EADFD3"/>
+</linearGradient>
+<linearGradient id="fd-fold" gradientUnits="userSpaceOnUse" x1="447" y1="268" x2="398" y2="184">
+<stop offset="0" stop-color="#0E1626" stop-opacity=".88"/><stop offset=".5" stop-color="#0E1626" stop-opacity=".4"/><stop offset="1" stop-color="#0E1626" stop-opacity="0"/>
+</linearGradient>
+<linearGradient id="fd-foldfade" gradientUnits="userSpaceOnUse" x1="300" y1="0" x2="540" y2="0">
+<stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".55" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+</linearGradient>
+<mask id="fd-foldmask" maskUnits="userSpaceOnUse" x="258" y="92" width="452" height="481"><rect x="258" y="92" width="452" height="481" fill="url(#fd-foldfade)"/></mask>
+<clipPath id="fd-hex"><path d="M454.57 117.03Q484 100 513.43 117.03L670.57 207.97Q700 225 700 259L700 406Q700 440 670.57 457.03L513.43 547.97Q484 565 454.57 547.97L297.43 457.03Q268 440 268 406L268 259Q268 225 297.43 207.97Z"/></clipPath>
+<linearGradient id="fd-accent" gradientUnits="userSpaceOnUse" x1="500" y1="420" x2="680" y2="470">
+<stop offset="0" stop-color="#F9A15C"/><stop offset=".55" stop-color="#F47A20"/><stop offset="1" stop-color="#C9570C"/>
+</linearGradient>
+<linearGradient id="fd-bar" gradientUnits="userSpaceOnUse" x1="510" y1="320" x2="690" y2="390">
+<stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#CBD5E4"/>
+</linearGradient>
+</defs>
+<g mask="url(#fd-ring)">
+<rect x="258" y="92" width="452" height="481" fill="url(#fd-navy)"/>
+<path d="M250 90H720V290H410L250 427Z" fill="url(#fd-orange)"/>
+<path d="M410 290L484 247L560 120L250 120L250 427Z" fill="url(#fd-fold)" mask="url(#fd-foldmask)"/>
+<path d="M496 431L585 382L700 437V455L612 493Z" fill="url(#fd-accent)"/>
+</g>
+<path d="M530 329L760 412" clip-path="url(#fd-hex)" stroke="url(#fd-bar)" stroke-width="45" stroke-linecap="round"/>
+</g></g></svg>

@@ -26,7 +26,7 @@ class MainActivity : Activity() {
     private lateinit var logView: TextView
     private val pickFolder = 41
 
-    private val brand = Color.parseColor("#0A0A0A")
+    private val brand = Color.parseColor("#141E2E")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,7 +34,7 @@ class MainActivity : Activity() {
         val pad = dp(20)
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(pad, pad, pad, pad) }
 
-        col.addView(TextView(this).apply { text = "GEXART"; textSize = 26f; setTypeface(typeface, Typeface.BOLD); setTextColor(brand) })
+        col.addView(TextView(this).apply { text = "Gexart"; textSize = 26f; setTypeface(typeface, Typeface.BOLD); setTextColor(brand) })
         col.addView(TextView(this).apply {
             text = "Uploads recordings of your client calls to the Gexart CRM, where they are matched to the contact, transcribed and summarised."
             setTextColor(Color.DKGRAY); setPadding(0, dp(4), 0, dp(16))

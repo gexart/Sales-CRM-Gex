@@ -8,7 +8,7 @@ import { api, type Row } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { relative } from "../lib/format";
 import { fileSize } from "../lib/entities";
-import { GxMark } from "./layout";
+import { BrandMark } from "./layout";
 import { Button, Card, ConfirmDialog, Dialog, Field, Skeleton, useToast } from "./ui";
 
 function QrCode({ text, className }: { text: string; className?: string }) {
@@ -56,21 +56,21 @@ export function AndroidAppCard() {
   return (
     <Card className="overflow-hidden lg:col-span-2">
       <div className="grid md:grid-cols-[1fr_auto]">
-        <div className="relative overflow-hidden bg-night p-6 text-white">
-          <GxMark tile={false} className="pointer-events-none absolute -right-10 -bottom-8 w-64 text-white/[0.05]" />
+        <div className="relative overflow-hidden bg-night p-6 text-snow">
+          <BrandMark variant="dark" className="pointer-events-none absolute -right-12 -bottom-14 w-64 opacity-[0.07]" />
           <div className="relative flex items-center gap-3">
-            <GxMark className="size-12 rounded-[14px] ring-white/20" />
+            <span className="flex size-12 items-center justify-center rounded-[14px] bg-snow shadow-sm"><BrandMark className="h-8 w-[30px]" /></span>
             <div>
               <div className="text-[15px] font-semibold">Gexart Calls for Android</div>
-              <div className="text-xs text-white/55">Uploads your client call recordings to the CRM automatically</div>
+              <div className="text-xs text-snow/55">Uploads your client call recordings to the CRM automatically</div>
             </div>
           </div>
           {q.isLoading ? (
-            <Skeleton className="relative mt-6 h-10 w-60 bg-white/10" />
+            <Skeleton className="relative mt-6 h-10 w-60 bg-snow/10" />
           ) : latest ? (
             <div className="relative mt-6">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/60">
-                <span className="rounded-full bg-white px-2 py-0.5 font-semibold text-ink">v{latest.version_name}</span>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-snow/60">
+                <span className="rounded-full bg-snow px-2 py-0.5 font-semibold text-navy">v{latest.version_name}</span>
                 <span>{fileSize(latest.size_bytes)}</span>
                 <span>Published {relative(latest.created_at)}</span>
                 <span className="font-mono" title={`SHA-256 ${latest.sha256}`}>SHA-256 {latest.sha256.slice(0, 12)}…</span>
@@ -79,19 +79,19 @@ export function AndroidAppCard() {
                 <a
                   href={`/api/v1/app-releases/${latest.id}/download`}
                   download={latest.file_name}
-                  className="inline-flex h-10 items-center gap-2 rounded-lg bg-white px-4 text-[13px] font-semibold text-ink shadow-sm transition hover:bg-white/90"
+                  className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-500 px-4 text-[13px] font-semibold text-snow shadow-sm transition hover:bg-brand-600"
                 >
                   <Download className="size-4" /> Download APK
                 </a>
               </div>
-              <ol className="mt-5 list-decimal space-y-1 pl-4 text-xs text-white/60">
+              <ol className="mt-5 list-decimal space-y-1 pl-4 text-xs text-snow/60">
                 <li>On your phone, scan the QR code (or open this page and tap Download).</li>
                 <li>Open the downloaded file. When asked, allow your browser to install unknown apps.</li>
                 <li>Android may say the app is not from the Play Store. That is expected for an internal app.</li>
               </ol>
             </div>
           ) : (
-            <p className="relative mt-6 text-sm text-white/60">
+            <p className="relative mt-6 text-sm text-snow/60">
               No build has been published yet.{isAdmin ? " Import the latest build from GitHub or upload an .apk below." : " Ask your administrator to publish one."}
             </p>
           )}

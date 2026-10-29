@@ -105,17 +105,17 @@ export function ConfigurationSettings() {
   return (
     <div className="mx-auto max-w-4xl space-y-4 pb-24">
       <Card className="overflow-hidden">
-        <div className="flex flex-col gap-4 bg-night p-5 text-white sm:flex-row sm:items-center">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15">
+        <div className="flex flex-col gap-4 bg-night p-5 text-snow sm:flex-row sm:items-center">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-snow/10 ring-1 ring-snow/15">
             <KeyRound className="size-5" />
           </span>
           <div className="min-w-0 flex-1">
             <div className="text-[15px] font-semibold">Set up everything in one place</div>
-            <p className="mt-0.5 text-xs text-white/60">
+            <p className="mt-0.5 text-xs text-snow/60">
               Paste your keys, then save once. {setCount} of {fields.length} settings are set. Values saved here take effect within seconds and override Cloudflare Worker secrets of the same name.
             </p>
           </div>
-          <Button icon={Sparkles} loading={testing} disabled={!testable.length || dirty > 0} title={dirty ? "Save your changes first" : undefined} onClick={testAll} className="border-white/20 bg-white/10 text-white hover:bg-white/20">
+          <Button icon={Sparkles} loading={testing} disabled={!testable.length || dirty > 0} title={dirty ? "Save your changes first" : undefined} onClick={testAll} className="border-snow/20 bg-snow/10 text-snow hover:bg-snow/20">
             Test connections
           </Button>
         </div>
@@ -168,12 +168,12 @@ export function ConfigurationSettings() {
 
       {dirty > 0 && (
         <div className="fixed inset-x-0 bottom-5 z-30 flex justify-center px-4">
-          <div className="flex items-center gap-3 rounded-full bg-night py-2 pr-2 pl-5 text-sm text-white shadow-[var(--shadow-pop)] ring-1 ring-white/10">
+          <div className="flex items-center gap-3 rounded-full bg-night py-2 pr-2 pl-5 text-sm text-snow shadow-[var(--shadow-pop)] ring-1 ring-snow/10">
             <span className="tabular-nums">{dirty} unsaved {dirty === 1 ? "change" : "changes"}</span>
-            <button className="rounded-full px-3 py-1.5 text-xs text-white/70 hover:bg-white/10 hover:text-white" onClick={() => (setDraft({}), setErrors({}))}>
+            <button className="rounded-full px-3 py-1.5 text-xs text-snow/70 hover:bg-snow/10 hover:text-snow" onClick={() => (setDraft({}), setErrors({}))}>
               Discard
             </button>
-            <Button size="sm" loading={save.isPending} onClick={() => save.mutate()} className="rounded-full border-white bg-white text-ink hover:bg-white/90">
+            <Button size="sm" loading={save.isPending} onClick={() => save.mutate()} className="rounded-full border-brand-500 bg-brand-500 text-snow hover:bg-brand-600">
               Save changes
             </Button>
           </div>
