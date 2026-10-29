@@ -34,7 +34,7 @@ export function CallsList({ filter, compact }: { filter: Record<string, string>;
           {rows.map((c) => (
             <li key={c.id}>
               <button onClick={() => setOpen(c.id)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600">{c.direction === "incoming" ? <PhoneIncoming className="size-4" /> : <PhoneOutgoing className="size-4" />}</span>
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-ink">{c.direction === "incoming" ? <PhoneIncoming className="size-4" /> : <PhoneOutgoing className="size-4" />}</span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{c.contact_name ?? c.prospect_name ?? c.phone_number ?? "Unknown number"}{c.account_name && <span className="font-normal text-muted"> · {c.account_name}</span>}</div>
                   <div className="text-xs text-muted">{dateTime(c.started_at)} · {dur(c.duration_seconds)} · {c.user_name}</div>
@@ -75,8 +75,8 @@ function CallDrawer({ id, onClose }: { id: string | null; onClose: () => void })
           {c.has_audio ? <audio controls preload="metadata" src={`/api/v1/calls/${c.id}/audio`} className="w-full" /> : <p className="text-xs text-muted">No recording attached.</p>}
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <StatusBadge value={STATUS_TONE[c.status]} label={E.labelOf(E.CALL_STATUSES, c.status)} />
-            {c.contact_id ? <Link className="text-brand-700" to={`/contacts/${c.contact_id}`}>{c.contact_name}</Link> : c.prospect_id ? <Link className="text-brand-700" to={`/prospecting/${c.prospect_id}`}>{c.prospect_name}</Link> : <Badge tone="amber">Not matched to a contact</Badge>}
-            {c.account_id && <Link className="text-brand-700" to={`/accounts/${c.account_id}`}>{c.account_name}</Link>}
+            {c.contact_id ? <Link className="text-ink" to={`/contacts/${c.contact_id}`}>{c.contact_name}</Link> : c.prospect_id ? <Link className="text-ink" to={`/prospecting/${c.prospect_id}`}>{c.prospect_name}</Link> : <Badge tone="amber">Not matched to a contact</Badge>}
+            {c.account_id && <Link className="text-ink" to={`/accounts/${c.account_id}`}>{c.account_name}</Link>}
             {(c.status === "failed" || c.status === "transcribed") && c.has_audio && <Button size="sm" icon={RefreshCw} loading={retry.isPending} onClick={() => retry.mutate()}>Re-process</Button>}
           </div>
           {c.error && <p className="rounded-md bg-amber-50 px-2.5 py-2 text-xs text-amber-900">{c.error}</p>}
@@ -167,7 +167,7 @@ export function CallsPage() {
         <Card>
           <div className="flex items-center gap-2 border-b border-line p-2.5">
             <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" className="accent-brand-600" checked={unmatched} onChange={(e) => setUnmatched(e.target.checked)} /> Unmatched only</label>
-            <Link to="/settings?tab=devices" className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-brand-700"><Smartphone className="size-3.5" /> Pair the Android app</Link>
+            <Link to="/settings?tab=devices" className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-ink"><Smartphone className="size-3.5" /> Pair the Android app</Link>
           </div>
           <CallsList filter={unmatched ? { unmatched: "1" } : {}} />
         </Card>

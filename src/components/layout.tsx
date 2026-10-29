@@ -10,6 +10,7 @@ import { useAuth } from "../lib/auth";
 import { CONFIGS, type EntityConfig } from "../lib/entities";
 import { dateTime, isOverdue, relative } from "../lib/format";
 import { ROLES, labelOf } from "../../shared/enums";
+import { GX_PATH, GX_VIEWBOX } from "../../shared/brand";
 import { Avatar, Button, Menu, MenuItem, cn } from "./ui";
 import { EntityForm, useDebounced } from "./forms";
 
@@ -34,15 +35,32 @@ const NAV: { group?: string; items: NavItem[] }[] = [
   { group: "System", items: [{ to: "/settings", label: "Settings", icon: Settings }] },
 ];
 
-export function Logo() {
-  return (
-    <span className="flex items-center gap-2">
-      <svg viewBox="0 0 32 32" className="size-6" aria-hidden>
-        <rect width="32" height="32" rx="8" fill="#4338ca" />
-        <path d="M21.5 11.2A7 7 0 1 0 23 16h-6.5" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+/** The Gexart GX monogram. */
+export function GxMark({ className, tile = true }: { className?: string; tile?: boolean }) {
+  const { x, y, w, h } = GX_VIEWBOX;
+  if (!tile) {
+    return (
+      <svg viewBox={`${x} ${y} ${w} ${h}`} className={className} aria-hidden>
+        <path d={GX_PATH} fill="currentColor" />
       </svg>
-      <span className="text-[15px] font-semibold tracking-tight text-ink">
-        gexart<span className="text-brand-600">.</span>
+    );
+  }
+  return (
+    <span className={cn("inline-flex items-center justify-center rounded-[9px] bg-black ring-1 ring-white/10", className)}>
+      <svg viewBox={`${x} ${y} ${w} ${h}`} className="w-[62%] text-white" aria-hidden>
+        <path d={GX_PATH} fill="currentColor" />
+      </svg>
+    </span>
+  );
+}
+
+export function Logo({ dark = false }: { dark?: boolean }) {
+  return (
+    <span className="flex items-center gap-2.5">
+      <GxMark className="size-8" />
+      <span className="leading-none">
+        <span className={cn("block text-[15px] font-semibold tracking-[0.08em] uppercase", dark ? "text-white" : "text-ink")}>Gexart</span>
+        <span className={cn("mt-0.5 block text-[10px] font-medium tracking-[0.18em] uppercase", dark ? "text-white/45" : "text-muted")}>Sales CRM</span>
       </span>
     </span>
   );
@@ -50,16 +68,16 @@ export function Logo() {
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav aria-label="Main" className="flex h-full flex-col">
-      <div className="flex h-14 items-center px-4">
-        <Link to="/" onClick={onNavigate}>
-          <Logo />
+    <nav aria-label="Main" className="flex h-full flex-col bg-night text-white">
+      <div className="flex h-16 items-center px-4">
+        <Link to="/" onClick={onNavigate} className="rounded-md">
+          <Logo dark />
         </Link>
       </div>
       <div className="flex-1 overflow-y-auto px-2.5 pb-4">
         {NAV.map((g, i) => (
           <div key={i} className={g.group ? "mt-4" : "mt-1"}>
-            {g.group && <div className="mb-1 px-2 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">{g.group}</div>}
+            {g.group && <div className="mb-1.5 px-2 text-[10px] font-semibold tracking-[0.16em] text-white/35 uppercase">{g.group}</div>}
             {g.items.map((it) => (
               <NavLink
                 key={it.to}
@@ -68,14 +86,15 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 onClick={onNavigate}
                 className={({ isActive }) =>
                   cn(
-                    "group flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors",
-                    isActive ? "bg-slate-100 font-medium text-ink" : "text-slate-600 hover:bg-slate-50 hover:text-ink",
+                    "group relative flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors",
+                    isActive ? "bg-white/10 font-medium text-white" : "text-white/60 hover:bg-white/[0.06] hover:text-white",
                   )
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <it.icon className={cn("size-4", isActive ? "text-brand-600" : "text-slate-400 group-hover:text-slate-500")} />
+                    {isActive && <span className="absolute top-1.5 bottom-1.5 left-0 w-0.5 rounded-full bg-white" />}
+                    <it.icon className={cn("size-4", isActive ? "text-white" : "text-white/40 group-hover:text-white/70")} />
                     {it.label}
                   </>
                 )}
@@ -211,7 +230,7 @@ function Reminders() {
         <div className="max-h-[70vh] overflow-y-auto">
           <div className="flex items-center justify-between px-2 py-1.5">
             <span className="text-xs font-semibold text-slate-500">Notifications</span>
-            {unread > 0 && <button className="text-xs font-medium text-brand-700" onClick={() => readAll.mutate()}>Mark all read</button>}
+            {unread > 0 && <button className="text-xs font-medium text-ink" onClick={() => readAll.mutate()}>Mark all read</button>}
           </div>
           {items.map((n) => (
             <Link
@@ -220,7 +239,7 @@ function Reminders() {
               onClick={() => (close(), !n.read_at && read.mutate(n.id))}
               className="flex gap-2 rounded-md px-2 py-1.5 hover:bg-slate-100"
             >
-              <span className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", n.read_at ? "bg-transparent" : "bg-brand-500")} />
+              <span className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", n.read_at ? "bg-transparent" : "bg-ink")} />
               <span className="min-w-0 flex-1">
                 <span className={cn("block truncate", !n.read_at && "font-medium")}>{n.title}</span>
                 {n.body && <span className="block truncate text-xs text-muted">{n.body}</span>}
@@ -237,7 +256,7 @@ function Reminders() {
             </Link>
           ))}
           {!due && <div className="px-2 py-3 text-center text-xs text-muted">Nothing due. Nice.</div>}
-          <Link to="/tasks" onClick={close} className="mt-1 block border-t border-line px-2 pt-2 pb-1 text-xs font-medium text-brand-700">
+          <Link to="/tasks" onClick={close} className="mt-1 block border-t border-line px-2 pt-2 pb-1 text-xs font-medium text-ink">
             Open tasks →
           </Link>
         </div>
@@ -293,7 +312,7 @@ function UserMenu() {
           <div className="border-b border-line px-2 pt-1 pb-2">
             <div className="font-medium">{user?.name}</div>
             <div className="text-xs text-muted">{user?.email}</div>
-            <div className="mt-1 text-[11px] text-brand-700">{labelOf(ROLES, user?.role)}</div>
+            <div className="mt-1 text-[11px] text-ink">{labelOf(ROLES, user?.role)}</div>
           </div>
           <div className="pt-1">
             <MenuItem icon={Settings} onClick={() => (close(), nav("/settings"))}>
@@ -333,14 +352,14 @@ export function AppShell() {
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   return (
     <div className="flex h-dvh overflow-hidden">
-      <aside className="hidden w-[200px] shrink-0 border-r border-line bg-white lg:block">
+      <aside className="hidden w-[212px] shrink-0 bg-night lg:block">
         <Sidebar />
       </aside>
       {mobileNav && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 animate-fade-in bg-slate-900/25" onClick={() => setMobileNav(false)} />
-          <aside className="relative h-full w-64 animate-slide-in bg-white shadow-[var(--shadow-pop)]">
-            <button aria-label="Close menu" onClick={() => setMobileNav(false)} className="absolute top-3.5 right-3 rounded p-1 text-slate-500 hover:bg-slate-100">
+          <aside className="relative h-full w-64 animate-slide-in bg-night shadow-[var(--shadow-pop)]">
+            <button aria-label="Close menu" onClick={() => setMobileNav(false)} className="absolute top-4 right-3 rounded p-1 text-white/60 hover:bg-white/10">
               <X className="size-4" />
             </button>
             <Sidebar onNavigate={() => setMobileNav(false)} />
@@ -348,13 +367,13 @@ export function AppShell() {
         </div>
       )}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-white px-3 sm:px-4">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-line bg-white/90 px-3 backdrop-blur sm:px-5">
           <button aria-label="Open menu" onClick={() => setMobileNav(true)} className="rounded-md p-1.5 text-slate-600 hover:bg-slate-100 lg:hidden">
             <MenuIcon className="size-5" />
           </button>
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex h-8 w-full max-w-md items-center gap-2 rounded-md border border-line bg-slate-50/70 px-2.5 text-left text-slate-400 transition-colors hover:border-slate-300 hover:bg-white"
+            className="flex h-9 w-full max-w-md items-center gap-2 rounded-lg border border-line bg-canvas px-3 text-left text-stone-400 transition-colors hover:border-stone-300 hover:bg-white"
           >
             <Search className="size-3.5" />
             <span className="flex-1 truncate text-[13px]">Search accounts, contacts, campaigns…</span>

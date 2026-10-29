@@ -156,7 +156,7 @@ export function EntityListPage({ cfg, headerExtra, toolbarExtra, presets, view, 
               <Search className="pointer-events-none absolute top-2 left-2.5 size-4 text-slate-400" />
               <input className="input pl-8" placeholder={cfg.searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={`Search ${cfg.plural}`} />
             </div>
-            <Button icon={SlidersHorizontal} onClick={() => setShowFilters((s) => !s)} className={cn(activeFilters && "border-brand-300 text-brand-700")}>
+            <Button icon={SlidersHorizontal} onClick={() => setShowFilters((s) => !s)} className={cn(activeFilters && "border-brand-300 text-ink")}>
               Filters{activeFilters ? ` · ${activeFilters}` : ""}
             </Button>
             {toolbarExtra}

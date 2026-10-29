@@ -144,7 +144,7 @@ function AccountHeader({ a, onTab }: { a: Row; onTab: (t: Tab) => void }) {
         / <span>{a.name}</span>
       </nav>
       <div className="flex flex-wrap items-start gap-4 pb-3">
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-600 to-brand-800 text-[15px] font-semibold text-white shadow-sm">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-neutral-800 to-black text-[15px] font-semibold text-white shadow-sm">
           {a.name.slice(0, 1).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
@@ -156,7 +156,7 @@ function AccountHeader({ a, onTab }: { a: Row; onTab: (t: Tab) => void }) {
           </h1>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
             {a.website && (
-              <a href={a.website} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-brand-700 hover:underline">
+              <a href={a.website} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink">
                 <Globe className="size-3" /> {hostOf(a.website)}
               </a>
             )}
@@ -296,14 +296,14 @@ function IntelligencePanel({ a, insights, loading, onTab }: { a: Row; insights?:
         <KeyValue label="Last activity">{insights.last_activity ? <span title={dateTime(insights.last_activity.occurred_at)}>{insights.last_activity.subject} · {relative(insights.last_activity.occurred_at)}</span> : null}</KeyValue>
         <KeyValue label="Next action">
           {insights.next_task ? (
-            <Link to={`/tasks/${insights.next_task.id}`} className="text-brand-700 hover:underline">
+            <Link to={`/tasks/${insights.next_task.id}`} className="font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink">
               {insights.next_task.title} · {date(insights.next_task.due_at)}
             </Link>
           ) : null}
         </KeyValue>
         <KeyValue label="Decision-makers">
           {insights.contacts.filter((c: Row) => c.decision_role === "decision_maker").map((c: Row) => (
-            <Link key={c.id} to={`/contacts/${c.id}`} className="mr-1 text-brand-700 hover:underline">{c.name}</Link>
+            <Link key={c.id} to={`/contacts/${c.id}`} className="mr-1 font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink">{c.name}</Link>
           ))}
           {!insights.has_decision_maker && <span className="text-amber-700">None identified</span>}
         </KeyValue>
@@ -323,7 +323,7 @@ function IntelligencePanel({ a, insights, loading, onTab }: { a: Row; insights?:
             <ul className="space-y-1.5">
               {insights.next_steps.slice(0, 4).map((s: Row, i: number) => (
                 <li key={i} className="flex gap-2">
-                  <Target className="mt-0.5 size-3.5 shrink-0 text-brand-600" />
+                  <Target className="mt-0.5 size-3.5 shrink-0 text-ink" />
                   <span>
                     <span className="font-medium">{s.text}</span>
                     <span className="block text-xs text-muted">{s.reason}</span>
@@ -332,7 +332,7 @@ function IntelligencePanel({ a, insights, loading, onTab }: { a: Row; insights?:
               ))}
             </ul>
             {insights.next_steps.length > 4 && (
-              <button onClick={() => onTab("insights")} className="mt-1 text-xs font-medium text-brand-700">
+              <button onClick={() => onTab("insights")} className="mt-1 text-xs font-medium text-ink">
                 +{insights.next_steps.length - 4} more
               </button>
             )}
@@ -371,13 +371,13 @@ function PresencePanel({ a }: { a: Row }) {
           <li key={label} className="flex h-9 items-center justify-between gap-2">
             <span className="text-slate-600">{label}</span>
             {url ? (
-              <a href={url} target="_blank" rel="noreferrer noopener" className="inline-flex max-w-[60%] items-center gap-1 truncate text-xs text-brand-700 hover:underline">
+              <a href={url} target="_blank" rel="noreferrer noopener" className="inline-flex max-w-[60%] items-center gap-1 truncate text-xs font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink">
                 <span className="truncate">{hostOf(url)}</span>
                 <ExternalLink className="size-3 shrink-0" />
               </a>
             ) : (
-              <button onClick={() => setEditing(true)} className="text-xs text-muted hover:text-brand-700">
-                Not set · <span className="text-brand-700">+ Add</span>
+              <button onClick={() => setEditing(true)} className="text-xs text-muted hover:text-ink">
+                Not set · <span className="text-ink">+ Add</span>
               </button>
             )}
           </li>
@@ -408,7 +408,7 @@ export function ServicesTab({ accountId, full }: { accountId: string; full?: boo
   const shown = full ? rows : [...rows].sort((a, b) => Number(b.status !== "not_assessed") - Number(a.status !== "not_assessed")).slice(0, 8);
   return (
     <Card>
-      <CardHeader title="Service fit" icon={Package} subtitle={`${assessed} of ${rows.length} Gexart services assessed`} action={!full && <Link to={`?tab=services`} className="text-xs font-medium text-brand-700">All</Link>} />
+      <CardHeader title="Service fit" icon={Package} subtitle={`${assessed} of ${rows.length} Gexart services assessed`} action={!full && <Link to={`?tab=services`} className="text-xs font-medium text-ink">All</Link>} />
       {q.isLoading ? (
         <div className="space-y-2 p-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-6" />)}</div>
       ) : (
@@ -463,13 +463,13 @@ function OverviewTab({ a, insights, onTab }: { a: Row; insights?: Row; onTab: (t
       </Card>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader title="Key contacts" icon={Users} action={<button onClick={() => onTab("contacts")} className="text-xs font-medium text-brand-700">View all</button>} />
+          <CardHeader title="Key contacts" icon={Users} action={<button onClick={() => onTab("contacts")} className="text-xs font-medium text-ink">View all</button>} />
           <ul className="divide-y divide-line px-4">
             {insights?.contacts.map((c: Row) => (
               <li key={c.id} className="flex items-center gap-2 py-2">
                 <Avatar name={c.name} />
                 <div className="min-w-0 flex-1">
-                  <Link to={`/contacts/${c.id}`} className="block truncate font-medium hover:text-brand-700">{c.name}</Link>
+                  <Link to={`/contacts/${c.id}`} className="block truncate font-medium hover:text-ink">{c.name}</Link>
                   <div className="truncate text-xs text-muted">{[c.job_title, c.decision_role && E.labelOf(E.DECISION_ROLES, c.decision_role)].filter(Boolean).join(" · ")}</div>
                 </div>
                 <StatusBadge value={c.status} label={E.labelOf(E.CONTACT_STATUSES, c.status)} />
@@ -479,12 +479,12 @@ function OverviewTab({ a, insights, onTab }: { a: Row; insights?: Row; onTab: (t
           </ul>
         </Card>
         <Card>
-          <CardHeader title="Open opportunities" icon={Briefcase} action={<button onClick={() => onTab("opportunities")} className="text-xs font-medium text-brand-700">View all</button>} />
+          <CardHeader title="Open opportunities" icon={Briefcase} action={<button onClick={() => onTab("opportunities")} className="text-xs font-medium text-ink">View all</button>} />
           <ul className="divide-y divide-line px-4">
             {insights?.open_opportunities.map((o: Row) => (
               <li key={o.id} className="flex items-center gap-2 py-2">
                 <div className="min-w-0 flex-1">
-                  <Link to={`/opportunities/${o.id}`} className="block truncate font-medium hover:text-brand-700">{o.name}</Link>
+                  <Link to={`/opportunities/${o.id}`} className="block truncate font-medium hover:text-ink">{o.name}</Link>
                   <div className="text-xs text-muted">{E.labelOf(E.OPPORTUNITY_STAGES, o.stage)} · close {date(o.expected_close_date)}</div>
                 </div>
                 <span className="font-medium tabular-nums">{money(o.amount_minor, o.currency)}</span>
@@ -547,7 +547,7 @@ function InsightsTab({ a, insights, loading }: { a: Row; insights?: Row; loading
     <>
       <Card className="border-brand-200 bg-brand-50/40 p-4">
         <div className="flex gap-3">
-          <Sparkles className="mt-0.5 size-4 shrink-0 text-brand-600" />
+          <Sparkles className="mt-0.5 size-4 shrink-0 text-ink" />
           <div>
             <div className="font-medium">No AI provider is connected</div>
             <p className="mt-0.5 text-xs text-slate-600">

@@ -15,11 +15,24 @@ export interface Slide {
   notes: string;
 }
 
-const BRAND = "4338CA";
-const INK = "0F172A";
-const MUTED = "64748B";
-const LIGHT = "EEF2FF";
+import { gxSvg } from "../../shared/brand";
+
+const BRAND = "0A0A0A";
+const INK = "0A0A0A";
+const MUTED = "6F6F76";
+const LIGHT = "F2F2F0";
 const FONT = "Calibri";
+
+/** Rasterise the GX mark to a PNG data URL (pptxgenjs needs bitmaps for reliable rendering). */
+async function gxPng(opts: { fg?: string; bg?: string | null }, size = 256): Promise<string> {
+  const img = new Image();
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(gxSvg({ ...opts, size, pad: opts.bg === null ? 0.04 : 0.2 }));
+  await img.decode();
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  c.getContext("2d")!.drawImage(img, 0, 0, size, size);
+  return c.toDataURL("image/png");
+}
 
 export async function buildPptx(slides: Slide[], meta: { title: string; company: string; author: string }): Promise<Blob> {
   const { default: PptxGenJS } = await import("pptxgenjs");
@@ -28,13 +41,15 @@ export async function buildPptx(slides: Slide[], meta: { title: string; company:
   pptx.author = meta.author;
   pptx.company = "Gexart";
   pptx.title = meta.title;
+  const [tile, white] = await Promise.all([gxPng({}), gxPng({ bg: null })]);
 
   pptx.defineSlideMaster({
     title: "GEXART",
     background: { color: "FFFFFF" },
     objects: [
       { rect: { x: 0, y: 0, w: 13.33, h: 0.12, fill: { color: BRAND } } },
-      { text: { text: "gexart.", options: { x: 0.5, y: 6.95, w: 3, h: 0.35, fontFace: FONT, fontSize: 12, bold: true, color: BRAND } } },
+      { image: { x: 0.5, y: 6.93, w: 0.38, h: 0.38, data: tile } },
+      { text: { text: "GEXART", options: { x: 0.95, y: 6.95, w: 2.5, h: 0.35, fontFace: FONT, fontSize: 10, bold: true, color: INK, charSpacing: 3 } } },
       { text: { text: meta.company, options: { x: 4, y: 6.95, w: 5.33, h: 0.35, fontFace: FONT, fontSize: 9, color: MUTED, align: "center" } } },
     ],
     slideNumber: { x: 12.3, y: 6.95, w: 0.6, h: 0.35, fontFace: FONT, fontSize: 9, color: MUTED },
@@ -48,9 +63,10 @@ export async function buildPptx(slides: Slide[], meta: { title: string; company:
     if (sl.layout === "title" || sl.layout === "closing") {
       const s = pptx.addSlide();
       s.background = { color: BRAND };
-      s.addText("gexart.", { x: 0.7, y: 0.6, w: 4, h: 0.6, fontFace: FONT, fontSize: 22, bold: true, color: "FFFFFF" });
+      s.addImage({ data: white, x: 0.7, y: 0.45, w: 0.95, h: 0.95 });
+      s.addText("GEXART", { x: 1.85, y: 0.7, w: 4, h: 0.45, fontFace: FONT, fontSize: 14, bold: true, color: "FFFFFF", charSpacing: 6 });
       s.addText(sl.title, { x: 0.7, y: 2.4, w: 11.9, h: 1.4, fontFace: FONT, fontSize: 40, bold: true, color: "FFFFFF", valign: "top" });
-      if (sl.subtitle) s.addText(sl.subtitle, { x: 0.7, y: 3.9, w: 11.9, h: 0.6, fontFace: FONT, fontSize: 18, color: "C7D2FE" });
+      if (sl.subtitle) s.addText(sl.subtitle, { x: 0.7, y: 3.9, w: 11.9, h: 0.6, fontFace: FONT, fontSize: 18, color: "A8A8A3" });
       if (sl.layout === "closing" && sl.bullets.length) s.addText(bulletList(sl.bullets), { x: 0.7, y: 4.7, w: 11.9, h: 1.8, fontFace: FONT, fontSize: 16, color: "FFFFFF" });
       if (sl.notes) s.addNotes(sl.notes);
       continue;
@@ -67,16 +83,16 @@ export async function buildPptx(slides: Slide[], meta: { title: string; company:
       if (sl.layout === "two_column") {
         for (const [i, [h, items]] of ([[sl.left_heading, sl.left_bullets], [sl.right_heading, sl.right_bullets]] as [string, string[]][]).entries()) {
           const x = i === 0 ? 0.6 : 6.85;
-          s.addShape(pptx.ShapeType.rect, { x, y: top, w: 5.9, h: 4.9, fill: { color: i === 0 ? "F8FAFC" : LIGHT }, line: { color: "E5E7EB" } });
+          s.addShape(pptx.ShapeType.rect, { x, y: top, w: 5.9, h: 4.9, fill: { color: i === 0 ? "FAFAF9" : LIGHT }, line: { color: "E7E6E3" } });
           s.addText(h, { x: x + 0.3, y: top + 0.2, w: 5.3, h: 0.5, fontFace: FONT, fontSize: 16, bold: true, color: i === 0 ? INK : BRAND });
           s.addText(bulletList(items), { x: x + 0.3, y: top + 0.8, w: 5.3, h: 3.9, fontFace: FONT, fontSize: 14, color: INK, valign: "top", paraSpaceAfter: 6 });
         }
       } else if (sl.layout === "table" && sl.table_headers.length) {
         const rows = [
           sl.table_headers.map((h) => ({ text: h, options: { bold: true, color: "FFFFFF", fill: { color: BRAND } } })),
-          ...sl.table_rows.slice(0, 12).map((r, ri) => sl.table_headers.map((_, ci) => ({ text: r[ci] ?? "", options: { fill: { color: ri % 2 ? "FFFFFF" : "F8FAFC" } } }))),
+          ...sl.table_rows.slice(0, 12).map((r, ri) => sl.table_headers.map((_, ci) => ({ text: r[ci] ?? "", options: { fill: { color: ri % 2 ? "FFFFFF" : "FAFAF9" } } }))),
         ];
-        s.addTable(rows, { x: 0.6, y: top, w: 12.1, fontFace: FONT, fontSize: 12, color: INK, border: { type: "solid", pt: 0.5, color: "E5E7EB" }, autoPage: false });
+        s.addTable(rows, { x: 0.6, y: top, w: 12.1, fontFace: FONT, fontSize: 12, color: INK, border: { type: "solid", pt: 0.5, color: "E7E6E3" }, autoPage: false });
       } else if (sl.layout === "metrics" && sl.metrics.length) {
         const n = Math.min(sl.metrics.length, 4);
         const w = (12.1 - (n - 1) * 0.3) / n;

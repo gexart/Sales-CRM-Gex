@@ -210,7 +210,7 @@ function ConvertDialog({ prospect, open, onClose }: { prospect: Row; open: boole
         </p>
         <div className="grid grid-cols-2 gap-2">
           {(["create", "link"] as const).map((v) => (
-            <button key={v} onClick={() => setMode(v)} className={cn("rounded-lg border p-3 text-left transition-colors", mode === v ? "border-brand-400 bg-brand-50" : "border-line hover:bg-slate-50")}>
+            <button key={v} onClick={() => setMode(v)} className={cn("rounded-lg border p-3 text-left transition-colors", mode === v ? "border-ink bg-brand-50" : "border-line hover:bg-slate-50")}>
               <div className="font-medium">{v === "create" ? "Create new account" : "Link existing account"}</div>
               <div className="text-xs text-muted">{v === "create" ? "Blocked if a matching account exists" : "Choose the company's existing record"}</div>
             </button>
@@ -277,7 +277,7 @@ function StageStepper({ r, canWrite }: { r: Row; canWrite: boolean }) {
                   ? "bg-red-600 text-white"
                   : "bg-brand-600 text-white"
                 : i < idx && !E.CLOSED_STAGES.includes(r.stage)
-                  ? "bg-brand-100 text-brand-800 hover:bg-brand-200"
+                  ? "bg-brand-100 text-ink hover:bg-brand-200"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200",
             )}
           >

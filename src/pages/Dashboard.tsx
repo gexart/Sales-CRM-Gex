@@ -70,7 +70,7 @@ export function useDashboard(period: PeriodKey, custom: { from: string; to: stri
 function Kpi({ label, value, icon: Icon, sub, to, tone = "brand" }: { label: string; value: ReactNode; icon: LucideIcon; sub?: ReactNode; to?: string; tone?: "brand" | "red" | "green" }) {
   const body = (
     <Card className={cn("flex items-start gap-3 p-3.5 transition-shadow", to && "hover:shadow-[var(--shadow-pop)]")}>
-      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", tone === "red" ? "bg-red-50 text-red-600" : tone === "green" ? "bg-emerald-50 text-emerald-600" : "bg-brand-50 text-brand-600")}>
+      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", tone === "red" ? "bg-red-50 text-red-600" : tone === "green" ? "bg-emerald-50 text-emerald-600" : "bg-brand-50 text-ink")}>
         <Icon className="size-4" />
       </span>
       <div className="min-w-0">
@@ -94,7 +94,7 @@ export function Bars({ rows, max, format }: { rows: { label: string; value: numb
             <span className="shrink-0 font-medium tabular-nums">{format ? format(r.value) : r.value}{r.sub && <span className="font-normal text-muted"> · {r.sub}</span>}</span>
           </div>
           <div className="h-1.5 rounded-full bg-slate-100">
-            <div className="h-full rounded-full bg-brand-500 transition-[width] duration-500" style={{ width: `${(r.value / m) * 100}%` }} />
+            <div className="h-full rounded-full bg-ink transition-[width] duration-500" style={{ width: `${(r.value / m) * 100}%` }} />
           </div>
         </li>
       ))}
@@ -171,13 +171,13 @@ export function Dashboard() {
             </div>
           </Card>
           <Card>
-            <CardHeader title="My open tasks" icon={CheckCircle2} action={<Link to="/tasks" className="text-xs font-medium text-brand-700">All tasks</Link>} />
+            <CardHeader title="My open tasks" icon={CheckCircle2} action={<Link to="/tasks" className="text-xs font-medium text-ink">All tasks</Link>} />
             <ul className="divide-y divide-line px-4">
               {d?.my_tasks.map((t: Row) => {
                 const late = t.due_at && new Date(t.due_at) < new Date();
                 return (
                   <li key={t.id} className="py-2">
-                    <Link to={`/tasks/${t.id}`} className="block truncate font-medium hover:text-brand-700">{t.title}</Link>
+                    <Link to={`/tasks/${t.id}`} className="block truncate font-medium hover:text-ink">{t.title}</Link>
                     <div className="flex gap-2 text-xs text-muted">
                       <span className={late ? "font-medium text-red-600" : ""}>{t.due_at ? dateTime(t.due_at) : "No due date"}</span>
                       {t.account_name && <span className="truncate">{t.account_name}</span>}
@@ -203,7 +203,7 @@ export function Dashboard() {
                     {a.account_name && (
                       <>
                         {" · "}
-                        <Link to={`/accounts/${a.account_id}`} className="text-brand-700 hover:underline">{a.account_name}</Link>
+                        <Link to={`/accounts/${a.account_id}`} className="font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink">{a.account_name}</Link>
                       </>
                     )}
                   </span>
@@ -227,7 +227,7 @@ export function Dashboard() {
 
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
-            <CardHeader title="Campaign performance" icon={Megaphone} action={<Link to="/campaigns" className="text-xs font-medium text-brand-700">Campaigns</Link>} />
+            <CardHeader title="Campaign performance" icon={Megaphone} action={<Link to="/campaigns" className="text-xs font-medium text-ink">Campaigns</Link>} />
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="border-b border-line bg-slate-50/70">
@@ -243,7 +243,7 @@ export function Dashboard() {
                 <tbody className="divide-y divide-line">
                   {d?.campaigns.map((c: Row) => (
                     <tr key={c.id}>
-                      <td className="td"><Link to={`/campaigns/${c.id}`} className="font-medium hover:text-brand-700">{c.name}</Link></td>
+                      <td className="td"><Link to={`/campaigns/${c.id}`} className="font-medium hover:text-ink">{c.name}</Link></td>
                       <td className="td text-right tabular-nums">{c.prospects}{c.target_leads ? <span className="text-muted">/{c.target_leads}</span> : null}</td>
                       <td className="td text-right tabular-nums">{c.qualified}</td>
                       <td className="td text-right tabular-nums">{c.converted}</td>
@@ -262,7 +262,7 @@ export function Dashboard() {
               <ul className="divide-y divide-line px-4">
                 {d?.recent_prospects.map((p: Row) => (
                   <li key={p.id} className="flex items-center gap-2 py-2">
-                    <Link to={`/prospecting/${p.id}`} className="min-w-0 flex-1 truncate font-medium hover:text-brand-700">{p.company_name}</Link>
+                    <Link to={`/prospecting/${p.id}`} className="min-w-0 flex-1 truncate font-medium hover:text-ink">{p.company_name}</Link>
                     <StatusBadge value={p.status} label={E.labelOf(E.PROSPECT_STATUSES, p.status)} />
                   </li>
                 ))}
@@ -274,7 +274,7 @@ export function Dashboard() {
               <ul className="divide-y divide-line px-4">
                 {d?.recent_accounts.map((a: Row) => (
                   <li key={a.id} className="py-2">
-                    <Link to={`/accounts/${a.id}`} className="block truncate font-medium hover:text-brand-700">{a.name}</Link>
+                    <Link to={`/accounts/${a.id}`} className="block truncate font-medium hover:text-ink">{a.name}</Link>
                     <div className="text-xs text-muted">{E.labelOf(E.ACCOUNT_STATUSES, a.status)} · {relative(a.updated_at)}</div>
                   </li>
                 ))}

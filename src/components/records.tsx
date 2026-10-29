@@ -205,7 +205,7 @@ export function TaskRow({ t, onComplete, showRelated }: { t: Row; onComplete: (t
         {open ? <Circle className="size-4" /> : <CheckCircle2 className="size-4" />}
       </button>
       <div className="min-w-0 flex-1">
-        <Link to={`/tasks/${t.id}`} className={cn("block truncate font-medium hover:text-brand-700", !open && "text-slate-400 line-through")}>
+        <Link to={`/tasks/${t.id}`} className={cn("block truncate font-medium hover:text-ink", !open && "text-slate-400 line-through")}>
           {t.title}
         </Link>
         <div className="flex flex-wrap gap-x-2 text-xs text-muted">
@@ -317,18 +317,18 @@ export function displayValue(f: FieldDef, r: Row): ReactNode {
       return dateTime(v);
     case "url":
       return (
-        <a href={v} target="_blank" rel="noreferrer noopener" className="text-brand-700 hover:underline">
+        <a href={v} target="_blank" rel="noreferrer noopener" className="font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink">
           {hostOf(v)}
         </a>
       );
     case "email":
-      return <a href={`mailto:${v}`} className="text-brand-700 hover:underline">{v}</a>;
+      return <a href={`mailto:${v}`} className="font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink">{v}</a>;
     case "textarea":
       return <span className="whitespace-pre-wrap">{v}</span>;
     case "ref": {
       const name = r[f.name.replace(/_id$/, "_name")];
       const to = { account_id: "/accounts/", contact_id: "/contacts/", primary_contact_id: "/contacts/", campaign_id: "/campaigns/", source_campaign_id: "/campaigns/", prospect_id: "/prospecting/", opportunity_id: "/opportunities/", product_id: "/products/" }[f.name];
-      return to ? <Link to={`${to}${v}`} className="text-brand-700 hover:underline">{name ?? "Open"}</Link> : (name ?? v);
+      return to ? <Link to={`${to}${v}`} className="font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink">{name ?? "Open"}</Link> : (name ?? v);
     }
     case "number":
       return f.name === "probability" ? `${v}%` : String(v);

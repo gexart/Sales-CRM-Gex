@@ -585,7 +585,7 @@ export function SequenceEditor({ open, onClose, sequence, steps }: { open: boole
 export function SectionNote({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-start gap-2 rounded-md border border-line bg-white px-3 py-2 text-xs text-slate-600 shadow-[var(--shadow-card)]">
-      <Mail className="mt-0.5 size-3.5 shrink-0 text-brand-600" />
+      <Mail className="mt-0.5 size-3.5 shrink-0 text-ink" />
       <div>{children}</div>
     </div>
   );

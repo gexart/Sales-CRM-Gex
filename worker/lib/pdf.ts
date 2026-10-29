@@ -1,6 +1,7 @@
 // Fixed-format Gexart proposal PDF. The layout is hard-coded so every proposal looks
 // identical; only the data changes. Uses pdf-lib (pure JS, runs in Workers).
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { GX_PATH, GX_VIEWBOX } from "../../shared/brand";
 
 export interface ProposalData {
   title: string;
@@ -20,10 +21,10 @@ export interface ProposalData {
   scopeNote: string | null;
 }
 
-const BRAND = rgb(0.263, 0.22, 0.792);
-const INK = rgb(0.06, 0.09, 0.16);
-const MUTED = rgb(0.39, 0.45, 0.55);
-const LINE = rgb(0.9, 0.91, 0.93);
+const BRAND = rgb(0.04, 0.04, 0.04);
+const INK = rgb(0.04, 0.04, 0.04);
+const MUTED = rgb(0.44, 0.44, 0.46);
+const LINE = rgb(0.906, 0.902, 0.89);
 const SEV: Record<string, ReturnType<typeof rgb>> = {
   critical: rgb(0.73, 0.11, 0.11),
   high: rgb(0.76, 0.25, 0.05),
@@ -115,11 +116,16 @@ export async function renderProposalPdf(d: ProposalData): Promise<Uint8Array> {
   w.newPage();
   const p = w.page;
   p.drawRectangle({ x: 0, y: H - 330, width: W, height: 330, color: BRAND });
-  p.drawText("gexart.", { x: M, y: H - 80, size: 26, font: bold, color: rgb(1, 1, 1) });
-  p.drawText(pdfSafe(d.title.toUpperCase()), { x: M, y: H - 200, size: 11, font: bold, color: rgb(0.8, 0.82, 1) });
+  // GX monogram (vector) + spaced wordmark
+  const markScale = 64 / GX_VIEWBOX.w;
+  p.drawSvgPath(GX_PATH, { x: M - GX_VIEWBOX.x * markScale, y: H - 56 + GX_VIEWBOX.y * markScale, scale: markScale, color: rgb(1, 1, 1) });
+  p.drawLine({ start: { x: M + 78, y: H - 56 }, end: { x: M + 78, y: H - 56 - GX_VIEWBOX.h * markScale }, thickness: 0.6, color: rgb(0.35, 0.35, 0.35) });
+  p.drawText("G E X A R T", { x: M + 92, y: H - 72, size: 10, font: bold, color: rgb(1, 1, 1) });
+  p.drawText("D I G I T A L   G R O W T H", { x: M + 92, y: H - 85, size: 6.5, font, color: rgb(0.55, 0.55, 0.53) });
+  p.drawText(pdfSafe(d.title.toUpperCase()), { x: M, y: H - 200, size: 11, font: bold, color: rgb(0.62, 0.62, 0.6) });
   const nameLines = w.wrap(d.clientName, 30, W - 2 * M, bold);
   nameLines.slice(0, 2).forEach((l, i) => p.drawText(l, { x: M, y: H - 245 - i * 36, size: 30, font: bold, color: rgb(1, 1, 1) }));
-  p.drawText(pdfSafe(d.clientMeta), { x: M, y: H - 305, size: 10, font, color: rgb(0.85, 0.87, 1) });
+  p.drawText(pdfSafe(d.clientMeta), { x: M, y: H - 305, size: 10, font, color: rgb(0.72, 0.72, 0.7) });
   w.y = H - 380;
   const meta: [string, string][] = [
     ["Prepared for", d.contactLine ?? d.clientName],
@@ -208,7 +214,7 @@ export async function renderProposalPdf(d: ProposalData): Promise<Uint8Array> {
   w.pages.forEach((pg, i) => {
     if (i === 0) return;
     pg.drawRectangle({ x: M, y: 36, width: W - 2 * M, height: 0.5, color: LINE });
-    pg.drawText(pdfSafe(`gexart.  |  ${d.title} for ${d.clientName}`).slice(0, 90), { x: M, y: 24, size: 7.5, font, color: MUTED });
+    pg.drawText(pdfSafe(`GEXART  |  ${d.title} for ${d.clientName}`).slice(0, 90), { x: M, y: 24, size: 7.5, font, color: MUTED });
     const pn = `Page ${i + 1} of ${total}`;
     pg.drawText(pn, { x: W - M - font.widthOfTextAtSize(pn, 7.5), y: 24, size: 7.5, font, color: MUTED });
   });

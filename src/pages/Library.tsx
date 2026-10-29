@@ -180,7 +180,7 @@ export function AssetDetailPage() {
               {links.data?.map((l) => (
                 <li key={`${l.entity_type}-${l.entity_id}`} className="flex items-center gap-2 py-2">
                   <Badge>{l.entity_type.replace("_", " ")}</Badge>
-                  {LINK_PATH[l.entity_type] ? <Link to={`${LINK_PATH[l.entity_type]}${l.entity_id}`} className="min-w-0 flex-1 truncate hover:text-brand-700">{l.label ?? l.entity_id}</Link> : <span className="flex-1 truncate">{l.label ?? l.entity_id}</span>}
+                  {LINK_PATH[l.entity_type] ? <Link to={`${LINK_PATH[l.entity_type]}${l.entity_id}`} className="min-w-0 flex-1 truncate hover:text-ink">{l.label ?? l.entity_id}</Link> : <span className="flex-1 truncate">{l.label ?? l.entity_id}</span>}
                   {canEdit && <button aria-label="Unlink" onClick={() => unlink.mutate(l)} className="text-slate-400 hover:text-red-600"><Trash2 className="size-3.5" /></button>}
                 </li>
               ))}
@@ -193,7 +193,7 @@ export function AssetDetailPage() {
               {versions.data?.map((v) => (
                 <li key={v.id} className={cn("flex items-center gap-2 py-2", v.id === a.id && "font-medium")}>
                   <Badge>v{v.version}</Badge>
-                  <Link to={`/sales-assets/${v.id}`} className="min-w-0 flex-1 truncate hover:text-brand-700">{v.file_name ?? v.name}</Link>
+                  <Link to={`/sales-assets/${v.id}`} className="min-w-0 flex-1 truncate hover:text-ink">{v.file_name ?? v.name}</Link>
                   <span className="text-xs text-muted">{relative(v.created_at)}</span>
                 </li>
               ))}
@@ -248,7 +248,7 @@ export function LinkedAssets({ type, id, title = "Sales assets & documents" }: {
           {rows.map((a) => (
             <li key={a.id} className="flex items-center gap-3 py-2">
               <div className="min-w-0 flex-1">
-                <button onClick={() => nav(`/sales-assets/${a.id}`)} className="block truncate text-left font-medium hover:text-brand-700">{a.name}</button>
+                <button onClick={() => nav(`/sales-assets/${a.id}`)} className="block truncate text-left font-medium hover:text-ink">{a.name}</button>
                 <div className="text-xs text-muted">{E.labelOf(E.ASSET_TYPES, a.type)} · v{a.version} · {relative(a.created_at)}{a.source === "generated" ? " · generated" : ""}</div>
               </div>
               {a.file_name && <a href={`/api/v1/assets/${a.id}/download`} aria-label="Download" className="rounded p-1.5 text-slate-500 hover:bg-slate-100"><Download className="size-4" /></a>}
@@ -302,7 +302,7 @@ export function PriceBookPage() {
               {g.items.map((p) => (
                 <Card key={p.id}>
                   <CardHeader
-                    title={<Link to={`/products/${p.id}`} className="hover:text-brand-700">{p.name}</Link>}
+                    title={<Link to={`/products/${p.id}`} className="hover:text-ink">{p.name}</Link>}
                     subtitle={`${p.sku} · catalogue price: ${p.default_price_minor === null ? "custom" : money(p.default_price_minor, p.currency)}`}
                     action={isManager && <Button size="sm" icon={Plus} onClick={() => setEditing({ defaults: { product_id: p.id, product_name: p.name, billing_frequency: "one_time", currency: p.currency } })}>Package</Button>}
                   />

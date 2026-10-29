@@ -207,7 +207,7 @@ export function AuditReport({ runId, account }: { runId: string; account: Row })
               <StatusBadge value={r.status} label={E.labelOf(E.AUDIT_STATUSES, r.status)} />
             </div>
             <div className="text-xs text-muted">
-              <a href={r.target} target="_blank" rel="noreferrer noopener" className="text-brand-700 hover:underline">{r.target}</a> · started {dateTime(r.created_at)} by {r.initiated_by_name}
+              <a href={r.target} target="_blank" rel="noreferrer noopener" className="font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink">{r.target}</a> · started {dateTime(r.created_at)} by {r.initiated_by_name}
               {r.completed_at && ` · finished ${dateTime(r.completed_at)}`} · rubric {r.audit_version}
             </div>
           </div>
@@ -222,7 +222,7 @@ export function AuditReport({ runId, account }: { runId: string; account: Row })
         {ACTIVE.includes(r.status) && (
           <div className="px-4 pb-4">
             <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full rounded-full bg-brand-500 transition-[width] duration-500" style={{ width: `${Math.max(5, r.progress)}%` }} />
+              <div className="h-full rounded-full bg-ink transition-[width] duration-500" style={{ width: `${Math.max(5, r.progress)}%` }} />
             </div>
             <p className="mt-1.5 text-xs text-muted">Fetching robots.txt, pages and links politely. This usually takes 5–20 seconds.</p>
           </div>
@@ -264,7 +264,7 @@ export function AuditReport({ runId, account }: { runId: string; account: Row })
           {!compare.data.same_rubric && <Badge tone="amber">Different rubric version — compare with care</Badge>}
           <span className="text-emerald-700">{compare.data.resolved.length} resolved</span>
           <span className="text-red-700">{compare.data.new_issues.length} new issues</span>
-          <Link to={`/accounts/${account.id}/audits/${compare.data.previous.id}`} className="ml-auto text-brand-700 hover:underline">Open previous</Link>
+          <Link to={`/accounts/${account.id}/audits/${compare.data.previous.id}`} className="ml-auto font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink">Open previous</Link>
         </Card>
       )}
 
@@ -351,7 +351,7 @@ export function AuditReport({ runId, account }: { runId: string; account: Row })
                               <ul className="mt-1 space-y-0.5">
                                 {f.evidence.map((e: Row) => (
                                   <li key={e.id} className="flex gap-2 font-mono text-[11px] text-slate-600">
-                                    {e.url && <a href={e.url} target="_blank" rel="noreferrer noopener" className="shrink-0 text-brand-700 hover:underline">{new URL(e.url).pathname || "/"}</a>}
+                                    {e.url && <a href={e.url} target="_blank" rel="noreferrer noopener" className="shrink-0 font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink">{new URL(e.url).pathname || "/"}</a>}
                                     <span className="break-all">{e.observation}</span>
                                   </li>
                                 ))}

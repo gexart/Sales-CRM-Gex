@@ -30,7 +30,7 @@ function AuditPicker({ accountId, value, onChange, enabled }: { accountId: strin
         {[...latest.values()].map((r) => {
           const on = value.includes(r.id);
           return (
-            <button key={r.id} type="button" onClick={() => onChange(on ? value.filter((x) => x !== r.id) : [...value, r.id])} className={cn("rounded-full border px-2 py-0.5 text-xs", on ? "border-brand-300 bg-brand-50 text-brand-700" : "border-line text-slate-600")}>
+            <button key={r.id} type="button" onClick={() => onChange(on ? value.filter((x) => x !== r.id) : [...value, r.id])} className={cn("rounded-full border px-2 py-0.5 text-xs", on ? "border-ink bg-ink text-white text-ink" : "border-line text-slate-600")}>
               {r.audit_type.toUpperCase()} · {r.overall_score ?? "N/A"} · {r.issue_count} issues
             </button>
           );
@@ -49,7 +49,7 @@ function ServicePicker({ value, onChange }: { value: string[]; onChange: (v: str
         {(pb.data ?? []).filter((p) => p.status === "active").map((p) => {
           const on = value.includes(p.id);
           return (
-            <button key={p.id} type="button" onClick={() => onChange(on ? value.filter((x) => x !== p.id) : [...value, p.id])} className={cn("rounded-full border px-2 py-0.5 text-xs", on ? "border-brand-300 bg-brand-50 text-brand-700" : "border-line text-slate-600")}>
+            <button key={p.id} type="button" onClick={() => onChange(on ? value.filter((x) => x !== p.id) : [...value, p.id])} className={cn("rounded-full border px-2 py-0.5 text-xs", on ? "border-ink bg-ink text-white text-ink" : "border-line text-slate-600")}>
               {p.name}
             </button>
           );
@@ -85,7 +85,7 @@ export function PitchDialog({ open, onClose, account }: { open: boolean; onClose
           <Field label="Formats">
             <div className="flex flex-wrap gap-1.5">
               {E.PITCH_FORMATS.options.map((f) => (
-                <button key={f.value} type="button" onClick={() => setFormats((s) => (s.includes(f.value) ? s.filter((x) => x !== f.value) : [...s, f.value]))} className={cn("rounded-full border px-2 py-0.5 text-xs", formats.includes(f.value) ? "border-brand-300 bg-brand-50 text-brand-700" : "border-line text-slate-600")}>
+                <button key={f.value} type="button" onClick={() => setFormats((s) => (s.includes(f.value) ? s.filter((x) => x !== f.value) : [...s, f.value]))} className={cn("rounded-full border px-2 py-0.5 text-xs", formats.includes(f.value) ? "border-ink bg-ink text-white text-ink" : "border-line text-slate-600")}>
                   {f.label}
                 </button>
               ))}
@@ -446,7 +446,7 @@ export function CompetitorsCard({ accountId }: { accountId: string }) {
         {q.data?.map((c) => (
           <li key={c.id} className="flex items-center gap-2 py-2">
             <span className="font-medium">{c.name}</span>
-            {c.website && <a href={c.website} target="_blank" rel="noreferrer noopener" className="text-xs text-brand-700">{new URL(c.website).hostname}</a>}
+            {c.website && <a href={c.website} target="_blank" rel="noreferrer noopener" className="text-xs text-ink">{new URL(c.website).hostname}</a>}
             <button aria-label="Remove" onClick={() => del.mutate(c.id)} className="ml-auto text-slate-400 hover:text-red-600"><Trash2 className="size-3.5" /></button>
           </li>
         ))}

@@ -101,7 +101,7 @@ export function RefSelect({ kind, value, label, onChange, placeholder = "Selectâ
                     <span className="block truncate">{src.label(r)}</span>
                     {src.sub?.(r) && <span className="block truncate text-xs text-muted">{src.sub(r)}</span>}
                   </span>
-                  {r.id === value && <Check className="size-3.5 text-brand-600" />}
+                  {r.id === value && <Check className="size-3.5 text-ink" />}
                 </button>
               </li>
             ))}
@@ -126,7 +126,7 @@ export function MultiRefSelect({ kind, value, onChange }: { kind: RefKind; value
             type="button"
             aria-pressed={on}
             onClick={() => onChange(on ? value.filter((v) => v !== r.id) : [...value, r.id])}
-            className={cn("rounded-full border px-2 py-0.5 text-xs transition-colors", on ? "border-brand-300 bg-brand-50 text-brand-700" : "border-line text-slate-600 hover:bg-slate-50")}
+            className={cn("rounded-full border px-2 py-0.5 text-xs transition-colors", on ? "border-ink bg-ink text-white text-ink" : "border-line text-slate-600 hover:bg-slate-50")}
           >
             {src.label(r)}
           </button>

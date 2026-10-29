@@ -6,7 +6,7 @@ import { api, ApiError, type Row } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import * as E from "../../shared/enums";
 import { dateTime, money, moneyList, pct, relative } from "../lib/format";
-import { Logo, PageHeader } from "../components/layout";
+import { GxMark, Logo, PageHeader } from "../components/layout";
 import { Badge, Button, Card, CardHeader, Dialog, ErrorState, Field, Select, Skeleton, StatusBadge, Tabs, useToast } from "../components/ui";
 import { Bars, PeriodPicker, useDashboard, type PeriodKey } from "./Dashboard";
 import { DevicesSettings } from "./Calls";
@@ -31,35 +31,45 @@ export function AuthPage({ mode }: { mode: "login" | "setup" }) {
     }
   };
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-canvas p-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex justify-center">
-          <Logo />
+    <div className="grid min-h-dvh bg-canvas lg:grid-cols-[1.05fr_1fr]">
+      <aside className="relative hidden overflow-hidden bg-night p-12 text-white lg:flex lg:flex-col">
+        <Logo dark />
+        <GxMark tile={false} className="pointer-events-none absolute -right-24 bottom-[-6%] w-[78%] text-white/[0.04]" />
+        <div className="relative mt-auto max-w-md">
+          <p className="text-[11px] font-semibold tracking-[0.2em] text-white/40 uppercase">Gexart Sales CRM</p>
+          <h2 className="mt-3 text-3xl leading-tight font-semibold">Every account, audit, pitch and call in one place.</h2>
+          <p className="mt-3 text-sm text-white/55">Research prospects, run audits, send proposals and track every deal from first touch to close.</p>
         </div>
-        <Card className="p-6">
-          <h1 className="text-base font-semibold">{mode === "setup" ? "Create the administrator account" : "Sign in to Gexart CRM"}</h1>
-          <p className="mt-1 text-xs text-muted">
-            {mode === "setup" ? "No users exist yet. This first account becomes the administrator; setup closes once it is created." : "Internal sales workspace. Access is by invitation from an administrator."}
+      </aside>
+      <main className="flex items-center justify-center p-6">
+        <div className="w-full max-w-sm">
+          <div className="mb-8 lg:hidden">
+            <Logo />
+          </div>
+          <h1 className="text-xl font-semibold">{mode === "setup" ? "Create the administrator account" : "Welcome back"}</h1>
+          <p className="mt-1 text-[13px] text-muted">
+            {mode === "setup" ? "No users exist yet. This first account becomes the administrator; setup closes once it is created." : "Sign in to the Gexart sales workspace. Access is by invitation."}
           </p>
-          <form onSubmit={submit} className="mt-5 space-y-3">
+          <form onSubmit={submit} className="mt-7 space-y-4">
             {mode === "setup" && (
               <Field label="Full name">
-                <input className="input" autoComplete="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                <input className="input h-10" autoComplete="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </Field>
             )}
             <Field label="Work email">
-              <input className="input" type="email" autoComplete="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <input className="input h-10" type="email" autoComplete="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </Field>
             <Field label="Password" help={mode === "setup" ? "At least 10 characters." : undefined}>
-              <input className="input" type="password" autoComplete={mode === "setup" ? "new-password" : "current-password"} required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+              <input className="input h-10" type="password" autoComplete={mode === "setup" ? "new-password" : "current-password"} required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             </Field>
             {error && <p className="rounded-md bg-red-50 px-2.5 py-2 text-xs text-red-700">{error}</p>}
-            <Button type="submit" variant="primary" loading={busy} className="w-full">
+            <Button type="submit" variant="primary" loading={busy} className="h-10 w-full">
               {mode === "setup" ? "Create administrator" : "Sign in"}
             </Button>
           </form>
-        </Card>
-      </div>
+          <p className="mt-10 text-[11px] text-stone-400">© {new Date().getFullYear()} Gexart</p>
+        </div>
+      </main>
     </div>
   );
 }
@@ -319,7 +329,7 @@ function Integrations() {
   return (
     <div className="space-y-5">
       <Card className="flex items-start gap-2 p-3 text-xs text-slate-600">
-        <KeyRound className="mt-0.5 size-3.5 shrink-0 text-brand-600" />
+        <KeyRound className="mt-0.5 size-3.5 shrink-0 text-ink" />
         <span>
           API keys are stored as Cloudflare Worker secrets (<code>wrangler secret put NAME</code>), never in the browser or the database. A provider shows
           <b> Connected</b> only after a successful validation call. Daily call caps protect paid credits (wrangler vars <code>QUOTA_*</code>).

@@ -123,7 +123,7 @@ export function ImportPage() {
             />
           </label>
           <Button variant="primary" disabled={!csv} loading={run.isPending} onClick={() => run.mutate(undefined)}>Preview import</Button>
-          <a href="/api/v1/imports/template/prospects.csv" className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-brand-700"><Download className="size-3.5" /> Download template</a>
+          <a href="/api/v1/imports/template/prospects.csv" className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-ink"><Download className="size-3.5" /> Download template</a>
         </Card>
         {run.error && !(run.error instanceof ApiError && run.error.code === "mapping_required") && <ErrorState error={run.error} />}
         {preview && (
@@ -143,7 +143,7 @@ export function ImportPage() {
           <Card>
             <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
               {(["all", "valid", "duplicate", "error"] as const).map((k) => (
-                <button key={k} onClick={() => setFilter(k)} className={cn("rounded-full border px-2.5 py-0.5 text-xs", filter === k ? "border-brand-300 bg-brand-50 text-brand-700" : "border-line text-slate-600")}>
+                <button key={k} onClick={() => setFilter(k)} className={cn("rounded-full border px-2.5 py-0.5 text-xs", filter === k ? "border-ink bg-ink text-white text-ink" : "border-line text-slate-600")}>
                   {k === "all" ? `All ${rows.length}` : `${k[0].toUpperCase()}${k.slice(1)} ${preview.counts[k]}`}
                 </button>
               ))}
@@ -185,7 +185,7 @@ export function ImportPage() {
                 <StatusBadge value={j.status === "completed" ? "completed" : j.status === "failed" ? "failed" : "draft"} label={j.status} />
                 <span className="text-muted">{j.total_rows} rows · {j.created_rows} imported · {j.duplicate_rows} duplicates · {j.error_rows} errors</span>
                 <span className="ml-auto text-xs text-muted">{j.created_by_name} · {relative(j.created_at)}</span>
-                {j.error_rows > 0 && <a className="text-xs text-brand-700" href={`/api/v1/imports/${j.id}/errors.csv`}>Error report</a>}
+                {j.error_rows > 0 && <a className="text-xs text-ink" href={`/api/v1/imports/${j.id}/errors.csv`}>Error report</a>}
               </li>
             ))}
             {history.data && !history.data.length && <li className="py-4 text-center text-xs text-muted">No imports yet</li>}
@@ -267,10 +267,10 @@ export function DiscoveryPage() {
                   {results.map((r) => (
                     <tr key={r.id}>
                       <td className="td"><input type="checkbox" aria-label={`Select ${r.name}`} className="accent-brand-600" disabled={!!r.imported_prospect_id} checked={selected.has(r.id)} onChange={() => setSelected((s) => { const n = new Set(s); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; })} /></td>
-                      <td className="td font-medium">{r.maps_url ? <a href={r.maps_url} target="_blank" rel="noreferrer noopener" className="hover:text-brand-700">{r.name}</a> : r.name}</td>
+                      <td className="td font-medium">{r.maps_url ? <a href={r.maps_url} target="_blank" rel="noreferrer noopener" className="hover:text-ink">{r.name}</a> : r.name}</td>
                       <td className="td text-muted">{r.category ?? "—"}</td>
                       <td className="td max-w-56 truncate text-muted" title={r.address}>{r.city ?? r.address ?? "—"}</td>
-                      <td className="td">{r.website ? <a href={r.website} target="_blank" rel="noreferrer noopener" className="text-brand-700 hover:underline">{new URL(r.website).hostname.replace(/^www\./, "")}</a> : <span className="text-amber-700">No website</span>}</td>
+                      <td className="td">{r.website ? <a href={r.website} target="_blank" rel="noreferrer noopener" className="font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink">{new URL(r.website).hostname.replace(/^www\./, "")}</a> : <span className="text-amber-700">No website</span>}</td>
                       <td className="td text-muted">{r.phone ?? "—"}</td>
                       <td className="td tabular-nums">{r.rating ? <span className="inline-flex items-center gap-0.5"><Star className="size-3 fill-amber-400 text-amber-400" />{r.rating} <span className="text-muted">({r.review_count})</span></span> : "—"}</td>
                       <td className="td">{r.imported_prospect_id ? <Badge tone="green">Imported</Badge> : r.duplicate_id ? <Badge tone="amber">In CRM: {r.duplicate_name}</Badge> : <Badge>New</Badge>}</td>
@@ -286,7 +286,7 @@ export function DiscoveryPage() {
           <ul className="divide-y divide-line px-4">
             {jobs.data?.map((j) => (
               <li key={j.id} className="flex items-center gap-3 py-2">
-                <button className="font-medium hover:text-brand-700" onClick={() => open.mutate(j.id)}>{j.query}{j.location ? ` · ${j.location}` : ""}</button>
+                <button className="font-medium hover:text-ink" onClick={() => open.mutate(j.id)}>{j.query}{j.location ? ` · ${j.location}` : ""}</button>
                 <StatusBadge value={j.status} label={j.status} />
                 <span className="text-xs text-muted">{j.result_count} results · {j.imported} imported</span>
                 <span className="ml-auto text-xs text-muted">{relative(j.created_at)}</span>
@@ -347,7 +347,7 @@ export function QualificationCard({ p }: { p: Row }) {
             <div className="flex gap-2"><Button size="sm" onClick={() => setOverriding(false)}>Cancel</Button><Button size="sm" variant="primary" loading={override.isPending} onClick={() => override.mutate()}>Save</Button></div>
           </div>
         ) : (
-          <button className="text-xs font-medium text-brand-700" onClick={() => setOverriding(true)}>Override level…</button>
+          <button className="text-xs font-medium text-ink" onClick={() => setOverriding(true)}>Override level…</button>
         )}
       </div>
     </Card>
@@ -397,7 +397,7 @@ export function EnrichmentDialog({ open, onClose, kind, id, name }: { open: bool
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           {providers.map((p) => (
-            <label key={p.value} title={ok(p.value) ? "" : "Not configured — add the API key in Settings → Integrations"} className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs", chosen.includes(p.value) ? "border-brand-300 bg-brand-50 text-brand-700" : "border-line", !ok(p.value) && "opacity-50")}>
+            <label key={p.value} title={ok(p.value) ? "" : "Not configured — add the API key in Settings → Integrations"} className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs", chosen.includes(p.value) ? "border-ink bg-ink text-white text-ink" : "border-line", !ok(p.value) && "opacity-50")}>
               <input type="checkbox" className="accent-brand-600" disabled={!ok(p.value)} checked={chosen.includes(p.value)} onChange={() => setChosen((c) => (c.includes(p.value) ? c.filter((x) => x !== p.value) : [...c, p.value]))} />
               {p.label}
             </label>
@@ -418,7 +418,7 @@ export function EnrichmentDialog({ open, onClose, kind, id, name }: { open: bool
                     <td className="td"><Badge>{E.labelOf(E.ENRICHMENT_PROVIDERS, r.provider).split(" (")[0]}</Badge></td>
                     <td className="td whitespace-normal">
                       <div className="font-medium">{r.full_name ?? "—"}</div>
-                      <div className="text-xs text-muted">{r.title}{r.linkedin_url && <> · <a href={r.linkedin_url} target="_blank" rel="noreferrer noopener" className="text-brand-700">LinkedIn</a></>}{r.source_url && <> · <a href={r.source_url} target="_blank" rel="noreferrer noopener" className="text-brand-700">source</a></>}</div>
+                      <div className="text-xs text-muted">{r.title}{r.linkedin_url && <> · <a href={r.linkedin_url} target="_blank" rel="noreferrer noopener" className="text-ink">LinkedIn</a></>}{r.source_url && <> · <a href={r.source_url} target="_blank" rel="noreferrer noopener" className="text-ink">source</a></>}</div>
                     </td>
                     <td className="td">{r.email ?? (r.email_status === "available_on_reveal" ? <span className="text-xs text-muted">Hidden until revealed</span> : "—")}{r.email && r.email_status && <div className="text-[10px] text-muted">{r.email_status}</div>}</td>
                     <td className="td">{r.phone ?? "—"}</td>

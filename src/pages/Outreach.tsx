@@ -176,9 +176,9 @@ export function OutreachMessagePage() {
         </div>
         <div className="space-y-4">
           <Card className="p-4">
-            <KeyValue label="Recipient">{m.contact_id ? <Link className="text-brand-700 hover:underline" to={`/contacts/${m.contact_id}`}>{m.contact_name}</Link> : null}</KeyValue>
-            <KeyValue label="Account">{m.account_id ? <Link className="text-brand-700 hover:underline" to={`/accounts/${m.account_id}`}>{m.account_name}</Link> : null}</KeyValue>
-            <KeyValue label="Prospect">{m.prospect_id ? <Link className="text-brand-700 hover:underline" to={`/prospecting/${m.prospect_id}`}>{m.prospect_name}</Link> : null}</KeyValue>
+            <KeyValue label="Recipient">{m.contact_id ? <Link className="font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink" to={`/contacts/${m.contact_id}`}>{m.contact_name}</Link> : null}</KeyValue>
+            <KeyValue label="Account">{m.account_id ? <Link className="font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink" to={`/accounts/${m.account_id}`}>{m.account_name}</Link> : null}</KeyValue>
+            <KeyValue label="Prospect">{m.prospect_id ? <Link className="font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink" to={`/prospecting/${m.prospect_id}`}>{m.prospect_name}</Link> : null}</KeyValue>
             <KeyValue label="Campaign">{m.campaign_name}</KeyValue>
             <KeyValue label="Template">{m.template_name}</KeyValue>
             <KeyValue label="Service">{m.product_name}</KeyValue>
@@ -262,7 +262,7 @@ export function SequenceDetailPage() {
           <ol className="space-y-3 p-4">
             {steps.map((st) => (
               <li key={st.id} className="flex gap-3">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-semibold text-brand-700">D{st.day_offset + 1}</span>
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-semibold text-ink">D{st.day_offset + 1}</span>
                 <div>
                   <div className="font-medium">{E.labelOf(E.OUTREACH_CHANNELS, st.channel)}</div>
                   <div className="text-xs text-muted">{st.template_name ? `Draft from “${st.template_name}”` : "Task only"}{st.note ? ` · ${st.note}` : ""}</div>
@@ -285,7 +285,7 @@ export function SequenceDetailPage() {
                 <tbody className="divide-y divide-line">
                   {enrollments.map((e) => (
                     <tr key={e.id}>
-                      <td className="td"><Link className="font-medium hover:text-brand-700" to={`/contacts/${e.contact_id}`}>{e.contact_name}</Link></td>
+                      <td className="td"><Link className="font-medium hover:text-ink" to={`/contacts/${e.contact_id}`}>{e.contact_name}</Link></td>
                       <td className="td text-muted">{e.account_name ?? "—"}</td>
                       <td className="td text-muted">{e.started_at}</td>
                       <td className="td tabular-nums">{e.task_done}/{e.task_total} tasks</td>
@@ -320,7 +320,7 @@ export function OutreachList({ filter, defaults }: { filter: Record<string, stri
           {rows.map((m) => (
             <li key={m.id} className="flex items-center gap-3 py-2">
               <div className="min-w-0 flex-1">
-                <Link to={`/outreach/${m.id}`} className="block truncate font-medium hover:text-brand-700">{m.title}</Link>
+                <Link to={`/outreach/${m.id}`} className="block truncate font-medium hover:text-ink">{m.title}</Link>
                 <div className="truncate text-xs text-muted">{E.labelOf(E.OUTREACH_CHANNELS, m.channel)}{m.contact_name && ` · ${m.contact_name}`} · {m.sent_at ? `sent ${relative(m.sent_at)}` : `updated ${relative(m.updated_at)}`}</div>
               </div>
               <StatusBadge value={m.status} label={E.labelOf(E.OUTREACH_STATUSES, m.status)} />

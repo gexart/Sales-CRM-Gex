@@ -20,10 +20,10 @@ export const cn = clsx;
 // ─── Buttons ───
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "subtle";
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 shadow-sm border border-brand-700/20",
+  primary: "bg-ink text-white hover:bg-black active:bg-black shadow-[0_1px_2px_rgb(0_0_0/0.2),inset_0_1px_0_rgb(255_255_255/0.08)] border border-black",
   secondary: "bg-white text-ink border border-line hover:bg-slate-50 hover:border-slate-300 shadow-[var(--shadow-card)]",
   ghost: "text-slate-600 hover:bg-slate-100 hover:text-ink",
-  subtle: "bg-brand-50 text-brand-700 hover:bg-brand-100",
+  subtle: "bg-brand-50 text-ink hover:bg-brand-100",
   danger: "bg-red-600 text-white hover:bg-red-700 shadow-sm",
 };
 
@@ -102,7 +102,7 @@ export function Select({ options, placeholder, className, ...rest }: { options: 
 // ─── Display ───
 const TONES = {
   gray: "bg-slate-100 text-slate-700 ring-slate-200",
-  brand: "bg-brand-50 text-brand-700 ring-brand-200",
+  brand: "bg-ink text-white ring-ink",
   green: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   amber: "bg-amber-50 text-amber-800 ring-amber-200",
   red: "bg-red-50 text-red-700 ring-red-200",
@@ -142,7 +142,7 @@ export function CardHeader({ title, icon: Icon, action, subtitle }: { title: Rea
   return (
     <div className="flex min-h-11 items-center gap-2 border-b border-line px-4 py-2">
       {Icon && (
-        <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-600">
+        <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-ink">
           <Icon className="size-3.5" />
         </span>
       )}
@@ -190,7 +190,7 @@ export function Avatar({ name, size = "md" }: { name: string | null | undefined;
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full bg-brand-100 font-semibold text-brand-700",
+        "inline-flex shrink-0 items-center justify-center rounded-full bg-ink font-semibold text-white",
         size === "sm" ? "size-5 text-[9px]" : size === "lg" ? "size-10 text-sm" : "size-7 text-[11px]",
       )}
     >
@@ -210,7 +210,7 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { valu
           onClick={() => onChange(t.value)}
           className={cn(
             "relative -mb-px flex h-9 shrink-0 items-center gap-1.5 border-b-2 px-3 text-[13px] font-medium transition-colors",
-            value === t.value ? "border-brand-600 text-brand-700" : "border-transparent text-slate-500 hover:text-ink",
+            value === t.value ? "border-brand-600 text-ink" : "border-transparent text-slate-500 hover:text-ink",
           )}
         >
           {t.label}
@@ -364,7 +364,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           const Icon = t.tone === "success" ? CheckCircle2 : t.tone === "error" ? AlertTriangle : Info;
           return (
             <div key={t.id} className="pointer-events-auto flex animate-pop-in items-start gap-2 rounded-lg border border-line bg-white px-3 py-2.5 shadow-[var(--shadow-pop)]">
-              <Icon className={cn("mt-0.5 size-4 shrink-0", t.tone === "success" ? "text-emerald-600" : t.tone === "error" ? "text-red-600" : "text-brand-600")} />
+              <Icon className={cn("mt-0.5 size-4 shrink-0", t.tone === "success" ? "text-emerald-600" : t.tone === "error" ? "text-red-600" : "text-ink")} />
               <div className="flex-1 text-[13px]">{t.message}</div>
             </div>
           );

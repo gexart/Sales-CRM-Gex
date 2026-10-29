@@ -68,7 +68,7 @@ const L = E.labelOf;
 export const fileSize = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 const link = (url: string | null) =>
   url ? (
-    <a href={url} target="_blank" rel="noreferrer noopener" className="text-brand-700 hover:underline" onClick={(e) => e.stopPropagation()}>
+    <a href={url} target="_blank" rel="noreferrer noopener" className="font-medium text-ink underline decoration-stone-300 underline-offset-2 hover:decoration-ink" onClick={(e) => e.stopPropagation()}>
       {hostOf(url)}
     </a>
   ) : null;
