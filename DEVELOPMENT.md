@@ -132,8 +132,9 @@ Not yet performed for this project. Steps:
 2. `npx wrangler d1 create gexart-crm` → put the printed `database_id` into `wrangler.jsonc`.
 3. `npx wrangler r2 bucket create gexart-crm-files`
 4. `npx wrangler queues create gexart-crm-jobs`
-5. Add the secrets you need: `npx wrangler secret put ANTHROPIC_API_KEY` (and Brevo, Places, YouTube, Hunter,
-   Apollo, RocketReach, Lusha as wanted). Set `BREVO_SENDER_EMAIL` in `wrangler.jsonc` vars if using Brevo.
+5. API keys, the Brevo sender and daily limits are set by an admin in **Settings → Configuration** (encrypted in D1,
+   overriding Worker vars/secrets of the same name). `wrangler secret put NAME` still works. Optionally set a
+   `SETTINGS_ENCRYPTION_KEY` secret first so saved keys are encrypted with a key held outside the database.
 6. `npm run db:migrate:remote`
 7. `npm run deploy`
 8. Open the deployed URL and create the administrator on the setup screen **immediately**

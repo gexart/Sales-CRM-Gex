@@ -27,7 +27,7 @@ export async function useQuota(env: Env, provider: string, units = 1) {
     .bind(provider, day, units)
     .first<{ calls: number }>();
   if (limit <= 0 || (row?.calls ?? 0) > limit) {
-    throw new ApiError(429, "quota_exceeded", `Daily limit for ${provider} reached (${limit}). Raise it in wrangler vars if needed.`);
+    throw new ApiError(429, "quota_exceeded", `Daily limit for ${provider} reached (${limit}). Raise it in Settings → Configuration → Daily limits.`);
   }
 }
 
@@ -121,7 +121,7 @@ export const untrusted = (label: string, value: unknown) => `<untrusted_data sou
 // ─── Brevo ───
 export async function brevoSend(env: Env, msg: { to: { email: string; name?: string }; subject: string; html: string; text: string; tags?: string[] }) {
   const key = requireKey(env, "BREVO_API_KEY", "Brevo");
-  if (!env.BREVO_SENDER_EMAIL) throw new ApiError(400, "not_configured", "Set BREVO_SENDER_EMAIL (a sender verified in Brevo) in wrangler vars");
+  if (!env.BREVO_SENDER_EMAIL) throw new ApiError(400, "not_configured", "Set the Brevo sender email (a sender verified in Brevo) in Settings → Configuration");
   return http<{ messageId: string }>("https://api.brevo.com/v3/smtp/email", {
     provider: "Brevo",
     method: "POST",

@@ -45,7 +45,7 @@ auditRoutes.post("/accounts/:id/audits", async (c) => {
   const input = await parseJson(c, auditRunSchema);
   const type = auditType(input.audit_type);
   if (!type) throw new ApiError(400, "validation_error", "Unknown audit type");
-  if (type.requiresKey && !c.env[type.requiresKey]) throw new ApiError(400, "not_configured", `${type.label} needs a ${type.requiresLabel}. Add it in Worker secrets (Settings → Integrations).`);
+  if (type.requiresKey && !c.env[type.requiresKey]) throw new ApiError(400, "not_configured", `${type.label} needs a ${type.requiresLabel}. Add it in Settings → Configuration.`);
   let target: string;
   if (type.needs === "website" || type.needs === "competitors") {
     target = input.target ?? (account.website as string) ?? "";

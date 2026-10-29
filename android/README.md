@@ -18,6 +18,16 @@ Since Android 10, apps other than the phone's own dialer cannot record call audi
 Uploads are idempotent: a call is never uploaded twice, even if a sync is retried.
 Missed and zero-length calls are ignored. Calls made before you paired the app are not uploaded.
 
+## Install (no build needed)
+
+Every change to this folder is built by GitHub Actions (`.github/workflows/android.yml`) and published as an
+`android-v1.0.<run>` release. The CRM imports new builds every hour. On the phone, open
+**CRM → Settings → Phone app** and tap **Download APK**, or scan the QR code there from a computer.
+
+Signing: add the repository secrets `ANDROID_KEYSTORE_BASE64` and `ANDROID_KEYSTORE_PASSWORD` (the key was generated
+into `android/signing/`, which is not committed) so every build installs over the previous one. Without them CI signs
+with a temporary debug key, and phones must uninstall the old app before installing a new build.
+
 ## Build and install (Android Studio)
 
 1. Install [Android Studio](https://developer.android.com/studio) (it includes the SDK and JDK).

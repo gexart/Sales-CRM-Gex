@@ -10,6 +10,7 @@ import { GxMark, Logo, PageHeader } from "../components/layout";
 import { Badge, Button, Card, CardHeader, Dialog, ErrorState, Field, Select, Skeleton, StatusBadge, Tabs, useToast } from "../components/ui";
 import { Bars, PeriodPicker, useDashboard, type PeriodKey } from "./Dashboard";
 import { DevicesSettings } from "./Calls";
+import { ConfigurationSettings } from "./Configuration";
 
 // ─── Sign-in & first-run setup ───
 export function AuthPage({ mode }: { mode: "login" | "setup" }) {
@@ -179,13 +180,13 @@ export function ReportsPage() {
 export function SettingsPage() {
   const { isAdmin, isManager } = useAuth();
   const [sp, setSp] = useSearchParams();
-  type T = "profile" | "devices" | "users" | "integrations" | "audit";
+  type T = "profile" | "devices" | "config" | "users" | "integrations" | "audit";
   const tab = (sp.get("tab") as T) || "profile";
   const setTab = (t: T) => setSp(t === "profile" ? {} : { tab: t }, { replace: true });
   const tabs = [
     { value: "profile" as const, label: "Profile" },
     { value: "devices" as const, label: "Phone app" },
-    ...(isAdmin ? [{ value: "users" as const, label: "Users & roles" }] : []),
+    ...(isAdmin ? [{ value: "config" as const, label: "Configuration" }, { value: "users" as const, label: "Users & roles" }] : []),
     ...(isManager ? [{ value: "integrations" as const, label: "Integrations" }, { value: "audit" as const, label: "Audit log" }] : []),
   ];
   return (
@@ -195,6 +196,7 @@ export function SettingsPage() {
         <Tabs tabs={tabs} value={tab} onChange={setTab} />
         {tab === "profile" && <Profile />}
         {tab === "devices" && <DevicesSettings />}
+        {tab === "config" && <ConfigurationSettings />}
         {tab === "users" && <UsersAdmin />}
         {tab === "integrations" && <Integrations />}
         {tab === "audit" && <AuditLog />}
@@ -331,8 +333,8 @@ function Integrations() {
       <Card className="flex items-start gap-2 p-3 text-xs text-slate-600">
         <KeyRound className="mt-0.5 size-3.5 shrink-0 text-ink" />
         <span>
-          API keys are stored as Cloudflare Worker secrets (<code>wrangler secret put NAME</code>), never in the browser or the database. A provider shows
-          <b> Connected</b> only after a successful validation call. Daily call caps protect paid credits (wrangler vars <code>QUOTA_*</code>).
+          Add or change API keys in <b>Settings → Configuration</b>. Keys are encrypted and never shown in full. A provider shows
+          <b> Connected</b> only after a successful validation call. Daily limits that protect paid credits are set there too.
         </span>
       </Card>
       {q.isLoading && <Skeleton className="h-40" />}

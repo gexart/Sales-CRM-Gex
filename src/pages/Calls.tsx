@@ -9,6 +9,7 @@ import { PageHeader } from "../components/layout";
 import { EntityForm, RefSelect } from "../components/forms";
 import { CopyButton, OutreachNav } from "../components/outreach";
 import { CONFIGS } from "../lib/entities";
+import { AndroidAppCard } from "../components/app-download";
 import { invalidateRecord } from "../components/records";
 import { Badge, Button, Card, CardHeader, Dialog, EmptyState, ErrorState, Field, Select, SlideOver, Skeleton, StatusBadge, cn, useToast } from "../components/ui";
 
@@ -189,11 +190,12 @@ export function DevicesSettings() {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      <AndroidAppCard />
       <Card>
         <CardHeader title="Pair the Gexart Calls Android app" icon={Smartphone} />
         <div className="space-y-3 p-4 text-[13px]">
           <ol className="list-decimal space-y-1 pl-5 text-slate-700">
-            <li>Install the app (build from the <code>android/</code> folder in Android Studio, or install the APK your admin shares).</li>
+            <li>Install the app from the download above.</li>
             <li>Turn on your phone dialer's built-in call recording (Phone app → Settings → Call recording) and note its folder.</li>
             <li>Create a pairing token below and paste it with the CRM address into the app.</li>
             <li>In the app, choose the recordings folder and grant phone/call-log permissions.</li>
@@ -204,7 +206,7 @@ export function DevicesSettings() {
             <Button variant="primary" loading={pair.isPending} onClick={() => pair.mutate()}>Create token</Button>
           </div>
           {token && (
-            <div className="space-y-2 rounded-md border border-brand-200 bg-brand-50/50 p-3">
+            <div className="space-y-2 rounded-md border border-line bg-canvas p-3">
               <div className="text-xs font-medium">Shown once. Paste into the app now:</div>
               <div className="text-xs">CRM address: <code>{origin}</code></div>
               <div className="flex items-center gap-2"><code className="flex-1 truncate rounded bg-white px-2 py-1 text-xs">{token}</code><CopyButton text={token} label="Copy token" /></div>

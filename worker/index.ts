@@ -20,6 +20,9 @@ import { brevoRoutes, webhookRoutes } from "./routes/brevo";
 import { callRoutes, deviceAdminRoutes, deviceRoutes } from "./routes/calls";
 import { notificationRoutes, scheduled } from "./routes/notifications";
 import { handleQueue } from "./jobs";
+import { withSettings } from "./lib/settings";
+import { configRoutes } from "./routes/config";
+import { appReleaseRoutes, publicDownloadRoutes } from "./routes/app-releases";
 
 const app = new Hono<AppEnv>();
 
@@ -53,16 +56,20 @@ api.route("/auth", authRoutes);
 api.route("/webhooks", webhookRoutes);
 // The Android app authenticates with a device token, not a session cookie.
 api.route("/device", deviceRoutes);
+// Signed, short-lived app download links (scanned from a QR code on a phone).
+api.route("/dl", publicDownloadRoutes);
 
 // Everything below requires a signed-in user.
 api.use("*", async (c, next) => {
   const p = c.req.path;
-  if (p.startsWith("/api/v1/auth/") || p === "/api/v1/health" || p.startsWith("/api/v1/webhooks/") || p.startsWith("/api/v1/device/")) return next();
+  if (p.startsWith("/api/v1/auth/") || p === "/api/v1/health" || p.startsWith("/api/v1/webhooks/") || p.startsWith("/api/v1/device/") || p.startsWith("/api/v1/dl/")) return next();
   return requireAuth(c, next);
 });
 api.use("*", rateLimit);
 api.route("/users", userRoutes);
 api.route("/integrations", integrationRoutes);
+api.route("/settings/config", configRoutes);
+api.route("/app-releases", appReleaseRoutes);
 api.route("/notifications", notificationRoutes);
 api.route("/devices", deviceAdminRoutes);
 api.route("/calls", callRoutes);
@@ -81,8 +88,9 @@ app.route("/api/v1", api);
 app.all("/api/*", (c) => c.json({ error: { code: "not_found", message: "Unknown API route" } }, 404));
 app.onError(errorResponse);
 
+// Settings saved in the CRM (API keys, sender, quotas) are layered over the Worker env everywhere.
 export default {
-  fetch: app.fetch,
-  queue: (batch: MessageBatch<Job>, env: Env) => handleQueue(batch, env),
-  scheduled: (_event: ScheduledController, env: Env, ctx: ExecutionContext) => ctx.waitUntil(scheduled(env)),
+  fetch: async (req: Request, env: Env, ctx: ExecutionContext) => app.fetch(req, await withSettings(env), ctx),
+  queue: async (batch: MessageBatch<Job>, env: Env) => handleQueue(batch, await withSettings(env)),
+  scheduled: (_event: ScheduledController, env: Env, ctx: ExecutionContext) => ctx.waitUntil(withSettings(env).then(scheduled)),
 } satisfies ExportedHandler<Env, Job>;

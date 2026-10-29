@@ -18,7 +18,9 @@ export interface Env {
   QUOTA_ENRICHMENT?: string;
   QUOTA_CLAUDE?: string;
   QUOTA_YOUTUBE?: string;
-  // Optional secrets (wrangler secret put / .dev.vars). Never sent to the browser.
+  GITHUB_REPO?: string;
+  // Optional secrets. Usually saved in Settings → Configuration (which overrides these);
+  // `wrangler secret put` / .dev.vars also work. Never sent to the browser.
   ANTHROPIC_API_KEY?: string;
   BREVO_API_KEY?: string;
   BREVO_WEBHOOK_SECRET?: string;
@@ -28,6 +30,11 @@ export interface Env {
   APOLLO_API_KEY?: string;
   ROCKETREACH_API_KEY?: string;
   LUSHA_API_KEY?: string;
+  GITHUB_TOKEN?: string;
+  /** Optional: encrypts CRM-saved secrets with a key held outside the database. */
+  SETTINGS_ENCRYPTION_KEY?: string;
+  /** The Worker env before CRM settings were applied (set by withSettings). */
+  __raw?: Env;
 }
 
 export interface SessionUser {

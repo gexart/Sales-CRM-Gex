@@ -37,6 +37,8 @@
     "QUOTA_GOOGLE_PLACES": "100",
     "QUOTA_ENRICHMENT": "50",
     "QUOTA_CLAUDE": "200",
-    "QUOTA_YOUTUBE": "200"
+    "QUOTA_YOUTUBE": "200",
+    // Repository whose GitHub Actions publish the Android app (android-v* releases).
+    "GITHUB_REPO": "gexart/Sales-CRM-Gex"
   }
 }
