@@ -11,7 +11,22 @@ using your Claude subscription. This bridge keeps it and the CRM in step:
 
 Nothing is deleted on either side, and Harvey's database is only read.
 
-## Set up (Windows, about 15 minutes)
+## The Gexart Harvey app (Windows)
+
+Download it from the CRM (**Autopilot → Setup → Harvey on your PC**) or use this folder directly.
+
+1. Run **Install Harvey.cmd** once. It installs Python, Git and the Claude Code CLI if missing, puts Harvey in
+   `%USERPROFILE%\harvey`, and adds a **Gexart Harvey** shortcut to your desktop.
+2. Open **Gexart Harvey** and go top to bottom: **Sign in to Claude** → **Teach Harvey** (your website) →
+   **Save niche** (industries + cities) and your **postal address** → paste the CRM **bridge token** →
+   **Mailbox setup wizard** → **Start Harvey**.
+3. While the app is open it syncs with the CRM every 15 minutes. Harvey keeps running after you close the app.
+
+The app keeps its settings in `%APPDATA%\GexartHarvey` (the token is encrypted with Windows DPAPI) and edits
+Harvey's config only through `harvey_config.py`, which backs up every change. Rebuild the download with
+`node scripts/harvey-kit.mjs` after changing anything in this folder.
+
+## Manual set-up (any OS)
 
 1. **Install Harvey** (needs Python 3.11+ and Claude Code logged in with `claude login`):
    ```bash

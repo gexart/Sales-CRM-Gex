@@ -8,3 +8,7 @@ dist
 
 # Android release signing key (add to GitHub secrets; never commit)
 android/signing/
+
+# Harvey bridge local state/secrets
+integrations/harvey/.env
+integrations/harvey/.crm_sync_state.json

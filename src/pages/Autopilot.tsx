@@ -811,22 +811,59 @@ function MailboxSettings({ m, onSave, saving }: { m: Row; onSave: (b: Row) => vo
 
 function HarveyBridge() {
   const toast = useToast();
+  const qc = useQueryClient();
   const [token, setToken] = useState<string | null>(null);
-  const create = useMutation({ mutationFn: () => api.post<{ data: { token: string } }>("/devices", { name: "Harvey on my PC", kind: "harvey" }), onSuccess: (r) => setToken(r.data.token), onError: (e) => toast("error", (e as Error).message) });
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const q = useQuery({ queryKey: ["ap-harvey"], queryFn: () => api.get<{ data: Row }>("/autopilot/harvey").then((r) => r.data), refetchInterval: 60_000 });
+  const create = useMutation({
+    mutationFn: () => api.post<{ data: { token: string } }>("/devices", { name: "Harvey on my PC", kind: "harvey" }),
+    onSuccess: (r) => (setToken(r.data.token), qc.invalidateQueries({ queryKey: ["ap-harvey"] })),
+    onError: (e) => toast("error", (e as Error).message),
+  });
+  const live = ((q.data?.tokens ?? []) as Row[]).filter((t) => !t.revoked_at);
+  const seen = live.map((t) => t.last_seen_at).filter(Boolean).sort().reverse()[0] as string | undefined;
+  const online = !!seen && Date.now() - Date.parse(seen) < 40 * 60_000;
   return (
-    <Card>
-      <CardHeader title="Harvey bridge" icon={KeyRound} subtitle="Sync the open-source Harvey agent running on your PC" />
+    <Card className="overflow-hidden">
+      <div className="flex items-center gap-3 bg-night px-4 py-3 text-snow">
+        <span className="flex size-9 items-center justify-center rounded-xl bg-snow/10 ring-1 ring-snow/15"><Rocket className="size-4" /></span>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold">Harvey on your PC</div>
+          <div className="text-xs text-snow/55">Open-source sales agent, synced into the CRM</div>
+        </div>
+        <Badge tone={online ? "green" : live.length ? "amber" : "gray"}>{online ? "Syncing" : live.length ? "Linked, not syncing" : "Not linked"}</Badge>
+      </div>
+      <div className="grid grid-cols-3 divide-x divide-line border-b border-line text-center">
+        <div className="py-2.5"><div className="text-lg font-semibold tabular-nums">{Number(q.data?.prospects?.n ?? 0)}</div><div className="text-[10px] text-muted">Leads from Harvey</div></div>
+        <div className="py-2.5"><div className="text-lg font-semibold tabular-nums">{Number(q.data?.events_week?.replies ?? 0)}</div><div className="text-[10px] text-muted">Replies (7 days)</div></div>
+        <div className="py-2.5"><div className="text-lg font-semibold tabular-nums">{Number(q.data?.events_week?.meetings ?? 0)}</div><div className="text-[10px] text-muted">Meetings (7 days)</div></div>
+      </div>
       <div className="space-y-3 p-4 text-[13px]">
-        <p className="text-muted">Harvey's leads become CRM prospects, its replies and meetings land on timelines with tasks, and opt-outs are shared both ways. Setup steps are in <code>integrations/harvey/README.md</code>.</p>
-        <Button size="sm" variant="primary" icon={KeyRound} loading={create.isPending} onClick={() => create.mutate()}>Create bridge token</Button>
+        <ol className="list-decimal space-y-1 pl-4 text-xs text-muted">
+          <li><a href="/downloads/gexart-harvey-windows.zip" download className="font-medium text-brand-600 hover:underline">Download Gexart Harvey for Windows</a>, unzip, and run <b>Install Harvey</b> (skip if Harvey is already installed).</li>
+          <li>Open <b>Gexart Harvey</b> from your desktop: sign in to Claude, teach it your website, set your niche.</li>
+          <li>Create a bridge token below and paste it into the app's <b>CRM link</b>, then <b>Start Harvey</b>.</li>
+        </ol>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="primary" icon={KeyRound} loading={create.isPending} onClick={() => create.mutate()}>Create bridge token</Button>
+          {seen && <span className="text-xs text-muted">Last sync {relative(seen)}</span>}
+        </div>
         {token && (
           <div className="space-y-1.5 rounded-lg border border-line bg-canvas p-3 text-xs">
-            <div className="font-medium">Shown once. Put these in <code>integrations\harvey\.env</code>:</div>
-            <div className="flex items-center gap-2"><code className="flex-1 truncate rounded bg-white px-2 py-1">GEXART_CRM_URL={origin}</code><CopyButton text={`GEXART_CRM_URL=${origin}`} label="Copy" /></div>
-            <div className="flex items-center gap-2"><code className="flex-1 truncate rounded bg-white px-2 py-1">GEXART_CRM_TOKEN={token}</code><CopyButton text={`GEXART_CRM_TOKEN=${token}`} label="Copy" /></div>
+            <div className="font-medium">Shown once. Paste it into Gexart Harvey → CRM link:</div>
+            <div className="flex items-center gap-2"><code className="flex-1 truncate rounded bg-white px-2 py-1">{token}</code><CopyButton text={token} label="Copy token" /></div>
           </div>
         )}
+        {((q.data?.recent ?? []) as Row[]).length > 0 && (
+          <ul className="divide-y divide-line rounded-lg ring-1 ring-line">
+            {((q.data?.recent ?? []) as Row[]).map((r, i) => (
+              <li key={i} className="flex items-center gap-2 px-3 py-1.5 text-xs">
+                <span className="min-w-0 flex-1 truncate">{r.prospect_id ? <Link to={`/prospects/${r.prospect_id}`} className="font-medium hover:underline">{String(r.company_name ?? "")}</Link> : null} <span className="text-muted">{String(r.subject)}</span></span>
+                <span className="shrink-0 text-muted">{relative(String(r.occurred_at))}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {live.length > 0 && <p className="text-[11px] text-muted">Revoke a token in Settings → Phone app (Harvey tokens are listed there).</p>}
       </div>
     </Card>
   );

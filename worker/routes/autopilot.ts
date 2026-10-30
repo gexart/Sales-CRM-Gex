@@ -125,6 +125,18 @@ autopilotRoutes.post("/autopilot/playbooks/:id/enrol", manage, async (c) => {
   return c.json({ data: { enrolled: res.reduce((n, r) => n + (r.meta.changes ?? 0), 0) } });
 });
 
+// ─── Harvey link status ───
+autopilotRoutes.get("/autopilot/harvey", manage, async (c) => {
+  const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const [tokens, prospects, events, recent] = await c.env.DB.batch<Row>([
+    c.env.DB.prepare("SELECT d.id, d.name, d.last_seen_at, d.revoked_at, d.created_at, u.name AS user_name FROM devices d JOIN users u ON u.id = d.user_id WHERE d.kind = 'harvey' ORDER BY d.created_at DESC"),
+    c.env.DB.prepare("SELECT COUNT(*) AS n, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS week FROM prospects WHERE discovery_source = 'harvey' AND archived_at IS NULL").bind(weekAgo),
+    c.env.DB.prepare(`SELECT COUNT(*) AS n, SUM(CASE WHEN subject LIKE 'Reply received%' THEN 1 ELSE 0 END) AS replies, SUM(CASE WHEN subject LIKE 'Meeting booked%' THEN 1 ELSE 0 END) AS meetings FROM activities WHERE meta LIKE '%"source":"harvey"%' AND occurred_at >= ?`).bind(weekAgo),
+    c.env.DB.prepare(`SELECT a.subject, a.occurred_at, a.prospect_id, p.company_name FROM activities a LEFT JOIN prospects p ON p.id = a.prospect_id WHERE a.meta LIKE '%"source":"harvey"%' ORDER BY a.occurred_at DESC LIMIT 8`),
+  ]);
+  return c.json({ data: { tokens: tokens.results, prospects: prospects.results[0], events_week: events.results[0], recent: recent.results } });
+});
+
 // ─── Leads & outbox ───
 const LEAD_SELECT = `SELECT l.*, p.company_name, p.website, p.industry, p.geography, p.qualification_score, pb.name AS playbook_name
   FROM autopilot_leads l JOIN prospects p ON p.id = l.prospect_id JOIN autopilot_playbooks pb ON pb.id = l.playbook_id`;

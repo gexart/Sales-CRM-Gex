@@ -36,4 +36,25 @@ for (const [d, px] of Object.entries(densities)) {
   mkdirSync(dir, { recursive: true });
   writeFileSync(`${dir}/ic_launcher_foreground.png`, png(markTileSvg({ size: 432, pad: 0.24, uid: `an${d}` }), px));
 }
+// Windows icon for the Gexart Harvey app (PNG-in-ICO, Vista+): hexagon G on a white rounded tile.
+const icoSizes = [256, 48, 32, 16];
+const icoPngs = icoSizes.map((px) => Buffer.from(png(markTileSvg({ size: 256, pad: 0.1, bg: "#FFFFFF", uid: `ico${px}` }), px)));
+const icoHeader = Buffer.alloc(6 + 16 * icoSizes.length);
+icoHeader.writeUInt16LE(0, 0);
+icoHeader.writeUInt16LE(1, 2);
+icoHeader.writeUInt16LE(icoSizes.length, 4);
+let icoOffset = icoHeader.length;
+icoSizes.forEach((px, i) => {
+  const e = 6 + i * 16;
+  icoHeader.writeUInt8(px >= 256 ? 0 : px, e);
+  icoHeader.writeUInt8(px >= 256 ? 0 : px, e + 1);
+  icoHeader.writeUInt16LE(1, e + 4);
+  icoHeader.writeUInt16LE(32, e + 6);
+  icoHeader.writeUInt32LE(icoPngs[i].length, e + 8);
+  icoHeader.writeUInt32LE(icoOffset, e + 12);
+  icoOffset += icoPngs[i].length;
+});
+writeFileSync("integrations/harvey/gexart.ico", Buffer.concat([icoHeader, ...icoPngs]));
+writeFileSync("integrations/harvey/gexart-mark.png", png(markTileSvg({ size: 256, pad: 0.02, variant: "dark", uid: "hdr" }), 96));
+
 console.log("brand assets written");
