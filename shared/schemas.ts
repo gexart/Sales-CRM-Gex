@@ -410,6 +410,6 @@ export const deckOutlineSchema = z.object({
   use_ai: z.boolean().default(true),
 });
 
-export const deviceSchema = z.object({ name: reqText(80) });
+export const deviceSchema = z.object({ name: reqText(80), kind: z.enum(["phone", "harvey"]).default("phone") });
 
 export const competitorSchema = z.object({ name: reqText(150), website: optUrl, notes: optText(1000) });

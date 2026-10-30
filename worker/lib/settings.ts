@@ -49,7 +49,7 @@ export async function encryptSecret(env: Env, plain: string): Promise<string> {
   return `v1:${k.id}:${b64(iv)}:${b64(ct)}`;
 }
 
-async function decryptSecret(env: Env, stored: string): Promise<string | null> {
+export async function decryptSecret(env: Env, stored: string): Promise<string | null> {
   const [v, id, iv, ct] = stored.split(":");
   if (v !== "v1" || !iv || !ct) return null;
   const k = await keys(env);

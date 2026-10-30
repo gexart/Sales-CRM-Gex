@@ -14,6 +14,7 @@ import { RecordDetailPage } from "./pages/RecordDetailPage";
 import { AccountWorkspace } from "./pages/AccountWorkspace";
 import { OpportunitiesPage, TasksPage } from "./pages/Pipeline";
 import { AuthPage, ReportsPage, SettingsPage } from "./pages/Misc";
+import { AutopilotPage } from "./pages/Autopilot";
 import { AssetDetailPage, PriceBookPage, ProductsNav, SalesAssetsPage } from "./pages/Library";
 import { DiscoveryPage, ImportPage, ProspectsPage } from "./pages/Prospecting";
 import { CallsPage } from "./pages/Calls";
@@ -74,6 +75,7 @@ function Gate() {
         <Route path="audits/:runId" element={<AuditRedirect />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="autopilot" element={<AutopilotPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

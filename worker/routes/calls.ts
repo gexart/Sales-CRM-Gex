@@ -34,15 +34,15 @@ deviceAdminRoutes.get("/", async (c) => {
 });
 
 deviceAdminRoutes.post("/", async (c) => {
-  const { name } = await parseJson(c, deviceSchema);
+  const { name, kind } = await parseJson(c, deviceSchema);
   const u = c.get("user");
   const raw = new Uint8Array(32);
   crypto.getRandomValues(raw);
   const token = `gxd_${btoa(String.fromCharCode(...raw)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}`;
   const id = newId();
   await c.env.DB.batch([
-    c.env.DB.prepare("INSERT INTO devices (id, user_id, name, token_hash, created_at) VALUES (?,?,?,?,?)").bind(id, u.id, name, await sha256Hex(token), now()),
-    auditStmt(c.env.DB, { actorId: u.id, action: "device_pair", entityType: "device", entityId: id, summary: `Paired device "${name}"`, ip: clientIp(c) }),
+    c.env.DB.prepare("INSERT INTO devices (id, user_id, name, token_hash, kind, created_at) VALUES (?,?,?,?,?,?)").bind(id, u.id, name, await sha256Hex(token), kind, now()),
+    auditStmt(c.env.DB, { actorId: u.id, action: "device_pair", entityType: "device", entityId: id, summary: kind === "harvey" ? `Created Harvey bridge token "${name}"` : `Paired device "${name}"`, ip: clientIp(c) }),
   ]);
   // The token is shown once; only its hash is stored.
   return c.json({ data: { id, name, token } }, 201);
@@ -65,19 +65,25 @@ export const deviceAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
   if (!token.startsWith("gxd_")) throw new ApiError(401, "unauthenticated", "Missing device token");
   const row = await c.env.DB.prepare(
-    `SELECT d.id AS device_id, u.id, u.email, u.name, u.role, u.timezone FROM devices d JOIN users u ON u.id = d.user_id
+    `SELECT d.id AS device_id, d.kind AS device_kind, u.id, u.email, u.name, u.role, u.timezone FROM devices d JOIN users u ON u.id = d.user_id
      WHERE d.token_hash = ? AND d.revoked_at IS NULL AND u.status = 'active'`,
   )
     .bind(await sha256Hex(token))
     .first<Row>();
   if (!row) throw new ApiError(401, "unauthenticated", "This device token is invalid or revoked");
-  c.set("user", { id: row.id, email: row.email, name: row.name, role: row.role, timezone: row.timezone, sessionId: "", deviceId: row.device_id } as SessionUser);
+  c.set("user", { id: row.id, email: row.email, name: row.name, role: row.role, timezone: row.timezone, sessionId: "", deviceId: row.device_id, deviceKind: row.device_kind } as SessionUser);
   c.executionCtx.waitUntil(c.env.DB.prepare("UPDATE devices SET last_seen_at = ? WHERE id = ?").bind(now(), row.device_id).run());
   await next();
 };
 
 export const deviceRoutes = new Hono<AppEnv>();
 deviceRoutes.use("*", deviceAuth);
+// Each token only reaches its own API: phone tokens the call endpoints, Harvey tokens the bridge.
+deviceRoutes.use("*", async (c, next) => {
+  const harveyPath = c.req.path.startsWith("/api/v1/device/harvey/");
+  if ((c.get("user").deviceKind === "harvey") !== harveyPath) throw new ApiError(403, "forbidden", harveyPath ? "This token is not a Harvey bridge token" : "Harvey tokens cannot use the phone API");
+  await next();
+});
 
 deviceRoutes.get("/ping", (c) => {
   const u = c.get("user");

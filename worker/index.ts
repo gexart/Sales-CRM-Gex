@@ -22,6 +22,8 @@ import { notificationRoutes, scheduled } from "./routes/notifications";
 import { handleQueue } from "./jobs";
 import { withSettings } from "./lib/settings";
 import { configRoutes } from "./routes/config";
+import { autopilotRoutes } from "./routes/autopilot";
+import { harveyRoutes } from "./routes/harvey";
 import { appReleaseRoutes, publicDownloadRoutes } from "./routes/app-releases";
 
 const app = new Hono<AppEnv>();
@@ -56,6 +58,8 @@ api.route("/auth", authRoutes);
 api.route("/webhooks", webhookRoutes);
 // The Android app authenticates with a device token, not a session cookie.
 api.route("/device", deviceRoutes);
+// Harvey bridge: same bearer-token auth as phones (deviceRoutes' middleware covers /device/*).
+api.route("/device/harvey", harveyRoutes);
 // Signed, short-lived app download links (scanned from a QR code on a phone).
 api.route("/dl", publicDownloadRoutes);
 
@@ -82,6 +86,7 @@ api.route("/", outreachRoutes);
 api.route("/", brevoRoutes);
 api.route("/", discoveryRoutes);
 api.route("/", salesRoutes);
+api.route("/", autopilotRoutes);
 for (const def of Object.values(ENTITIES)) api.route(`/${def.route}`, entityRoutes(def));
 
 app.route("/api/v1", api);

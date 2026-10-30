@@ -178,3 +178,20 @@ D1 Time Travel (`wrangler d1 time-travel restore`) to recover data.
 ## Known limitations
 
 See `PROGRESS.md` for the live list.
+
+## Sales autopilot and Harvey bridge
+
+- **Autopilot** (`worker/autopilot/`, page `/autopilot`): playbooks discover leads (Google Places and/or existing
+  prospects), research each website, draft a 3-email sequence (Claude, or a template), hold it in the **Outbox** for
+  approval, send from a connected **Google Workspace** mailbox (Gmail API, OAuth) inside a send window and a warm-up
+  ramped daily cap, follow up in-thread, and read replies every 15 minutes (cron → queue job `autopilot`).
+- Compliance is deterministic (`worker/autopilot/rules.ts`): opt-out wording, bounces and out-of-office are classified
+  by rules, not a model; opt-outs and bounces go to the shared `do_not_contact` list, which is checked at research,
+  approval and send time. Every cold email carries an opt-out line and `COMPANY_POSTAL_ADDRESS`; a playbook can't
+  start without it. Playbooks pause automatically when more than 5% of a week's sends bounce. Replies are always
+  drafted for a human to approve.
+- Google setup: OAuth client (Web), Gmail API enabled, consent screen **Internal**, redirect URI
+  `<origin>/api/v1/mailboxes/google/callback`. Client ID/secret go in Settings → Configuration.
+- **Harvey bridge** (`worker/routes/harvey.ts`, `integrations/harvey/`): a `harvey` device token lets
+  `crm_sync.py` on the user's PC push Harvey's prospects and conversation events and pull the do-not-contact list.
+- **Revenue cockpit** (`/cockpit`, `revenue_goals`): monthly target vs closed-won, gap, run-rate and today's moves.

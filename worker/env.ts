@@ -2,7 +2,8 @@ import type { Role } from "../shared/enums";
 
 export type Job =
   | { kind: "audit"; runId: string; userId: string; accountId: string }
-  | { kind: "transcribe"; callId: string };
+  | { kind: "transcribe"; callId: string }
+  | { kind: "autopilot"; playbookId?: string };
 
 export interface Env {
   DB: D1Database;
@@ -31,6 +32,10 @@ export interface Env {
   ROCKETREACH_API_KEY?: string;
   LUSHA_API_KEY?: string;
   GITHUB_TOKEN?: string;
+  GOOGLE_OAUTH_CLIENT_ID?: string;
+  GOOGLE_OAUTH_CLIENT_SECRET?: string;
+  /** Business postal address added under every cold email (CAN-SPAM and good practice everywhere). */
+  COMPANY_POSTAL_ADDRESS?: string;
   /** Optional: encrypts CRM-saved secrets with a key held outside the database. */
   SETTINGS_ENCRYPTION_KEY?: string;
   /** The Worker env before CRM settings were applied (set by withSettings). */
@@ -45,6 +50,7 @@ export interface SessionUser {
   timezone: string;
   sessionId: string;
   deviceId?: string;
+  deviceKind?: string;
 }
 
 export type AppEnv = { Bindings: Env; Variables: { user: SessionUser } };

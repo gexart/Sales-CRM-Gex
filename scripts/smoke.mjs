@@ -377,6 +377,68 @@ check("reps cannot remove builds", (await repClient.call("DELETE", `/app-release
 check("admin removes a build", (await admin.call("DELETE", `/app-releases/${apk.body.data.id}`)).status === 200);
 check("removed build's QR link stops working", (await fetch(`${BASE}${qrPath}`)).status === 404);
 
+console.log("Autopilot");
+check("reps cannot open the autopilot", (await repClient.get("/autopilot/overview")).status === 403);
+const z_apo = await admin.get("/autopilot/overview");
+check("overview lists setup checks and the OAuth redirect URI", z_apo.status === 200 && typeof z_apo.body.data.checks.mailbox === "boolean" && z_apo.body.data.redirect_uri.endsWith("/api/v1/mailboxes/google/callback"), z_apo.body);
+check("a playbook needs a real offer", (await admin.post("/autopilot/playbooks", { name: "x", offer: "short" })).status === 400);
+const z_pbk = await admin.post("/autopilot/playbooks", { name: `Smoke playbook ${run}`, offer: "We build fast websites and run local SEO so clinics get more booked appointments.", entry_offer: "a free website audit", use_existing: false, min_score: 0, daily_new_leads: 5, signature: "Rati · Gexart" });
+check("playbook created (paused)", z_pbk.status === 201, z_pbk.body);
+const z_pbId = z_pbk.body.data.id;
+check("cannot start without postal address and mailbox", (await admin.post(`/autopilot/playbooks/${z_pbId}/status`, { status: "active" })).status === 400);
+const apP1 = await admin.post("/prospects", { company_name: `Autopilot Clinic ${run}`, website: `ap1-${run}.example`, email: `owner.${run}@ap1-${run}.example`, discovery_source: "manual" });
+const apP2 = await admin.post("/prospects", { company_name: `Autopilot Dental ${run}`, website: `ap2-${run}.example`, email: `hello.${run}@ap2-${run}.example`, discovery_source: "manual" });
+const z_enr = await admin.post(`/autopilot/playbooks/${z_pbId}/enrol`, { prospect_ids: [apP1.body.data.id, apP2.body.data.id] });
+check("existing prospects can be enrolled", z_enr.body.data?.enrolled === 2, z_enr.body);
+check("enrolling twice is a no-op", (await admin.post(`/autopilot/playbooks/${z_pbId}/enrol`, { prospect_ids: [apP1.body.data.id] })).body.data.enrolled === 0);
+await admin.post(`/autopilot/playbooks/${z_pbId}/run`);
+let z_apLeads;
+for (let i = 0; i < 40; i++) {
+  z_apLeads = await admin.get(`/autopilot/leads?playbook_id=${z_pbId}`);
+  if (z_apLeads.body.data.length === 2 && z_apLeads.body.data.every((l) => l.stage === "drafted")) break;
+  await new Promise((r) => setTimeout(r, 1500));
+}
+check("run researches and drafts a 3-email sequence for each lead", z_apLeads.body.data.every((l) => l.stage === "drafted"), z_apLeads.body.data.map((l) => [l.stage, l.last_error]));
+const z_ob = await admin.get("/autopilot/outbox");
+const z_seq1 = z_ob.body.data.sequences.find((s) => s.prospect_id === apP1.body.data.id);
+check("outbox shows the drafts for approval", z_seq1 && z_seq1.messages.length === 3 && z_seq1.messages.every((m) => m.status === "pending_approval") && !z_seq1.messages[0].subject.startsWith("Re:"), z_seq1);
+check("drafts never include the footer (added at send time)", !z_seq1.messages[0].body.includes("no thanks"));
+const z_ed = await admin.call("PATCH", `/autopilot/messages/${z_seq1.messages[0].id}`, { subject: "Edited subject", body: "Edited body for the clinic." });
+check("a draft can be edited before approval", z_ed.status === 200);
+const z_seq2 = z_ob.body.data.sequences.find((s) => s.prospect_id === apP2.body.data.id);
+await admin.post("/do-not-contact", { values: [`ap2-${run}.example`], reason: "customer" });
+const z_appr = await admin.post("/autopilot/leads/approve", { ids: [z_seq1.id, z_seq2.id] });
+check("approval skips anyone on the do-not-contact list", z_appr.body.data?.approved === 1 && z_appr.body.data.blocked === 1, z_appr.body);
+const z_lead1 = await admin.get(`/autopilot/leads/${z_seq1.id}`);
+check("approved sequence is queued, edits kept", z_lead1.body.data.stage === "approved" && z_lead1.body.data.messages.every((m) => m.status === "approved") && z_lead1.body.data.messages[0].subject === "Edited subject", z_lead1.body.data.stage);
+check("approved drafts can no longer be edited", (await admin.call("PATCH", `/autopilot/messages/${z_seq1.messages[0].id}`, { subject: "x", body: "y" })).status === 409);
+check("manual do-not-contact entries can be removed by an admin", (await admin.call("DELETE", `/do-not-contact/${encodeURIComponent(`ap2-${run}.example`)}`)).status === 200);
+await admin.post("/do-not-contact", { values: [`gone.${run}@x.example`], reason: "opt_out" });
+check("opt-outs are permanent", (await admin.call("DELETE", `/do-not-contact/${encodeURIComponent(`gone.${run}@x.example`)}`)).status === 409);
+const z_per = new Date().toISOString().slice(0, 7);
+check("managers set the monthly goal", (await admin.call("PUT", `/revenue-goals/${z_per}`, { target_minor: 100000000, avg_deal_minor: 5000000 })).status === 200);
+const z_ck = await repClient.get(`/cockpit?period=${z_per}`);
+check("everyone sees the cockpit: goal, gap, deals needed, funnel", z_ck.status === 200 && z_ck.body.data.goal.target_minor === 100000000 && z_ck.body.data.gap_minor === Math.max(0, 100000000 - z_ck.body.data.won.amount_minor) && z_ck.body.data.deals_needed === Math.ceil(z_ck.body.data.gap_minor / 5000000) && z_ck.body.data.funnel.found >= 2, z_ck.body.data);
+
+console.log("Harvey bridge");
+const z_hv = await admin.post("/devices", { name: `Harvey ${run}`, kind: "harvey" });
+const z_hvH = { authorization: `Bearer ${z_hv.body.data.token}`, "content-type": "application/json" };
+const z_hvPost = (path, body) => fetch(`${BASE}/api/v1/device/harvey${path}`, { method: "POST", headers: z_hvH, body: JSON.stringify(body) }).then(async (r) => ({ status: r.status, body: await r.json() }));
+const z_hvItem = { harvey_id: `h-${run}`, company_name: `Harvey Roofing ${run}`, website: `https://hroof-${run}.example`, first_name: "Elena", last_name: "Park", title: "Owner", email: `elena.${run}@hroof-${run}.example`, personalization: "Hiring a dispatcher", score: 70 };
+const z_hp1 = await z_hvPost("/prospects", { items: [z_hvItem, { ...z_hvItem, harvey_id: `h2-${run}`, company_name: "Blocked Co", email: `gone.${run}@x.example` }] });
+check("Harvey prospects arrive in the CRM (do-not-contact skipped)", z_hp1.status === 200 && z_hp1.body.data.created === 1 && z_hp1.body.data.skipped_do_not_contact === 1, z_hp1.body);
+check("re-syncing updates instead of duplicating", (await z_hvPost("/prospects", { items: [z_hvItem] })).body.data.updated === 1);
+const z_ev = { event_id: `conv-${run}:1`, harvey_prospect_id: `h-${run}`, email: z_hvItem.email, type: "reply", body: "Interested, can you call Thursday?", intent: "interested" };
+const z_he1 = await z_hvPost("/events", { items: [z_ev] });
+check("Harvey replies land on the timeline with a task", z_he1.body.data?.recorded === 1, z_he1.body);
+check("events are idempotent", (await z_hvPost("/events", { items: [z_ev] })).body.data.duplicate === 1);
+await z_hvPost("/events", { items: [{ event_id: `status-${run}`, harvey_prospect_id: `h-${run}`, email: z_hvItem.email, type: "opt_out" }] });
+const z_hdnc = await fetch(`${BASE}/api/v1/device/harvey/do-not-contact`, { headers: z_hvH }).then((r) => r.json());
+check("an opt-out in Harvey joins the shared do-not-contact list", z_hdnc.data.some((d) => d.value === z_hvItem.email && d.reason === "opt_out"));
+check("Harvey tokens cannot use the phone API", (await fetch(`${BASE}/api/v1/device/ping`, { headers: z_hvH })).status === 403);
+const z_ph = await admin.post("/devices", { name: `Phone ${run}` });
+check("phone tokens cannot use the Harvey bridge", (await fetch(`${BASE}/api/v1/device/harvey/do-not-contact`, { headers: { authorization: `Bearer ${z_ph.body.data.token}` } })).status === 403);
+
 console.log("Notifications");
 const notes = await admin.get("/notifications");
 check("notifications endpoint returns unread count", typeof notes.body.meta?.unread === "number");

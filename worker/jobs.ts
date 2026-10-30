@@ -3,6 +3,7 @@
 import type { Env, Job } from "./env";
 import { runAudit } from "./audits/run";
 import { transcribeCall } from "./routes/calls";
+import { autopilotTick } from "./autopilot/engine";
 
 export async function enqueue(env: Env, ctx: { waitUntil(p: Promise<unknown>): void }, job: Job) {
   if (env.JOBS) {
@@ -19,6 +20,7 @@ export async function enqueue(env: Env, ctx: { waitUntil(p: Promise<unknown>): v
 export async function runJob(env: Env, job: Job) {
   if (job.kind === "audit") return runAudit(env, job.runId, job.userId, job.accountId);
   if (job.kind === "transcribe") return transcribeCall(env, job.callId);
+  if (job.kind === "autopilot") return autopilotTick(env, job.playbookId);
 }
 
 export async function handleQueue(batch: MessageBatch<Job>, env: Env) {

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { AppEnv, Env } from "../env";
 import { newId, now } from "../lib/util";
 import { syncGithubReleaseIfDue } from "./app-releases";
+import { autopilotTick } from "../autopilot/engine";
 
 export const notificationRoutes = new Hono<AppEnv>();
 
@@ -28,6 +29,9 @@ notificationRoutes.post("/:id/read", async (c) => {
 export async function scheduled(env: Env) {
   // Pick up new Android app builds from GitHub (best effort; also done when the Phone app page opens).
   await syncGithubReleaseIfDue(env);
+  // Sales autopilot: replies, sends, drafts, research, discovery (bounded per run).
+  if (env.JOBS) await env.JOBS.send({ kind: "autopilot" }).catch((e) => console.warn("autopilot enqueue", e));
+  else await autopilotTick(env).catch((e) => console.error("autopilot", e));
   const db = env.DB;
   const t = now();
   const soon = new Date(Date.now() + 60 * 60_000).toISOString();

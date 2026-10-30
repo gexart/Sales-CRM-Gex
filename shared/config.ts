@@ -40,6 +40,16 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
     ],
   },
   {
+    id: "coldemail",
+    title: "Cold email mailbox (Google Workspace)",
+    description: "Lets the autopilot send from, and read replies in, a Google Workspace mailbox. Use a separate domain for cold email so your main domain's reputation stays safe.",
+    fields: [
+      { key: "GOOGLE_OAUTH_CLIENT_ID", label: "Google OAuth client ID", kind: "text", placeholder: "…apps.googleusercontent.com", help: "Google Cloud → APIs & Services → Credentials → OAuth client (Web application). Enable the Gmail API. Set the consent screen to Internal.", link: "https://console.cloud.google.com/apis/credentials" },
+      { key: "GOOGLE_OAUTH_CLIENT_SECRET", label: "Google OAuth client secret", kind: "secret", placeholder: "GOCSPX-…", help: "From the same OAuth client." },
+      { key: "COMPANY_POSTAL_ADDRESS", label: "Business postal address", kind: "text", placeholder: "Gexart, 12 Park Street, Kolkata 700016, India", help: "Added under every cold email with the opt-out line. Required before the autopilot sends." },
+    ],
+  },
+  {
     id: "leads",
     title: "Lead discovery & contact finder",
     description: "Find businesses and decision-makers. The company-website finder is free and always on.",

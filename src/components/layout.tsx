@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  BarChart3, Bell, Briefcase, Building2, CheckSquare, ChevronRight, FolderOpen, LayoutDashboard, LogOut, Megaphone, Menu as MenuIcon, Moon, Sun,
+  BarChart3, Bell, Briefcase, Building2, CheckSquare, ChevronRight, FolderOpen, LayoutDashboard, LogOut, Megaphone, Menu as MenuIcon, Moon, Rocket, Sun,
   Package, Plus, Search, Send, Settings, Users, X, Telescope, type LucideIcon,
 } from "lucide-react";
 import { api, qs, type Page, type Row } from "../lib/api";
@@ -17,7 +17,7 @@ import { EntityForm, useDebounced } from "./forms";
 
 type NavItem = { to: string; label: string; icon: LucideIcon };
 const NAV: { group?: string; items: NavItem[] }[] = [
-  { items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard }] },
+  { items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard }, { to: "/autopilot", label: "Autopilot", icon: Rocket }] },
   {
     group: "Database",
     items: [
