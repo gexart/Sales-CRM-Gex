@@ -141,6 +141,70 @@ def read_prospects(con: sqlite3.Connection, since: str | None) -> list[dict]:
     return out
 
 
+# Plain-language versions of Harvey's website findings, used as the CRM prospect's research notes.
+SIGNAL_TEXT = {
+    "RUNNING_GOOGLE_ADS": lambda n, t: "not running Google Ads" if n == 0 else "running Google Ads",
+    "RUNNING_META_ADS": lambda n, t: "not running Meta ads" if n == 0 else "running Meta ads",
+    "NO_SCHEMA_MARKUP": lambda n, t: "no schema markup (weak SEO)" if n else None,
+    "NO_ONLINE_BOOKING": lambda n, t: "no online booking or enquiry form" if n else None,
+    "NO_WEBSITE": lambda n, t: "no website" if n else None,
+    "TECH_STACK": lambda n, t: f"uses {t}" if t else None,
+    "REVIEW_COUNT": lambda n, t: f"{int(n)} Google reviews" if n is not None else None,
+    "REVIEW_RATING": lambda n, t: f"rated {n}" if n is not None else None,
+    "BLOG_STALE": lambda n, t: "blog not updated recently" if n else None,
+    "HIRING": lambda n, t: "hiring" if n else None,
+}
+SKIP_SIGNALS = {"FOUND_IN_SERP", "IN_LOCAL_PACK"}
+
+
+def company_notes(con: sqlite3.Connection, company_id: str) -> str | None:
+    if "observations" not in {t[0] for t in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}:
+        return None
+    seen, out = set(), []
+    for o in con.execute("SELECT signal_code, value_num, value_text FROM observations WHERE company_id = ? ORDER BY observed_at DESC", (company_id,)):
+        code = o["signal_code"]
+        if code in SKIP_SIGNALS or (code in seen and code != "TECH_STACK"):
+            continue
+        seen.add(code)
+        fn = SIGNAL_TEXT.get(code)
+        if not fn and o["value_num"] == 0:
+            continue  # a recorded "no" for a signal we have no wording for
+        text = fn(o["value_num"], o["value_text"]) if fn else f"{code.replace('_', ' ').lower()}{': ' + str(o['value_text']) if o['value_text'] else ''}"
+        if text and text not in out:
+            out.append(text)
+    return ("; ".join(out))[:1900] or None
+
+
+def read_companies(con: sqlite3.Connection, since: str | None) -> list[dict]:
+    """Companies Harvey found that have no named person yet: sent as company-level prospects."""
+    cc = cols(con, "companies")
+    where = "NOT EXISTS (SELECT 1 FROM prospects p WHERE p.company_id = c.id)"
+    params: tuple = ()
+    if since and "updated_at" in cc:
+        where += " AND c.updated_at > ?"
+        params = (since,)
+    out = []
+    for r in con.execute(f"SELECT * FROM companies c WHERE {where} ORDER BY c.updated_at", params):
+        keys = r.keys()
+        name = (r["name"] or "").strip()
+        if not name:
+            continue
+        industry = (r["industry"] or "").strip()
+        out.append({
+            "harvey_id": f"company:{r['id']}",
+            "company_name": name,
+            "website": r["website"] or None,
+            "domain": r["domain"] or None,
+            "industry": "Real estate" if industry in ("estate_agent", "real estate") else (industry or None),
+            "location": r["location"] or None,
+            "company_size": r["company_size"] or None,
+            "phone": (r["phone"] if "phone" in keys else "") or None,
+            "personalization": company_notes(con, r["id"]),
+            "_updated_at": r["updated_at"],
+        })
+    return out
+
+
 OPT_OUT_STATUSES = {"opted_out", "unsubscribed", "do_not_contact", "dnc"}
 BOUNCE_STATUSES = {"bounced", "invalid", "bounce"}
 
@@ -216,6 +280,7 @@ def sync_once(args) -> None:
     con = connect_ro(Path(args.harvey_dir) / "data" / "harvey.db")
     try:
         prospects = read_prospects(con, None if args.full else state.get("prospects_since"))
+        companies = read_companies(con, None if args.full else state.get("companies_since"))
         events = read_events(con)
     finally:
         con.close()
@@ -226,6 +291,12 @@ def sync_once(args) -> None:
         created += r["created"]; updated += r["updated"]; skipped += r["skipped_do_not_contact"]
     if prospects:
         state["prospects_since"] = max(str(p["_updated_at"] or "") for p in prospects) or state.get("prospects_since")
+    for i in range(0, len(companies), BATCH):
+        chunk = companies[i:i + BATCH]
+        r = crm.call("POST", "/prospects", {"items": [{k: v for k, v in p.items() if not k.startswith("_")} for p in chunk]})["data"]
+        created += r["created"]; updated += r["updated"]; skipped += r["skipped_do_not_contact"]
+    if companies:
+        state["companies_since"] = max(str(p["_updated_at"] or "") for p in companies) or state.get("companies_since")
     sent_ids = set(state.get("event_ids", []))
     new_events = [e for e in events if e["event_id"] not in sent_ids]
     rec = dup = 0
