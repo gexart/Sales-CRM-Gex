@@ -207,6 +207,7 @@ export const userCreateSchema = z.object({
 });
 export const userUpdateSchema = z.object({
   name: reqText(120).optional(),
+  email: z.email("Enter a valid email address").max(200).optional(),
   role: z.enum(E.ROLES.values).optional(),
   status: z.enum(["active", "disabled"]).optional(),
   timezone: z.string().max(60).optional(),

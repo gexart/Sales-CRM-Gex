@@ -143,6 +143,13 @@ userRoutes.patch("/:id", requireRole("admin"), async (c): Promise<Response> => {
   }
   const patch: Record<string, unknown> = {};
   if (input.name) patch.name = input.name;
+  const newEmail = input.email?.trim().toLowerCase();
+  const emailChanged = !!newEmail && newEmail !== String(existing.email).toLowerCase();
+  if (emailChanged) {
+    const taken = await c.env.DB.prepare("SELECT id FROM users WHERE email = ? AND id != ?").bind(newEmail, id).first();
+    if (taken) throw new ApiError(409, "email_in_use", "Another user already has this email address");
+    patch.email = newEmail;
+  }
   if (input.role) patch.role = input.role;
   if (input.status) patch.status = input.status;
   if (input.timezone) patch.timezone = input.timezone;
@@ -164,11 +171,13 @@ userRoutes.patch("/:id", requireRole("admin"), async (c): Promise<Response> => {
       action: changes.role ? "permission_change" : "update",
       entityType: "user",
       entityId: id,
-      summary: `Updated user ${existing.email}${input.password ? " (password reset)" : ""}`,
+      summary: `Updated user ${existing.email}${emailChanged ? ` (email changed to ${newEmail})` : ""}${input.password ? " (password reset)" : ""}`,
       changes,
       ip: clientIp(c),
     }),
   ];
+  // A set-password link emailed to the old address must not work once the address has changed.
+  if (emailChanged) stmts.push(c.env.DB.prepare("DELETE FROM password_resets WHERE user_id = ? AND used_at IS NULL").bind(id));
   // Disabling a user or resetting their password ends their existing sessions.
   if (input.status === "disabled" || input.password) stmts.push(c.env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(id));
   await c.env.DB.batch(stmts);

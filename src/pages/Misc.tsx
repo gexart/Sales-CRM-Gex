@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BarChart3, KeyRound, Mail, Package, Plug, Plus, ShieldCheck, UserCog, Users } from "lucide-react";
+import { BarChart3, KeyRound, Mail, Package, Pencil, Plug, Plus, ShieldCheck, UserCog, Users } from "lucide-react";
 import { api, ApiError, type Row } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import * as E from "../../shared/enums";
@@ -161,7 +161,7 @@ function Profile() {
   return (
     <Card className="max-w-lg space-y-3 p-5">
       <Field label="Name"><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></Field>
-      <Field label="Email"><input className="input" value={user!.email} disabled /></Field>
+      <Field label="Email" help={user!.role === "admin" ? "Administrators can change it in Settings → Users & roles → Edit." : "Ask an administrator to change your sign-in email."}><input className="input" value={user!.email} disabled /></Field>
       <Field label="Timezone" help="Dates are stored in UTC and shown in this timezone.">
         <Select options={zones.map((z) => ({ value: z, label: z }))} value={tz} onChange={(e) => setTz(e.target.value)} />
       </Field>
@@ -176,11 +176,13 @@ function Profile() {
 function UsersAdmin() {
   const qc = useQueryClient();
   const toast = useToast();
-  const { user: me, emailEnabled } = useAuth();
+  const { user: me, emailEnabled, refresh } = useAuth();
   const q = useQuery({ queryKey: ["users", "all"], queryFn: () => api.get<{ data: Row[] }>("/users?all=1").then((r) => r.data) });
   const [inviting, setInviting] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", role: "rep", password: "" });
   const [sendWelcome, setSendWelcome] = useState(true);
+  const [editing, setEditing] = useState<Row | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", email: "" });
   const sendLink = useMutation({
     mutationFn: (id: string) => api.post(`/users/${id}/send-link`),
     onSuccess: () => toast("success", "Email sent"),
@@ -212,7 +214,7 @@ function UsersAdmin() {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="border-b border-line bg-slate-50/70">
-            <tr><th className="th">Name</th><th className="th">Email</th><th className="th">Role</th><th className="th">Status</th><th className="th">Last sign-in</th><th className="th text-right">Password email</th></tr>
+            <tr><th className="th">Name</th><th className="th">Email</th><th className="th">Role</th><th className="th">Status</th><th className="th">Last sign-in</th><th className="th text-right">Actions</th></tr>
           </thead>
           <tbody className="divide-y divide-line">
             {q.data?.map((u) => (
@@ -226,7 +228,10 @@ function UsersAdmin() {
                   <Select className="h-7 w-28 text-xs" options={[{ value: "active", label: "Active" }, { value: "disabled", label: "Disabled" }]} value={u.status} onChange={(e) => update.mutate({ id: u.id, body: { status: e.target.value } })} />
                 </td>
                 <td className="td text-muted">{u.last_login_at ? relative(u.last_login_at) : "Never"}</td>
-                <td className="td text-right">
+                <td className="td whitespace-nowrap text-right">
+                  <Button size="sm" icon={Pencil} className="mr-1.5" onClick={() => (setEditing(u), setEditForm({ name: u.name, email: u.email }))}>
+                    Edit
+                  </Button>
                   <Button
                     size="sm"
                     icon={Mail}
@@ -246,6 +251,36 @@ function UsersAdmin() {
       <div className="border-t border-line px-4 py-3 text-xs text-muted">
         <ShieldCheck className="mr-1 inline size-3.5" /> Administrators manage users and integrations. Managers see all sales records and reports. Sales reps see records they own (and contacts/deals under accounts they own).
       </div>
+      <Dialog
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        title="Edit user"
+        footer={
+          <>
+            <Button onClick={() => setEditing(null)}>Cancel</Button>
+            <Button
+              variant="primary"
+              loading={update.isPending}
+              disabled={!editForm.name.trim() || !editForm.email.trim()}
+              onClick={() =>
+                update.mutate(
+                  { id: editing!.id, body: { name: editForm.name.trim(), email: editForm.email.trim() } },
+                  { onSuccess: () => (setEditing(null), editing!.id === me!.id && refresh()) },
+                )
+              }
+            >
+              Save changes
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <Field label="Name"><input className="input" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></Field>
+          <Field label="Email (sign-in address)" help={editing?.id === me!.id ? "This is your own sign-in email. After saving, use the new address to sign in." : "Their next sign-in uses the new address. Any set-password link already sent to the old address stops working."}>
+            <input className="input" type="email" autoComplete="off" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+          </Field>
+        </div>
+      </Dialog>
       <Dialog
         open={inviting}
         onClose={() => setInviting(false)}

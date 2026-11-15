@@ -89,6 +89,20 @@ function Gate() {
   );
 }
 
+// After a new release the old hashed files no longer exist, so a tab opened before the release fails with
+// "Failed to fetch dynamically imported module". Reload once to pick up the new version (guarded against loops).
+window.addEventListener("vite:preloadError", (event) => {
+  event.preventDefault();
+  try {
+    const last = Number(sessionStorage.getItem("gx-chunk-reload") ?? 0);
+    if (Date.now() - last < 15_000) return;
+    sessionStorage.setItem("gx-chunk-reload", String(Date.now()));
+  } catch {
+    /* storage unavailable: reload anyway */
+  }
+  window.location.reload();
+});
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
