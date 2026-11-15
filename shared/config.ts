@@ -104,7 +104,7 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
     title: "Workspace",
     description: "General settings.",
     fields: [
-      { key: "APP_NAME", label: "Workspace name", kind: "text", placeholder: "Gexart CRM", help: "Shown to the phone app after pairing and in system emails." },
+      { key: "APP_NAME", label: "Workspace name", kind: "text", placeholder: "Sales CRM", help: "Shown to the phone app after pairing and in system emails." },
       { key: "APP_URL", label: "CRM web address", kind: "text", placeholder: "https://crm.yourdomain.com", help: "Used in welcome and password-reset emails. Leave blank to use the address you are signed in on." },
     ],
   },

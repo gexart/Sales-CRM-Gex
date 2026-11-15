@@ -111,7 +111,7 @@ async function deliver(env: Env, to: { email: string; name?: string }, subject: 
 }
 
 export async function sendWelcomeEmail(env: Env, o: { to: { email: string; name: string }; role: string; invitedBy: string; setupUrl: string; loginUrl: string }): Promise<MailResult> {
-  const app = env.APP_NAME || "Gexart CRM";
+  const app = env.APP_NAME || "Sales CRM";
   const first = o.to.name.split(/\s+/)[0] || o.to.name;
   const role = labelOf(ROLES, o.role);
   const html = shell({
@@ -129,7 +129,7 @@ export async function sendWelcomeEmail(env: Env, o: { to: { email: string; name:
 }
 
 export async function sendResetEmail(env: Env, o: { to: { email: string; name: string }; resetUrl: string }): Promise<MailResult> {
-  const app = env.APP_NAME || "Gexart CRM";
+  const app = env.APP_NAME || "Sales CRM";
   const first = o.to.name.split(/\s+/)[0] || o.to.name;
   const html = shell({
     appName: app,
