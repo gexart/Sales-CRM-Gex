@@ -146,20 +146,30 @@ Not yet performed for this project. Steps:
 11. Smoke test: `node scripts/smoke.mjs https://<your-worker>.workers.dev` after setting
    `SMOKE_ADMIN_EMAIL` / `SMOKE_ADMIN_PASSWORD` (note: it creates test records).
 
-### Automatic deploys from GitHub (sales.gexart.com)
+### sales.gexart.com (DNS stays at Hostinger)
 
-After the one-time steps above, every push to `main` deploys by itself via `.github/workflows/deploy.yml`
-(typecheck, tests, build, remote D1 migrations, `wrangler deploy`, then a health check on
-`https://sales.gexart.com/api/v1/health`). Android-only and Markdown-only pushes are skipped.
+Workers custom domains need Cloudflare DNS, so a tiny Cloudflare **Pages** project (`pages-front/`, project
+`sales-crm-front`) fronts the CRM, exactly like crm.gexart.com: a plain CNAME at Hostinger -> Pages ->
+service binding -> the `sales-crm-gexart` Worker.
 
-1. GitHub repo → Settings → Secrets and variables → Actions → add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
-   Create the token at dash.cloudflare.com → My Profile → API Tokens → Create Token → *Edit Cloudflare Workers*
-   template, then add D1 (Edit), Workers R2 Storage (Edit), Queues (Edit) and, for the domain, Zone (Read) +
-   DNS (Edit) on gexart.com.
-2. `gexart.com` must be a zone in the same Cloudflare account. `wrangler.jsonc` declares
-   `sales.gexart.com` as a custom domain, so the first deploy creates the DNS record and TLS certificate.
-3. Make sure `APP_URL` (wrangler var, or Settings → Configuration) is `https://sales.gexart.com` so emailed links are right.
-4. A failed check or migration stops the deploy, so a broken push never reaches the live site. Roll back with `npx wrangler rollback`.
+1. Cloudflare -> Workers & Pages -> `sales-crm-front` -> Custom domains -> Set up a custom domain -> `sales.gexart.com`.
+2. Hostinger DNS: CNAME `sales` -> `sales-crm-front.pages.dev`. Back in Cloudflare click *Check DNS records*; it activates by itself.
+3. Update the front door (rarely needed): copy `pages-front/` to a folder **outside this repo** and run
+   `npx wrangler pages deploy ./dist --project-name sales-crm-front --branch main` there. Do not run Pages commands
+   inside this repo: the newer Wrangler sees the repo's Worker build config and deploys the Worker instead.
+4. Optional: set `APP_URL` to `https://sales.gexart.com` (Settings -> Configuration). Left blank, emailed links use
+   whichever address the request came in on, which is already sales.gexart.com through the front door.
+
+### Automatic deploys from GitHub
+
+Every push to `main` deploys by itself via `.github/workflows/deploy.yml` (typecheck, tests, build, remote D1
+migrations, `wrangler deploy`). Android-only and Markdown-only pushes are skipped. Add a repository variable
+`APP_URL` (e.g. `https://sales.gexart.com`) to get a live health check after each deploy.
+
+1. GitHub repo -> Settings -> Secrets and variables -> Actions -> add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+   Create the token at dash.cloudflare.com -> My Profile -> API Tokens -> Create Token -> *Edit Cloudflare Workers*
+   template, then add D1 (Edit), Workers R2 Storage (Edit) and Queues (Edit).
+2. A failed check or migration stops the deploy, so a broken push never reaches the live site. Roll back with `npx wrangler rollback`.
 
 **Rollback:** `npx wrangler rollback` restores the previous Worker version. D1 migrations are forward-only;
 take a backup first with `npx wrangler d1 export gexart-crm --remote --output backup.sql`, and use

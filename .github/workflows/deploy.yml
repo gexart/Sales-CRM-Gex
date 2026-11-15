@@ -1,7 +1,7 @@
 # Deploys the CRM to Cloudflare whenever main is pushed: checks -> build -> D1 migrations -> Worker deploy.
 # One-time setup (GitHub -> Settings -> Secrets and variables -> Actions -> New repository secret):
 #   CLOUDFLARE_API_TOKEN   token with: Workers Scripts:Edit, D1:Edit, Workers R2 Storage:Edit, Queues:Edit,
-#                          Account Settings:Read, Workers Routes:Edit + Zone:Read / DNS:Edit for gexart.com
+#                          Account Settings:Read, (add Workers Routes:Edit + Zone:Read / DNS:Edit only if you later host gexart.com DNS on Cloudflare)
 #   CLOUDFLARE_ACCOUNT_ID  Cloudflare dashboard -> Workers & Pages -> right-hand sidebar
 name: Deploy to Cloudflare
 
@@ -59,11 +59,13 @@ jobs:
       - name: Deploy Worker and site
         run: npx wrangler deploy
 
+      # Optional: add a repository variable APP_URL (e.g. https://sales.gexart.com) to get a live check after each deploy.
       - name: Health check
+        if: vars.APP_URL != ''
         run: |
           for i in 1 2 3 4 5; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" https://sales.gexart.com/api/v1/health || true)
-            [ "$code" = "200" ] && echo "Live: https://sales.gexart.com (HTTP 200)" && exit 0
+            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.APP_URL }}/api/v1/health" || true)
+            [ "$code" = "200" ] && echo "Live: ${{ vars.APP_URL }} (HTTP 200)" && exit 0
             sleep 6
           done
-          echo "::warning::Deployed, but https://sales.gexart.com/api/v1/health did not return 200 yet. Check the domain under Workers & Pages -> sales-crm-gexart -> Settings -> Domains."
+          echo "::warning::Deployed, but ${{ vars.APP_URL }}/api/v1/health did not return 200."

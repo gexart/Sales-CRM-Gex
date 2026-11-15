@@ -1,0 +1,7 @@
+name = "sales-crm-front"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-10-20"
+
+[[services]]
+binding = "CRM"
+service = "sales-crm-gexart"
