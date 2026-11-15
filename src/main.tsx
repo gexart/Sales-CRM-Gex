@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -8,19 +8,34 @@ import { AuthProvider, useAuth } from "./lib/auth";
 import { CONFIGS } from "./lib/entities";
 import { AppShell } from "./components/layout";
 import { Spinner, ToastProvider } from "./components/ui";
-import { Dashboard } from "./pages/Dashboard";
-import { EntityListPage } from "./pages/EntityListPage";
-import { RecordDetailPage } from "./pages/RecordDetailPage";
-import { AccountWorkspace } from "./pages/AccountWorkspace";
-import { OpportunitiesPage, TasksPage } from "./pages/Pipeline";
-import { ReportsPage, SettingsPage } from "./pages/Misc";
-import { AuthPage, ForgotPasswordPage, ResetPasswordPage } from "./pages/Auth";
-import { AutopilotPage } from "./pages/Autopilot";
-import { AssetDetailPage, PriceBookPage, ProductsNav, SalesAssetsPage } from "./pages/Library";
-import { DiscoveryPage, ImportPage, ProspectsPage } from "./pages/Prospecting";
-import { CallsPage } from "./pages/Calls";
-import { AuditRedirect } from "./pages/Audits";
-import { OutreachMessagePage, OutreachMessagesPage, SequenceDetailPage, SequencesPage, TemplatesPage } from "./pages/Outreach";
+
+// Pages load on demand so the first screen is small and fast on a phone connection.
+const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
+const EntityListPage = lazy(() => import("./pages/EntityListPage").then((m) => ({ default: m.EntityListPage })));
+const RecordDetailPage = lazy(() => import("./pages/RecordDetailPage").then((m) => ({ default: m.RecordDetailPage })));
+const AccountWorkspace = lazy(() => import("./pages/AccountWorkspace").then((m) => ({ default: m.AccountWorkspace })));
+const OpportunitiesPage = lazy(() => import("./pages/Pipeline").then((m) => ({ default: m.OpportunitiesPage })));
+const TasksPage = lazy(() => import("./pages/Pipeline").then((m) => ({ default: m.TasksPage })));
+const ReportsPage = lazy(() => import("./pages/Misc").then((m) => ({ default: m.ReportsPage })));
+const SettingsPage = lazy(() => import("./pages/Misc").then((m) => ({ default: m.SettingsPage })));
+const AuthPage = lazy(() => import("./pages/Auth").then((m) => ({ default: m.AuthPage })));
+const ForgotPasswordPage = lazy(() => import("./pages/Auth").then((m) => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import("./pages/Auth").then((m) => ({ default: m.ResetPasswordPage })));
+const AutopilotPage = lazy(() => import("./pages/Autopilot").then((m) => ({ default: m.AutopilotPage })));
+const AssetDetailPage = lazy(() => import("./pages/Library").then((m) => ({ default: m.AssetDetailPage })));
+const PriceBookPage = lazy(() => import("./pages/Library").then((m) => ({ default: m.PriceBookPage })));
+const ProductsNav = lazy(() => import("./pages/Library").then((m) => ({ default: m.ProductsNav })));
+const SalesAssetsPage = lazy(() => import("./pages/Library").then((m) => ({ default: m.SalesAssetsPage })));
+const DiscoveryPage = lazy(() => import("./pages/Prospecting").then((m) => ({ default: m.DiscoveryPage })));
+const ImportPage = lazy(() => import("./pages/Prospecting").then((m) => ({ default: m.ImportPage })));
+const ProspectsPage = lazy(() => import("./pages/Prospecting").then((m) => ({ default: m.ProspectsPage })));
+const CallsPage = lazy(() => import("./pages/Calls").then((m) => ({ default: m.CallsPage })));
+const AuditRedirect = lazy(() => import("./pages/Audits").then((m) => ({ default: m.AuditRedirect })));
+const OutreachMessagePage = lazy(() => import("./pages/Outreach").then((m) => ({ default: m.OutreachMessagePage })));
+const OutreachMessagesPage = lazy(() => import("./pages/Outreach").then((m) => ({ default: m.OutreachMessagesPage })));
+const SequenceDetailPage = lazy(() => import("./pages/Outreach").then((m) => ({ default: m.SequenceDetailPage })));
+const SequencesPage = lazy(() => import("./pages/Outreach").then((m) => ({ default: m.SequencesPage })));
+const TemplatesPage = lazy(() => import("./pages/Outreach").then((m) => ({ default: m.TemplatesPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -8,6 +8,7 @@ export interface ProposalData {
   clientMeta: string; // industry · city · website
   contactLine: string | null;
   preparedBy: string;
+  phone?: string;
   date: string; // display date
   validityDays: number;
   introNote: string | null;

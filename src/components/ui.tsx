@@ -14,8 +14,23 @@ import {
 import { createPortal } from "react-dom";
 import { AlertTriangle, CheckCircle2, Eye, EyeOff, Info, Loader2, X, type LucideIcon } from "lucide-react";
 import { initials } from "../lib/format";
+import { CONTACT_NUMBERS, DEFAULT_PHONE, resolvePhone } from "../../shared/contact";
 
 export const cn = clsx;
+
+/** True while the viewport matches the query. Used to render a phone layout *instead of* (not alongside) the desktop one. */
+export function useMediaQuery(query: string): boolean {
+  const get = () => (typeof window !== "undefined" ? window.matchMedia(query).matches : false);
+  const [match, setMatch] = useState(get);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const on = () => setMatch(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, [query]);
+  return match;
+}
 
 // ─── Buttons ───
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "subtle" | "onDark" | "accent";
@@ -254,6 +269,37 @@ export function KeyValue({ label, children }: { label: string; children: ReactNo
       <div className="w-24 shrink-0 text-xs text-muted sm:w-32">{label}</div>
       <div className="min-w-0 flex-1 break-words">{children ?? <span className="text-slate-400">—</span>}</div>
     </div>
+  );
+}
+
+/** The contact number printed on a letterhead / deck. Remembers the last choice on this device. */
+export function usePhoneChoice(): [string, (v: string) => void] {
+  const [v, setV] = useState<string>(() => {
+    try {
+      return resolvePhone(localStorage.getItem("gx-phone"));
+    } catch {
+      return DEFAULT_PHONE;
+    }
+  });
+  return [
+    v,
+    (n) => {
+      const r = resolvePhone(n);
+      setV(r);
+      try {
+        localStorage.setItem("gx-phone", r);
+      } catch {
+        /* storage unavailable: the choice just is not remembered */
+      }
+    },
+  ];
+}
+
+export function PhonePicker({ value, onChange, className }: { value: string; onChange: (v: string) => void; className?: string }) {
+  return (
+    <Field label="Contact number to print" help="Printed only on the letterhead or slides of this document." className={className}>
+      <Select options={CONTACT_NUMBERS.map((n) => ({ value: n, label: n === DEFAULT_PHONE ? `${n} (default)` : n }))} value={value} onChange={(e) => onChange(e.target.value)} />
+    </Field>
   );
 }
 

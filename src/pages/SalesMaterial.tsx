@@ -9,7 +9,7 @@ import type { Slide } from "../lib/deck";
 import { RefSelect } from "../components/forms";
 import { CopyButton } from "../components/outreach";
 import { invalidateRecord } from "../components/records";
-import { Badge, Button, Card, CardHeader, Dialog, EmptyState, Field, Select, SlideOver, cn, useToast } from "../components/ui";
+import { Badge, Button, Card, CardHeader, cn, Dialog, EmptyState, Field, PhonePicker, Select, SlideOver, usePhoneChoice, useToast } from "../components/ui";
 import { useAvailable } from "./Prospecting";
 
 function useAccountAudits(accountId: string, enabled: boolean) {
@@ -166,11 +166,12 @@ export function ProposalDialog({ open, onClose, account }: { open: boolean; onCl
   const [validity, setValidity] = useState(30);
   const [intro, setIntro] = useState("");
   const [done, setDone] = useState<Row | null>(null);
+  const [phone, setPhone] = usePhoneChoice();
   useEffect(() => {
     if (open) setDone(null);
   }, [open]);
   const m = useMutation({
-    mutationFn: () => api.post<{ data: Row }>(`/accounts/${account.id}/proposal`, { items, audit_run_ids: audits, contact_id: contact, opportunity_id: opp, title, validity_days: validity, intro_note: intro || null }),
+    mutationFn: () => api.post<{ data: Row }>(`/accounts/${account.id}/proposal`, { items, audit_run_ids: audits, contact_id: contact, opportunity_id: opp, title, validity_days: validity, intro_note: intro || null, phone }),
     onSuccess: (r) => {
       setDone(r.data);
       qc.invalidateQueries({ queryKey: ["assets"] });
@@ -217,6 +218,7 @@ export function ProposalDialog({ open, onClose, account }: { open: boolean; onCl
             <Field label="Prepared for"><RefSelect kind="contacts" value={contact} onChange={setContact} filter={{ account_id: account.id }} placeholder="Best match automatically" /></Field>
             <Field label="Opportunity (optional)"><RefSelect kind="opportunities" value={opp} onChange={setOpp} filter={{ account_id: account.id }} placeholder="Link to a deal" /></Field>
           </div>
+          <PhonePicker value={phone} onChange={setPhone} />
           <AuditPicker accountId={account.id} value={audits} onChange={setAudits} enabled={open} />
           <Field label="Services & packages" help="Prices come from the price book. Items without a price appear as “Custom quote”.">
             <div className="space-y-2">
@@ -254,6 +256,7 @@ export function DeckDialog({ open, onClose, account }: { open: boolean; onClose:
   const [audits, setAudits] = useState<string[]>([]);
   const [products, setProducts] = useState<string[]>([]);
   const [useAi, setUseAi] = useState(true);
+  const [phone, setPhone] = usePhoneChoice();
   const [outline, setOutline] = useState<{ slides: Slide[]; generator: string; model: string | null; assumptions: string[]; missing_information: string[] } | null>(null);
   const [building, setBuilding] = useState(false);
   const [saved, setSaved] = useState<{ pptx: string; pdf: string | null } | null>(null);
@@ -289,7 +292,7 @@ export function DeckDialog({ open, onClose, account }: { open: boolean; onClose:
     try {
       const title = `${E.labelOf(E.DECK_TEMPLATES, template)} - ${account.name}`;
       const [{ buildPptx }, { buildDeckPdf }] = await Promise.all([import("../lib/deck"), import("../lib/deck-pdf")]);
-      const meta = { title, company: account.name, author: user!.name };
+      const meta = { title, company: account.name, author: user!.name, phone };
       const blob = await buildPptx(outline.slides, meta);
       const pdfBlob = await buildDeckPdf(outline.slides, meta);
       const f = new FormData();
@@ -331,6 +334,7 @@ export function DeckDialog({ open, onClose, account }: { open: boolean; onClose:
           <Field label="Audience"><input className="input" placeholder="e.g. Hospital director and marketing head" value={audience} onChange={(e) => setAudience(e.target.value)} /></Field>
           <Field label="Objective"><input className="input" placeholder="e.g. Agree a 3-month SEO + website pilot" value={objective} onChange={(e) => setObjective(e.target.value)} /></Field>
           <AuditPicker accountId={account.id} value={audits} onChange={setAudits} enabled={open} />
+          <PhonePicker value={phone} onChange={setPhone} />
           <ServicePicker value={products} onChange={setProducts} />
           <label className={cn("flex items-center gap-2 text-xs", !avail.data?.claude && "opacity-60")}>
             <input type="checkbox" className="accent-brand-600" disabled={!avail.data?.claude} checked={useAi && !!avail.data?.claude} onChange={(e) => setUseAi(e.target.checked)} />

@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -12,10 +12,17 @@ import { dateTime, isOverdue, relative } from "../lib/format";
 import { ROLES, labelOf } from "../../shared/enums";
 import { markSvg, type MarkVariant } from "../../shared/brand";
 import { useTheme } from "../lib/theme";
-import { Avatar, Button, Menu, MenuItem, cn } from "./ui";
+import { Avatar, Button, Menu, MenuItem, Spinner, cn } from "./ui";
 import { EntityForm, useDebounced } from "./forms";
 
 type NavItem = { to: string; label: string; icon: LucideIcon };
+const TABS: NavItem[] = [
+  { to: "/", label: "Home", icon: LayoutDashboard },
+  { to: "/accounts", label: "Accounts", icon: Building2 },
+  { to: "/opportunities", label: "Deals", icon: Briefcase },
+  { to: "/tasks", label: "Tasks", icon: CheckSquare },
+];
+
 const NAV: { group?: string; items: NavItem[] }[] = [
   { items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard }, { to: "/autopilot", label: "Autopilot", icon: Rocket }] },
   {
@@ -374,7 +381,7 @@ export function AppShell() {
         </div>
       )}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-1.5 border-b border-line bg-white/90 px-2 backdrop-blur sm:h-16 sm:gap-2 sm:px-5">
+        <header className="flex h-14 shrink-0 items-center gap-1.5 border-b border-line bg-white px-2 sm:h-16 sm:gap-2 sm:px-5">
           <button aria-label="Open menu" onClick={() => setMobileNav(true)} className="flex size-10 shrink-0 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 lg:hidden">
             <MenuIcon className="size-5" />
           </button>
@@ -397,9 +404,40 @@ export function AppShell() {
             <UserMenu />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto overscroll-contain">
+          <Suspense
+            fallback={
+              <div className="flex h-48 items-center justify-center">
+                <Spinner className="size-6" />
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </main>
+        {/* Phones and small tablets: thumb-reach tab bar for the screens used all day. */}
+        <nav aria-label="Quick navigation" className="flex shrink-0 border-t border-line bg-white lg:hidden">
+          {TABS.map((t) => (
+            <NavLink
+              key={t.to}
+              to={t.to}
+              end={t.to === "/"}
+              className={({ isActive }) => cn("relative flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium", isActive ? "text-ink" : "text-slate-500")}
+            >
+              {({ isActive }) => (
+                <>
+                  {isActive && <span className="absolute top-0 h-0.5 w-8 rounded-full bg-brand-500" />}
+                  <t.icon className={cn("size-5", isActive && "text-brand-600")} />
+                  {t.label}
+                </>
+              )}
+            </NavLink>
+          ))}
+          <button onClick={() => setMobileNav(true)} className="flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-slate-500">
+            <MenuIcon className="size-5" />
+            More
+          </button>
+        </nav>
       </div>
       <CommandSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>

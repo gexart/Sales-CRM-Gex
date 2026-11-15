@@ -11,6 +11,7 @@ import { clientIp } from "../lib/auth";
 import { fetchOne, updateRow } from "../lib/entity";
 import { claudeJson, untrusted, CLAUDE_MODEL } from "../lib/providers";
 import { renderProposalPdf } from "../lib/proposal-pdf";
+import { resolvePhone } from "../../shared/letterhead";
 import { renderProposalDocx } from "../lib/proposal-docx";
 import type { ProposalData } from "../lib/pdf";
 import { auditType } from "../audits/registry";
@@ -257,6 +258,7 @@ salesRoutes.post("/accounts/:id/proposal", async (c) => {
     clientMeta: [f.account.industry, f.account.city, f.account.website].filter(Boolean).join("  ·  ").replace(/·/g, "|"),
     contactLine: f.contact ? `${f.contact.full_name ?? f.contact.first_name}${f.contact.job_title ? `, ${f.contact.job_title}` : ""}` : null,
     preparedBy: user.name,
+    phone: resolvePhone(input.phone),
     date,
     validityDays: input.validity_days,
     introNote: input.intro_note ?? null,

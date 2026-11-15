@@ -1,6 +1,6 @@
 // Proposal as a PDF on the Gexart letterhead (same letterhead pages as the audit report).
 import { PDFDocument, StandardFonts } from "pdf-lib";
-import { LETTERHEAD, LOGO_PNG_BASE64 } from "../../shared/letterhead";
+import { LETTERHEAD, LOGO_PNG_BASE64, resolvePhone } from "../../shared/letterhead";
 import { INK, M, MUTED, SEV, W, pdfSafe, type ProposalData } from "./pdf";
 import { LH_GRAY, LH_INK, LH_ORANGE, LetterheadWriter, TINT, TRACK, WHITE, drawFooter, spaced, type Color } from "./letterhead-pdf";
 
@@ -12,6 +12,7 @@ export async function renderProposalPdf(d: ProposalData): Promise<Uint8Array> {
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const w = new LetterheadWriter(doc, font, bold);
+  w.phone = resolvePhone(d.phone);
   w.logo = await doc.embedPng(Uint8Array.from(atob(LOGO_PNG_BASE64), (ch) => ch.charCodeAt(0)));
   const box = (x: number, top: number, bw: number, bh: number, color: Color) => w.page.drawRectangle({ x, y: top - bh, width: bw, height: bh, color });
   const txt = (s: string, x: number, top: number, size: number, f = font, color: Color = INK) => w.page.drawText(pdfSafe(s), { x, y: top - size, size, font: f, color });

@@ -1,7 +1,7 @@
 // Shared pieces for every PDF on the Gexart letterhead (audit reports and proposals): logo + company block +
 // orange/navy rule on each page, footer "Gexart Technologies · A unit of Gexart Ventures".
 import { type PDFFont, type PDFImage, type PDFPage, rgb } from "pdf-lib";
-import { LETTERHEAD } from "../../shared/letterhead";
+import { DEFAULT_PHONE, LETTERHEAD } from "../../shared/letterhead";
 import { H, LINE, M, MUTED, W, Writer, pdfSafe } from "./pdf";
 
 export type Color = ReturnType<typeof rgb>;
@@ -22,14 +22,16 @@ export const spaced = (s: string) => s.toUpperCase().split(/\s+/).map((w) => w.s
 /** Every page starts on the letterhead. */
 export class LetterheadWriter extends Writer {
   logo!: PDFImage;
+  /** The one contact number printed in the letterhead. */
+  phone: string = DEFAULT_PHONE;
   newPage() {
     super.newPage();
-    drawLetterhead(this.page, this.logo, this.font, this.bold);
+    drawLetterhead(this.page, this.logo, this.font, this.bold, this.phone);
     this.y = CONTENT_TOP;
   }
 }
 
-export function drawLetterhead(page: PDFPage, logo: PDFImage, font: PDFFont, bold: PDFFont) {
+export function drawLetterhead(page: PDFPage, logo: PDFImage, font: PDFFont, bold: PDFFont, phone: string = DEFAULT_PHONE) {
   const lh = 44;
   page.drawImage(logo, { x: M, y: H - 30 - lh, width: lh * (logo.width / logo.height), height: lh });
   const right = W - M;
@@ -37,7 +39,7 @@ export function drawLetterhead(page: PDFPage, logo: PDFImage, font: PDFFont, bol
   line(LETTERHEAD.company, H - 40, 10.5, bold, LH_INK);
   line(LETTERHEAD.unit, H - 52, 9, bold, LH_ORANGE);
   line(`${LETTERHEAD.email}  ·  ${LETTERHEAD.web}`, H - 64, 8.5, font, LH_GRAY);
-  line(LETTERHEAD.phones.join("  ·  "), H - 75.5, 8.5, font, LH_GRAY);
+  line(phone, H - 75.5, 8.5, font, LH_GRAY);
   line(LETTERHEAD.addressLines[0], H - 87, 8.5, font, LH_GRAY);
   line(LETTERHEAD.addressLines[1], H - 98.5, 8.5, font, LH_GRAY);
   page.drawRectangle({ x: M, y: H - 109, width: W - 2 * M, height: 1.6, color: LH_ORANGE });

@@ -1,3 +1,4 @@
+import { resolvePhone } from "./contact";
 // One data model for the audit report, rendered to PDF (audit-pdf.ts) and Word (audit-docx.ts).
 // The PPTX version is built in the browser from the same API response (src/lib/audit-deck.ts).
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -30,6 +31,8 @@ export interface AuditReportData {
   auditedOn: string; // display date
   startedBy: string;
   preparedBy: string;
+  /** The one contact number printed on the letterhead / deck. */
+  phone: string;
   score: number | null;
   categories: { label: string; weight: number; score: number | null; passed: number; failed: number; unavailable: number }[];
   findings: ReportFinding[];
@@ -102,7 +105,7 @@ const displayDate = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" }) : "";
 
 /** Builds the report model from `loadRunDetail()` output and (optionally) the compare result. */
-export function buildAuditReportData(run: Row, compare: Row | null, preparedBy: string): AuditReportData {
+export function buildAuditReportData(run: Row, compare: Row | null, preparedBy: string, phone?: string | null): AuditReportData {
   const catLabel = new Map<string, string>((run.categories ?? []).map((c: Row) => [String(c.category), String(c.label)]));
   const scope = run.scope ?? null;
   return {
@@ -114,6 +117,7 @@ export function buildAuditReportData(run: Row, compare: Row | null, preparedBy: 
     auditedOn: displayDate(run.completed_at ?? run.created_at),
     startedBy: String(run.initiated_by_name ?? ""),
     preparedBy,
+    phone: resolvePhone(phone),
     score: run.overall_score === null || run.overall_score === undefined ? null : Number(run.overall_score),
     categories: (run.categories ?? []).map((c: Row) => ({
       label: String(c.label),

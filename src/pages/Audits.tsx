@@ -7,13 +7,14 @@ import {
 } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { buildAuditReportData } from "../../shared/audit-report";
+import { CONTACT_NUMBERS } from "../../shared/contact";
 import { api, ApiError, type Row } from "../lib/api";
 import { CONFIGS } from "../lib/entities";
 import * as E from "../../shared/enums";
 import { dateTime, hostOf, relative } from "../lib/format";
 import { EntityForm } from "../components/forms";
 import { invalidateRecord } from "../components/records";
-import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, ScoreRing, Skeleton, StatusBadge, cn, useToast } from "../components/ui";
+import { Badge, Button, Card, CardHeader, cn, EmptyState, ErrorState, ScoreRing, Select, Skeleton, StatusBadge, usePhoneChoice, useToast } from "../components/ui";
 
 export function useAuditTypes() {
   return useQuery({ queryKey: ["audit-types"], queryFn: () => api.get<{ data: Row[] }>("/audits/types").then((r) => r.data), staleTime: Infinity });
@@ -133,12 +134,13 @@ function ReportDownloads({ run, compare }: { run: Row; compare: Row | null }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [building, setBuilding] = useState(false);
+  const [phone, setPhone] = usePhoneChoice();
   const pptx = async () => {
     setBuilding(true);
     try {
       const [{ buildPptx }, { auditDeckSlides }] = await Promise.all([import("../lib/deck"), import("../lib/audit-deck")]);
-      const data = buildAuditReportData(run, compare, user?.name ?? "");
-      const blob = await buildPptx(auditDeckSlides(data), { title: `${data.typeLabel} report - ${data.accountName}`, company: data.accountName, author: user?.name ?? "Gexart" });
+      const data = buildAuditReportData(run, compare, user?.name ?? "", phone);
+      const blob = await buildPptx(auditDeckSlides(data), { title: `${data.typeLabel} report - ${data.accountName}`, company: data.accountName, author: user?.name ?? "Gexart", phone: data.phone });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = `${data.typeLabel} report - ${data.accountName}.pptx`.replace(/[^\w .-]+/g, "");
@@ -158,11 +160,15 @@ function ReportDownloads({ run, compare }: { run: Row; compare: Row | null }) {
         Download report
       </Button>
       {open && (
-        <div role="menu" className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-md border border-line bg-white py-1 shadow-lg">
-          <a role="menuitem" className={item} href={`/api/v1/audits/${run.id}/report/pdf`} onClick={() => setOpen(false)}>
+        <div role="menu" className="absolute right-0 z-20 mt-1 w-64 max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border border-line bg-white py-1 shadow-lg">
+          <div className="border-b border-line px-3 pt-1 pb-2">
+            <label className="mb-1 block text-[11px] text-muted">Number printed on the report</label>
+            <Select className="h-8 text-xs" options={CONTACT_NUMBERS.map((n) => ({ value: n, label: n }))} value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+          <a role="menuitem" className={item} href={`/api/v1/audits/${run.id}/report/pdf?phone=${encodeURIComponent(phone)}`} onClick={() => setOpen(false)}>
             <FileText className="size-4 text-red-600" /> PDF document
           </a>
-          <a role="menuitem" className={item} href={`/api/v1/audits/${run.id}/report/docx`} onClick={() => setOpen(false)}>
+          <a role="menuitem" className={item} href={`/api/v1/audits/${run.id}/report/docx?phone=${encodeURIComponent(phone)}`} onClick={() => setOpen(false)}>
             <FileText className="size-4 text-blue-600" /> Word document (.docx)
           </a>
           <button role="menuitem" className={item} onClick={pptx}>

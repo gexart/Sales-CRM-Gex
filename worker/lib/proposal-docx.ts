@@ -94,5 +94,5 @@ export async function renderProposalDocx(d: ProposalData): Promise<Uint8Array> {
   });
   b += text(`This proposal is valid for ${d.validityDays} days from ${d.date}.`, { sz: 18, color: MUTED, before: 100 });
   if (d.scopeNote) b += text(d.scopeNote, { sz: 17, color: MUTED });
-  return wrapInLetterhead(b);
+  return wrapInLetterhead(b, d.phone);
 }

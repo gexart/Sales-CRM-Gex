@@ -1,6 +1,6 @@
 // Renders the same slides as deck.ts to a 16:9 PDF in the same Gexart design, so every deck comes as .pptx + .pdf.
 // pdf-lib is loaded on demand.
-import { LETTERHEAD, LOGO_ASPECT, LOGO_PNG_BASE64 } from "../../shared/letterhead";
+import { LETTERHEAD, LOGO_ASPECT, LOGO_PNG_BASE64, resolvePhone } from "../../shared/letterhead";
 import type { DeckMeta, Slide } from "./deck";
 
 const PW = 960;
@@ -23,7 +23,6 @@ const RED = "B42318";
 const RED_BG = "FDEEEE";
 const RED_LINE = "F8CFCF";
 const SEV: Record<string, string> = { critical: "B42318", high: "C2410C", medium: "B45309", low: "0E7490" };
-const CONTACT = [LETTERHEAD.email, ...LETTERHEAD.phones, LETTERHEAD.addressShort, LETTERHEAD.web].join("  ·  ");
 
 /** Standard PDF fonts only encode WinAnsi. */
 const safe = (s: string) =>
@@ -40,6 +39,8 @@ const safe = (s: string) =>
 
 export async function buildDeckPdf(slides: Slide[], meta: DeckMeta): Promise<Blob> {
   const { PDFDocument, StandardFonts, rgb, LineCapStyle } = await import("pdf-lib");
+  const phone = resolvePhone(meta.phone);
+  const CONTACT = [LETTERHEAD.email, phone, LETTERHEAD.addressShort, LETTERHEAD.web].join("  ·  ");
   const doc = await PDFDocument.create();
   doc.setTitle(safe(meta.title));
   doc.setAuthor(safe(meta.author));
@@ -155,7 +156,7 @@ export async function buildDeckPdf(slides: Slide[], meta: DeckMeta): Promise<Blo
       p.drawImage(logo, { x: 624, y: PH - 142 - 120 / LOGO_ASPECT, width: 120, height: 120 / LOGO_ASPECT });
       text(p, "Let's build your growth plan.", 624, 186, 18, bold, INK, { w: 270, lh: 22, max: 2 });
       text(p, "Start with a short discovery call. We confirm priorities, scope and timelines, then send a fixed-price proposal.", 624, 244, 9.5, font, MUTED, { w: 270, max: 4, lh: 12.5 });
-      [LETTERHEAD.email, LETTERHEAD.phones.join("  ·  "), LETTERHEAD.web, LETTERHEAD.addressShort].forEach((t, i) => {
+      [LETTERHEAD.email, phone, LETTERHEAD.web, LETTERHEAD.addressShort].forEach((t, i) => {
         circle(p, 630, 324 + i * 22 + 6, 3.5, ORANGE);
         text(p, t, 642, 324 + i * 22, 10, i < 3 ? bold : font, INK, { w: 260, max: 1 });
       });

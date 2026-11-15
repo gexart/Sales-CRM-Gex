@@ -54,7 +54,9 @@
   h1, h2 { letter-spacing: -0.015em; }
   /* Stop iOS Safari zooming the page when a field is focused, and stop sideways bounce from stray overflow. */
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-  body { overflow-x: hidden; overscroll-behavior-y: none; }
+  body { overflow-x: hidden; overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+  a, button, [role="button"], input, select, textarea, label { touch-action: manipulation; }
+  @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
   /* Touch devices (phones, iPad): 16px fields and finger-sized controls. */
   @media (pointer: coarse) {
     input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px !important; }

@@ -7,7 +7,7 @@ import { useAuth } from "../lib/auth";
 import type { EntityConfig } from "../lib/entities";
 import { PageHeader } from "../components/layout";
 import { EntityForm, RefSelect, useDebounced } from "../components/forms";
-import { Button, Card, EmptyState, ErrorState, Menu, Select, Skeleton, cn } from "../components/ui";
+import { Button, Card, cn, EmptyState, ErrorState, Menu, Select, Skeleton, useMediaQuery } from "../components/ui";
 
 const EXPORTABLE = ["accounts", "contacts", "prospects", "opportunities", "tasks", "products"];
 
@@ -31,6 +31,54 @@ export function useEntityList(cfg: EntityConfig, params: Record<string, string |
 
 export function DataTable({ cfg, rows, loading, sort, dir, onSort, hidden, onRowClick, emptyState }: { cfg: EntityConfig; rows: Row[]; loading: boolean; sort?: string; dir?: string; onSort?: (s: string) => void; hidden?: string[]; onRowClick: (r: Row) => void; emptyState?: ReactNode }) {
   const cols = cfg.columns.filter((c) => !hidden?.includes(c.key));
+  const phone = useMediaQuery("(max-width: 767px)");
+  if (phone) {
+    // Phones: one card per record (first column is the title, the rest are label/value pairs). No sideways scrolling.
+    const [primary, ...rest] = cols;
+    const filled = (r: Row, c: (typeof cols)[number]) => (c.key in r ? r[c.key] !== null && r[c.key] !== undefined && r[c.key] !== "" && r[c.key] !== 0 : !!c.render);
+    return (
+      <div>
+        {loading && !rows.length ? (
+          <ul className="divide-y divide-line">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <li key={i} className="space-y-2 px-4 py-3">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="w-56" />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <ul className="divide-y divide-line">
+            {rows.map((r) => (
+              <li key={r.id}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onRowClick(r)}
+                  onKeyDown={(e) => e.key === "Enter" && onRowClick(r)}
+                  className={cn("block w-full cursor-pointer px-4 py-3 text-left active:bg-slate-100", r.archived_at && "opacity-60")}
+                >
+                  <div className="min-w-0 text-[14px] font-semibold">{primary ? (primary.render ? primary.render(r) : (r[primary.key] ?? "—")) : null}</div>
+                  <dl className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                    {rest
+                      .filter((c) => filled(r, c))
+                      .slice(0, 6)
+                      .map((c) => (
+                        <div key={c.key} className="min-w-0">
+                          <dt className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">{c.label}</dt>
+                          <dd className="min-w-0 truncate text-slate-700">{c.render ? c.render(r) : r[c.key]}</dd>
+                        </div>
+                      ))}
+                  </dl>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {!loading && !rows.length && emptyState}
+      </div>
+    );
+  }
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">

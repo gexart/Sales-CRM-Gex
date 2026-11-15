@@ -4,10 +4,12 @@ export const LETTERHEAD = {
   unit: "A unit of Gexart Ventures",
   email: "info@gexart.com",
   web: "gexart.com",
-  phones: ["+91 8274872626", "+91 9038991880"],
+  phones: ["+91 9038991880"],
   addressLines: ["Labanya Phase-2, Kanjialpara, Reckjoani,", "Rajarhat New Town, Kolkata – 700135"],
   addressShort: "Rajarhat, New Town, Kolkata – 700135",
 } as const;
+
+export { CONTACT_NUMBERS, DEFAULT_PHONE, resolvePhone } from "./contact";
 
 /** Full-colour logo with wordmark on white (624 x 198 px), from Gexart_Letterhead.docx. */
 export const LOGO_PNG_BASE64 =

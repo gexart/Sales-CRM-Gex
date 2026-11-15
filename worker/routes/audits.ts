@@ -166,7 +166,7 @@ auditRoutes.get("/audits/:id/report/:ext{pdf|docx}", async (c) => {
   const detail = (await loadRunDetail(c, c.req.param("id"))) as Row;
   if (!["completed", "completed_warnings"].includes(String(detail.status))) throw new ApiError(409, "not_ready", "The report is available once the audit has completed");
   const user = c.get("user");
-  const data = buildAuditReportData(detail, await compareRun(c.env.DB, detail), user.name);
+  const data = buildAuditReportData(detail, await compareRun(c.env.DB, detail), user.name, c.req.query("phone"));
   const ext = c.req.param("ext") as "pdf" | "docx";
   const body = ext === "pdf" ? await renderAuditPdf(data) : await renderAuditDocx(data);
   const base = `${data.typeLabel} report - ${data.accountName} - ${String(detail.created_at).slice(0, 10)}`.replace(/[^\w .-]+/g, "").trim();

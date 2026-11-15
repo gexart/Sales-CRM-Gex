@@ -55,6 +55,7 @@ export async function renderAuditPdf(d: AuditReportData): Promise<Uint8Array> {
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const mono = await doc.embedFont(StandardFonts.Courier);
   const w = new LetterheadWriter(doc, font, bold);
+  w.phone = d.phone;
   w.logo = await doc.embedPng(Uint8Array.from(atob(LOGO_PNG_BASE64), (ch) => ch.charCodeAt(0)));
 
   const issues = d.findings.filter(isIssue);

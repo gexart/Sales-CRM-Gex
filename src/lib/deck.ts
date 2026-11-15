@@ -1,7 +1,7 @@
 // Builds a genuine .pptx in the browser from a reviewed outline, in the fixed Gexart deck format
 // (same look as the CRM-ERP enterprise deck: navy cover and closing, white content slides, orange
 // letter-spaced eyebrows, contact footer with logo and page number). pptxgenjs is loaded on demand.
-import { LETTERHEAD, LOGO_ASPECT, LOGO_PNG_BASE64 } from "../../shared/letterhead";
+import { LETTERHEAD, LOGO_ASPECT, LOGO_PNG_BASE64, resolvePhone } from "../../shared/letterhead";
 
 export interface Slide {
   layout: "title" | "section" | "bullets" | "two_column" | "table" | "metrics" | "closing";
@@ -39,7 +39,6 @@ const FONT = "Arial";
 const SEV_COLOR: Record<string, string> = { critical: "B42318", high: "C2410C", medium: "B45309", low: "0E7490" };
 
 const LOGO = `image/png;base64,${LOGO_PNG_BASE64}`;
-const CONTACT = [LETTERHEAD.email, ...LETTERHEAD.phones, LETTERHEAD.addressShort, LETTERHEAD.web].join("  ·  ");
 const LOGO_W = 0.92;
 const LOGO_H = LOGO_W / LOGO_ASPECT;
 
@@ -50,6 +49,8 @@ export interface DeckMeta {
   title: string;
   company: string;
   author: string;
+  /** The one contact number printed in footers and on the closing slide. */
+  phone?: string;
 }
 
 export async function buildPptx(slides: Slide[], meta: DeckMeta): Promise<Blob> {
@@ -59,6 +60,8 @@ export async function buildPptx(slides: Slide[], meta: DeckMeta): Promise<Blob> 
   pptx.author = meta.author;
   pptx.company = LETTERHEAD.company;
   pptx.title = meta.title;
+  const phone = resolvePhone(meta.phone);
+  const CONTACT = [LETTERHEAD.email, phone, LETTERHEAD.addressShort, LETTERHEAD.web].join("  ·  ");
 
   const footer = (dark: boolean, number: boolean) => ({
     objects: [
@@ -142,7 +145,7 @@ export async function buildPptx(slides: Slide[], meta: DeckMeta): Promise<Blob> 
       s.addImage({ data: LOGO, x: 8.7, y: 1.9, w: 1.7, h: 1.7 / LOGO_ASPECT });
       s.addText("Let's build your growth plan.", { x: 8.7, y: 2.65, w: 3.7, h: 0.9, fontFace: FONT, fontSize: 20, bold: true, color: INK, margin: 0, valign: "top" });
       s.addText("Start with a short discovery call. We confirm priorities, scope and timelines, then send a fixed-price proposal.", { x: 8.7, y: 3.5, w: 3.7, h: 0.85, fontFace: FONT, fontSize: 10.5, color: MUTED, margin: 0, valign: "top" });
-      const contacts = [LETTERHEAD.email, LETTERHEAD.phones.join("  ·  "), LETTERHEAD.web, LETTERHEAD.addressShort];
+      const contacts = [LETTERHEAD.email, phone, LETTERHEAD.web, LETTERHEAD.addressShort];
       contacts.forEach((t, i) => {
         s.addShape(pptx.ShapeType.ellipse, { x: 8.72, y: 4.5 + i * 0.3 + 0.09, w: 0.1, h: 0.1, fill: { color: ORANGE }, line: { color: ORANGE, width: 0 } });
         s.addText(t, { x: 8.95, y: 4.5 + i * 0.3, w: 3.6, h: 0.28, fontFace: FONT, fontSize: 10.5, bold: i < 3, color: INK, margin: 0, valign: "middle" });

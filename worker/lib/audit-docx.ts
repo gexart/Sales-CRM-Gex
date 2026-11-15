@@ -2,6 +2,7 @@
 // (logo + company block), footer and page setup are the letterhead exactly as designed.
 import JSZip from "jszip";
 import { LETTERHEAD_DOCX_BASE64 } from "./letterhead-docx";
+import { resolvePhone } from "../../shared/letterhead";
 import {
   EFFORT_LABEL,
   SEVERITIES,
@@ -261,12 +262,15 @@ export async function renderAuditDocx(d: AuditReportData): Promise<Uint8Array> {
   );
   for (const x of d.warnings) b += text(`Warning: ${x}`, { sz: 18, color: AMBER });
 
-  return wrapInLetterhead(b);
+  return wrapInLetterhead(b, d.phone);
 }
 
 /** Writes body XML into Gexart_Letterhead.docx, keeping its header, footer and page setup. */
-export async function wrapInLetterhead(bodyXml: string): Promise<Uint8Array> {
+export async function wrapInLetterhead(bodyXml: string, phone?: string | null): Promise<Uint8Array> {
   const zip = await JSZip.loadAsync(LETTERHEAD_DOCX_BASE64, { base64: true });
+  // The letterhead lists two numbers; print only the one chosen for this document.
+  const header = await zip.file("word/header1.xml")!.async("string");
+  zip.file("word/header1.xml", header.replace(/\+91 8274872626\s*[·•]\s*\+91 9038991880/, resolvePhone(phone)));
   const xml = await zip.file("word/document.xml")!.async("string");
   const sect = xml.match(/<w:sectPr[\s\S]*<\/w:sectPr>/)?.[0] ?? "";
   zip.file("word/document.xml", xml.replace(/<w:body>[\s\S]*<\/w:body>/, () => `<w:body>${bodyXml}${sect}</w:body>`));
