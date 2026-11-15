@@ -19,24 +19,24 @@ import {
   type ReportFinding,
 } from "../../shared/audit-report";
 
-const FONT = "Lato";
-const INK = "111827";
-const ORANGE = "EA6A1F";
-const GRAY = "4B5563";
-const MUTED = "6B7280";
-const TINT = "F8F9FB";
-const GREEN = "168B4A";
-const AMBER = "D98509";
-const RED = "C72929";
-const SEV_HEX: Record<string, string> = { critical: "BA1C1C", high: "C2400D", medium: "B57308", low: "087399" };
-const CONTENT_W = 10178; // A4 minus the letterhead's 864 twip side margins
+export const FONT = "Lato";
+export const INK = "111827";
+export const ORANGE = "EA6A1F";
+export const GRAY = "4B5563";
+export const MUTED = "6B7280";
+export const TINT = "F8F9FB";
+export const GREEN = "168B4A";
+export const AMBER = "D98509";
+export const RED = "C72929";
+export const SEV_HEX: Record<string, string> = { critical: "BA1C1C", high: "C2400D", medium: "B57308", low: "087399" };
+export const CONTENT_W = 10178; // A4 minus the letterhead's 864 twip side margins
 
 // eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g;
-const esc = (s: string) => s.replace(CONTROL, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-const scoreHex = (s: number | null) => (s === null ? MUTED : s >= 80 ? GREEN : s >= 50 ? AMBER : RED);
+export const esc = (s: string) => s.replace(CONTROL, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+export const scoreHex = (s: number | null) => (s === null ? MUTED : s >= 80 ? GREEN : s >= 50 ? AMBER : RED);
 
-interface RunOpts {
+export interface RunOpts {
   b?: boolean;
   i?: boolean;
   color?: string;
@@ -44,12 +44,12 @@ interface RunOpts {
   font?: string;
   spacing?: number;
 }
-const run = (t: string, o: RunOpts = {}) => {
+export const run = (t: string, o: RunOpts = {}) => {
   const f = o.font ?? FONT;
   return `<w:r><w:rPr><w:rFonts w:ascii="${f}" w:hAnsi="${f}" w:cs="${f}" w:eastAsia="${f}"/>${o.b ? "<w:b/><w:bCs/>" : ""}${o.i ? "<w:i/>" : ""}<w:color w:val="${o.color ?? INK}"/>${o.spacing ? `<w:spacing w:val="${o.spacing}"/>` : ""}<w:sz w:val="${o.sz ?? 20}"/><w:szCs w:val="${o.sz ?? 20}"/></w:rPr><w:t xml:space="preserve">${esc(t)}</w:t></w:r>`;
 };
 
-interface ParaOpts {
+export interface ParaOpts {
   before?: number;
   after?: number;
   jc?: "left" | "right" | "center";
@@ -60,17 +60,17 @@ interface ParaOpts {
   hanging?: number;
   line?: number;
 }
-const para = (runs: string, o: ParaOpts = {}) => {
+export const para = (runs: string, o: ParaOpts = {}) => {
   const ind = o.indent ? `<w:ind w:left="${o.indent}"${o.hanging ? ` w:hanging="${o.hanging}"` : ""}/>` : "";
   const bdr = o.borderBottom ? `<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="4" w:color="${o.borderBottom}"/></w:pBdr>` : "";
   const shd = o.fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${o.fill}"/>` : "";
   return `<w:p><w:pPr>${o.keepNext ? "<w:keepNext/>" : ""}<w:keepLines/>${bdr}${shd}<w:spacing w:before="${o.before ?? 0}" w:after="${o.after ?? 80}" w:line="${o.line ?? 276}" w:lineRule="auto"/>${ind}${o.jc ? `<w:jc w:val="${o.jc}"/>` : ""}</w:pPr>${runs}</w:p>`;
 };
-const text = (t: string, o: RunOpts & ParaOpts = {}) => para(run(t, o), o);
-const spacer = (after = 100) => `<w:p><w:pPr><w:spacing w:before="0" w:after="${after}" w:line="120" w:lineRule="exact"/></w:pPr></w:p>`;
-const bullet = (t: string, color = INK, dot = GRAY) => para(run("•  ", { color: dot, b: true }) + run(t, { color, sz: 19 }), { indent: 300, hanging: 300, after: 50 });
+export const text = (t: string, o: RunOpts & ParaOpts = {}) => para(run(t, o), o);
+export const spacer = (after = 100) => `<w:p><w:pPr><w:spacing w:before="0" w:after="${after}" w:line="120" w:lineRule="exact"/></w:pPr></w:p>`;
+export const bullet = (t: string, color = INK, dot = GRAY) => para(run("•  ", { color: dot, b: true }) + run(t, { color, sz: 19 }), { indent: 300, hanging: 300, after: 50 });
 
-interface Cell {
+export interface Cell {
   w: number;
   content: string;
   fill?: string;
@@ -78,20 +78,20 @@ interface Cell {
   vAlign?: "top" | "center";
   pad?: number;
 }
-const cell = (c: Cell) => {
+export const cell = (c: Cell) => {
   const pad = c.pad ?? 100;
   const padX = c.pad ?? 160;
   return `<w:tc><w:tcPr><w:tcW w:w="${c.w}" w:type="dxa"/>${c.leftBar ? `<w:tcBorders><w:left w:val="single" w:sz="36" w:space="0" w:color="${c.leftBar}"/></w:tcBorders>` : ""}${c.fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${c.fill}"/>` : ""}<w:tcMar><w:top w:w="${pad}" w:type="dxa"/><w:left w:w="${padX}" w:type="dxa"/><w:bottom w:w="${pad}" w:type="dxa"/><w:right w:w="${padX}" w:type="dxa"/></w:tcMar><w:vAlign w:val="${c.vAlign ?? "top"}"/></w:tcPr>${c.content || "<w:p/>"}</w:tc>`;
 };
-const table = (widths: number[], rows: Cell[][]) =>
+export const table = (widths: number[], rows: Cell[][]) =>
   `<w:tbl><w:tblPr><w:tblW w:w="${widths.reduce((a, b) => a + b, 0)}" w:type="dxa"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>${widths.map((w) => `<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>${rows.map((r) => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${r.map(cell).join("")}</w:tr>`).join("")}</w:tbl>`;
 
-const heading = (n: number, title: string) =>
+export const heading = (n: number, title: string) =>
   para(run(String(n).padStart(2, "0") + "   ", { b: true, color: ORANGE, sz: 32 }) + run(title, { b: true, sz: 32 }), { before: 320, after: 140, keepNext: true, borderBottom: "E5E7EB" });
-const label = (t: string, color = MUTED) => run(t.toUpperCase(), { b: true, sz: 14, color, spacing: 20 });
-const gap = (w: number): Cell => ({ w, content: '<w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p>', pad: 0 });
+export const label = (t: string, color = MUTED) => run(t.toUpperCase(), { b: true, sz: 14, color, spacing: 20 });
+export const gap = (w: number): Cell => ({ w, content: '<w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p>', pad: 0 });
 
-function statTile(w: number, value: string, caption: string, color: string): Cell {
+export function statTile(w: number, value: string, caption: string, color: string): Cell {
   return { w, fill: TINT, leftBar: color, pad: 120, content: para(run(value, { b: true, sz: 40, color }), { after: 0, line: 240 }) + para(run(caption, { sz: 16, color: MUTED }), { after: 0 }) };
 }
 
@@ -261,9 +261,14 @@ export async function renderAuditDocx(d: AuditReportData): Promise<Uint8Array> {
   );
   for (const x of d.warnings) b += text(`Warning: ${x}`, { sz: 18, color: AMBER });
 
+  return wrapInLetterhead(b);
+}
+
+/** Writes body XML into Gexart_Letterhead.docx, keeping its header, footer and page setup. */
+export async function wrapInLetterhead(bodyXml: string): Promise<Uint8Array> {
   const zip = await JSZip.loadAsync(LETTERHEAD_DOCX_BASE64, { base64: true });
   const xml = await zip.file("word/document.xml")!.async("string");
   const sect = xml.match(/<w:sectPr[\s\S]*<\/w:sectPr>/)?.[0] ?? "";
-  zip.file("word/document.xml", xml.replace(/<w:body>[\s\S]*<\/w:body>/, () => `<w:body>${b}${sect}</w:body>`));
+  zip.file("word/document.xml", xml.replace(/<w:body>[\s\S]*<\/w:body>/, () => `<w:body>${bodyXml}${sect}</w:body>`));
   return zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
 }

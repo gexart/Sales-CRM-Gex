@@ -10,7 +10,9 @@ import { auditStmt } from "../lib/audit-log";
 import { clientIp } from "../lib/auth";
 import { fetchOne, updateRow } from "../lib/entity";
 import { claudeJson, untrusted, CLAUDE_MODEL } from "../lib/providers";
-import { renderProposalPdf } from "../lib/pdf";
+import { renderProposalPdf } from "../lib/proposal-pdf";
+import { renderProposalDocx } from "../lib/proposal-docx";
+import type { ProposalData } from "../lib/pdf";
 import { auditType } from "../audits/registry";
 import { b, newId, now } from "../lib/util";
 import { ENTITIES } from "../entities";
@@ -249,7 +251,7 @@ salesRoutes.post("/accounts/:id/proposal", async (c) => {
       : `This proposal is based on our conversations and the services selected below; no audit findings are included.`,
     `We recommend ${lines.map((l) => l.product.name).join(", ")} to address ${issueCount ? "these findings" : "your priorities"}. The investment section lists prices from the Gexart price book${customCount ? `; ${customCount} item(s) will be quoted after the discovery call` : ""}.`,
   ].join(" ");
-  const pdf = await renderProposalPdf({
+  const proposalData: ProposalData = {
     title: input.title ?? "Digital Growth Proposal",
     clientName: company,
     clientMeta: [f.account.industry, f.account.city, f.account.website].filter(Boolean).join("  ·  ").replace(/·/g, "|"),
@@ -271,18 +273,22 @@ salesRoutes.post("/accounts/:id/proposal", async (c) => {
     totals: [...totals.entries()].map(([k, v]) => ({ label: `${labelOf(PACKAGE_BILLING, k.split("|")[0])} total`, value: fmtMoney(v.minor, v.currency) })),
     priceNote: `Prices from the Gexart price book as of ${date}.${customCount ? " Items marked Custom quote will be priced in writing after scope is confirmed." : ""}`,
     scopeNote: f.audits.length ? "Audit findings reflect publicly observable evidence on the pages inspected at the stated dates; they are not a full-site crawl or a guarantee of rankings or revenue." : null,
-  });
+  };
+  const pdf = await renderProposalPdf(proposalData);
+  const docx = await renderProposalDocx(proposalData);
   const title = `${input.title ?? "Digital Growth Proposal"} - ${company} - ${now().slice(0, 10)}`;
   const links = [{ type: "account", id: accountId }, ...(input.opportunity_id ? [{ type: "opportunity", id: input.opportunity_id }] : []), ...f.audits.map((a) => ({ type: "audit_run", id: a.id }))];
   const asset = await storeAsset(c.env, { userId: user.id, name: title, type: "proposal", visibility: "internal", fileName: `${title.replace(/[^\w -]+/g, "")}.pdf`, mime: "application/pdf", body: pdf, size: pdf.byteLength, source: "generated", links });
+  // The same proposal as an editable Word file, stored beside the PDF and linked to the same records.
+  const docxAsset = await storeAsset(c.env, { userId: user.id, name: `${title} (Word)`, type: "proposal", visibility: "internal", fileName: `${title.replace(/[^\w -]+/g, "")}.docx`, mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", body: docx, size: docx.byteLength, source: "generated", links });
   const docId = newId();
   await db.batch([
     db.prepare("INSERT INTO generated_documents (id, kind, title, account_id, opportunity_id, asset_id, sources, content, generator, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(
       docId, "proposal_pdf", title, accountId, b(input.opportunity_id), asset.id, JSON.stringify({ audit_run_ids: f.audits.map((a) => a.id), items: input.items }), JSON.stringify({ prices }), "template", user.id, now(),
     ),
-    auditStmt(db, { actorId: user.id, action: "generate", entityType: "account", entityId: accountId, summary: `Generated PDF proposal "${title}"`, ip: clientIp(c) }),
+    auditStmt(db, { actorId: user.id, action: "generate", entityType: "account", entityId: accountId, summary: `Generated proposal "${title}" (PDF and Word)`, ip: clientIp(c) }),
   ]);
-  return c.json({ data: { document_id: docId, asset_id: asset.id, title } }, 201);
+  return c.json({ data: { document_id: docId, asset_id: asset.id, docx_asset_id: docxAsset.id, title } }, 201);
 });
 
 // ─── Pitch deck outline (Claude or template) ───
@@ -384,11 +390,21 @@ salesRoutes.post("/accounts/:id/decks", async (c) => {
   const opp = s("opportunity_id");
   if (opp) await fetchOne(c, ENTITIES.opportunities, opp);
   const asset = await storeAsset(c.env, { userId: user.id, name: title, type: "pitch_deck", fileName: `${title.replace(/[^\w -]+/g, "")}.pptx`, mime: f.type, body: f.stream(), size: f.size, source: "generated", links: [{ type: "account", id: accountId }, ...(opp ? [{ type: "opportunity", id: opp }] : [])] });
+  // The browser also renders the same slides to PDF; store it beside the PowerPoint.
+  const pdfFile = form.get("pdf");
+  let pdfAssetId: string | null = null;
+  if (pdfFile && typeof pdfFile !== "string") {
+    const pf = pdfFile as File;
+    if (pf.type !== "application/pdf") throw new ApiError(400, "unsupported_type", "Expected a PDF");
+    if (pf.size > 25 * 1024 * 1024) throw new ApiError(400, "too_large", "PDF exceeds 25 MB");
+    const pa = await storeAsset(c.env, { userId: user.id, name: `${title} (PDF)`, type: "pitch_deck", fileName: `${title.replace(/[^\w -]+/g, "")}.pdf`, mime: "application/pdf", body: pf.stream(), size: pf.size, source: "generated", links: [{ type: "account", id: accountId }, ...(opp ? [{ type: "opportunity", id: opp }] : [])] });
+    pdfAssetId = pa.id;
+  }
   const generator = s("generator") === "claude" ? "claude" : "template";
   await c.env.DB.prepare("INSERT INTO generated_documents (id, kind, title, account_id, opportunity_id, asset_id, sources, content, generator, model, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
     .bind(newId(), "pitch_deck", title, accountId, b(opp), asset.id, JSON.stringify({ template: s("template") }), (s("outline") ?? "").slice(0, 200000), generator, generator === "claude" ? (s("model") ?? CLAUDE_MODEL) : null, user.id, now())
     .run();
-  return c.json({ data: { asset_id: asset.id } }, 201);
+  return c.json({ data: { asset_id: asset.id, pdf_asset_id: pdfAssetId } }, 201);
 });
 
 salesRoutes.get("/accounts/:id/documents", async (c) => {

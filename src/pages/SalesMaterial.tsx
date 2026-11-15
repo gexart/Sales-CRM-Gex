@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Download, FileText, ListPlus, Plus, Presentation, Sparkles, Swords, Trash2, Wand2 } from "lucide-react";
 import { api, type Row } from "../lib/api";
@@ -189,25 +189,26 @@ export function ProposalDialog({ open, onClose, account }: { open: boolean; onCl
     <SlideOver
       open={open}
       onClose={onClose}
-      title="Generate PDF proposal"
-      subtitle="Fixed Gexart layout: cover · summary · findings · solutions · investment · next steps"
+      title="Generate proposal (PDF + Word)"
+      subtitle="On the Gexart letterhead: summary · findings · solutions · investment · next steps"
       width="max-w-3xl"
       footer={
         done ? (
           <>
             <Button onClick={onClose}>Close</Button>
             <a href={`/api/v1/assets/${done.asset_id}/download`}><Button variant="primary" icon={Download}>Download PDF</Button></a>
+            {done.docx_asset_id && <a href={`/api/v1/assets/${done.docx_asset_id}/download`}><Button icon={Download}>Download Word (.docx)</Button></a>}
           </>
         ) : (
           <>
             <Button onClick={onClose}>Cancel</Button>
-            <Button variant="primary" icon={FileText} disabled={!items.length || items.some((i) => !i.product_id)} loading={m.isPending} onClick={() => m.mutate()}>Generate PDF</Button>
+            <Button variant="primary" icon={FileText} disabled={!items.length || items.some((i) => !i.product_id)} loading={m.isPending} onClick={() => m.mutate()}>Generate PDF + Word</Button>
           </>
         )
       }
     >
       {done ? (
-        <EmptyState icon={FileText} title="Proposal generated" body={<>“{done.title}” is saved to Sales Assets and linked to this account. Download it, review it, then send it yourself.</>} />
+        <EmptyState icon={FileText} title="Proposal generated" body={<>“{done.title}” is saved to Sales Assets as a PDF and an editable Word file, both linked to this account. Download them, review, then send it yourself.</>} />
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -255,12 +256,25 @@ export function DeckDialog({ open, onClose, account }: { open: boolean; onClose:
   const [useAi, setUseAi] = useState(true);
   const [outline, setOutline] = useState<{ slides: Slide[]; generator: string; model: string | null; assumptions: string[]; missing_information: string[] } | null>(null);
   const [building, setBuilding] = useState(false);
-  const [saved, setSaved] = useState<string | null>(null);
+  const [saved, setSaved] = useState<{ pptx: string; pdf: string | null } | null>(null);
   const gen = useMutation({
     mutationFn: () => api.post<{ data: Row }>(`/accounts/${account.id}/deck-outline`, { template, audience: audience || null, objective: objective || null, audit_run_ids: audits, product_ids: products, use_ai: useAi && !!avail.data?.claude }),
     onSuccess: (r) => (setOutline(r.data as never), setSaved(null)),
     onError: (e) => toast("error", (e as Error).message),
   });
+  // No AI key needed: as soon as the dialog opens, build the outline from the account's CRM data so the deck can be
+  // generated straight away. Claude only improves the wording when a key is configured.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      autoRan.current = false;
+      return;
+    }
+    if (!autoRan.current && !outline && avail.data !== undefined && !gen.isPending) {
+      autoRan.current = true;
+      gen.mutate();
+    }
+  }, [open, outline, avail.data, gen]);
   const setSlide = (i: number, patch: Partial<Slide>) => setOutline((o) => (o ? { ...o, slides: o.slides.map((s, j) => (j === i ? { ...s, ...patch } : s)) } : o));
   const move = (i: number, d: number) => setOutline((o) => {
     if (!o) return o;
@@ -274,19 +288,22 @@ export function DeckDialog({ open, onClose, account }: { open: boolean; onClose:
     setBuilding(true);
     try {
       const title = `${E.labelOf(E.DECK_TEMPLATES, template)} - ${account.name}`;
-      const { buildPptx } = await import("../lib/deck");
-      const blob = await buildPptx(outline.slides, { title, company: account.name, author: user!.name });
+      const [{ buildPptx }, { buildDeckPdf }] = await Promise.all([import("../lib/deck"), import("../lib/deck-pdf")]);
+      const meta = { title, company: account.name, author: user!.name };
+      const blob = await buildPptx(outline.slides, meta);
+      const pdfBlob = await buildDeckPdf(outline.slides, meta);
       const f = new FormData();
       f.set("file", new File([blob], `${title}.pptx`, { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" }));
+      f.set("pdf", new File([pdfBlob], `${title}.pdf`, { type: "application/pdf" }));
       f.set("title", title);
       f.set("template", template);
       f.set("generator", outline.generator);
       if (outline.model) f.set("model", outline.model);
       f.set("outline", JSON.stringify(outline.slides));
       const r = await api.upload<{ data: Row }>(`/accounts/${account.id}/decks`, f);
-      setSaved(r.data.asset_id);
+      setSaved({ pptx: r.data.asset_id, pdf: r.data.pdf_asset_id ?? null });
       qc.invalidateQueries({ queryKey: ["assets"] });
-      toast("success", "Deck saved to Sales Assets");
+      toast("success", "PowerPoint and PDF saved to Sales Assets");
     } catch (e) {
       toast("error", (e as Error).message);
     } finally {
@@ -297,13 +314,14 @@ export function DeckDialog({ open, onClose, account }: { open: boolean; onClose:
     <SlideOver
       open={open}
       onClose={onClose}
-      title="Generate pitch deck (.pptx)"
-      subtitle={`${account.name} · Gexart master design · ${avail.data?.claude ? "outline by Claude" : "template outline"}`}
+      title="Generate pitch deck (PowerPoint + PDF)"
+      subtitle={`${account.name} · Gexart master design · ${avail.data?.claude ? "outline by Claude" : "built from your CRM data, no AI key needed"}`}
       width="max-w-5xl"
       footer={
         <>
-          {saved && <a href={`/api/v1/assets/${saved}/download`}><Button icon={Download}>Download .pptx</Button></a>}
-          <Button variant="primary" icon={Presentation} disabled={!outline?.slides.length} loading={building} onClick={build}>{saved ? "Rebuild & save new version" : "Build .pptx & save"}</Button>
+          {saved && <a href={`/api/v1/assets/${saved.pptx}/download`}><Button icon={Download}>Download .pptx</Button></a>}
+          {saved?.pdf && <a href={`/api/v1/assets/${saved.pdf}/download`}><Button icon={Download}>Download PDF</Button></a>}
+          <Button variant="primary" icon={Presentation} disabled={!outline?.slides.length} loading={building} onClick={build}>{saved ? "Rebuild & save again" : "Build PowerPoint + PDF"}</Button>
         </>
       }
     >
