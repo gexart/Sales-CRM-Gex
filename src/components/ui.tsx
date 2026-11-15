@@ -18,13 +18,17 @@ import { initials } from "../lib/format";
 export const cn = clsx;
 
 // ─── Buttons ───
-type Variant = "primary" | "secondary" | "ghost" | "danger" | "subtle";
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "subtle" | "onDark" | "accent";
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-ink text-white hover:bg-ink/90 active:bg-ink shadow-[0_1px_2px_rgb(0_0_0/0.2),inset_0_1px_0_rgb(255_255_255/0.08)] border border-ink",
   secondary: "bg-white text-ink border border-line hover:bg-slate-50 hover:border-slate-300 shadow-[var(--shadow-card)]",
   ghost: "text-slate-600 hover:bg-slate-100 hover:text-ink",
   subtle: "bg-brand-50 text-ink hover:bg-brand-100",
   danger: "bg-red-600 text-white hover:bg-red-700 shadow-sm",
+  // For buttons placed on navy panels (the panel is navy in both light and dark mode).
+  onDark: "border border-snow/25 bg-snow/10 text-snow hover:bg-snow/20",
+  // Brand-orange call to action.
+  accent: "border border-brand-500 bg-brand-500 text-snow shadow-sm hover:bg-brand-600",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

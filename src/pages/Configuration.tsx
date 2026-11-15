@@ -115,7 +115,7 @@ export function ConfigurationSettings() {
               Paste your keys, then save once. {setCount} of {fields.length} settings are set. Values saved here take effect within seconds and override Cloudflare Worker secrets of the same name.
             </p>
           </div>
-          <Button icon={Sparkles} loading={testing} disabled={!testable.length || dirty > 0} title={dirty ? "Save your changes first" : undefined} onClick={testAll} className="border-snow/20 bg-snow/10 text-snow hover:bg-snow/20">
+          <Button icon={Sparkles} loading={testing} disabled={!testable.length || dirty > 0} title={dirty ? "Save your changes first" : undefined} onClick={testAll} variant="onDark">
             Test connections
           </Button>
         </div>
@@ -173,7 +173,7 @@ export function ConfigurationSettings() {
             <button className="rounded-full px-3 py-1.5 text-xs text-snow/70 hover:bg-snow/10 hover:text-snow" onClick={() => (setDraft({}), setErrors({}))}>
               Discard
             </button>
-            <Button size="sm" loading={save.isPending} onClick={() => save.mutate()} className="rounded-full border-brand-500 bg-brand-500 text-snow hover:bg-brand-600">
+            <Button size="sm" variant="accent" loading={save.isPending} onClick={() => save.mutate()} className="rounded-full">
               Save changes
             </Button>
           </div>
