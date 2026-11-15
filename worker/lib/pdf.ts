@@ -21,20 +21,20 @@ export interface ProposalData {
   scopeNote: string | null;
 }
 
-const BRAND = rgb(0.078, 0.118, 0.18); // navy #141E2E
-const ACCENT = rgb(0.957, 0.478, 0.125); // orange #F47A20
-const INK = rgb(0.078, 0.118, 0.18);
-const MUTED = rgb(0.39, 0.44, 0.54);
-const LINE = rgb(0.894, 0.906, 0.933);
-const SEV: Record<string, ReturnType<typeof rgb>> = {
+export const BRAND = rgb(0.078, 0.118, 0.18); // navy #141E2E
+export const ACCENT = rgb(0.957, 0.478, 0.125); // orange #F47A20
+export const INK = rgb(0.078, 0.118, 0.18);
+export const MUTED = rgb(0.39, 0.44, 0.54);
+export const LINE = rgb(0.894, 0.906, 0.933);
+export const SEV: Record<string, ReturnType<typeof rgb>> = {
   critical: rgb(0.73, 0.11, 0.11),
   high: rgb(0.76, 0.25, 0.05),
   medium: rgb(0.71, 0.45, 0.03),
   low: rgb(0.03, 0.45, 0.6),
 };
-const W = 595.28;
-const H = 841.89;
-const M = 50;
+export const W = 595.28;
+export const H = 841.89;
+export const M = 50;
 
 /** Standard PDF fonts only encode WinAnsi; map common Unicode and drop the rest. */
 export function pdfSafe(s: string | null | undefined): string {
@@ -50,7 +50,7 @@ export function pdfSafe(s: string | null | undefined): string {
     .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, "");
 }
 
-class Writer {
+export class Writer {
   page!: PDFPage;
   y = 0;
   pages: PDFPage[] = [];
@@ -71,7 +71,18 @@ class Writer {
     const out: string[] = [];
     for (const para of pdfSafe(text).split("\n")) {
       let line = "";
-      for (const word of para.split(/\s+/)) {
+      for (let word of para.split(/\s+/)) {
+        // A single token wider than the line (a long URL, say) is broken by character so it never overflows.
+        while (word.length > 1 && font.widthOfTextAtSize(word, size) > width) {
+          let cut = word.length - 1;
+          while (cut > 1 && font.widthOfTextAtSize(word.slice(0, cut), size) > width) cut--;
+          if (line) {
+            out.push(line);
+            line = "";
+          }
+          out.push(word.slice(0, cut));
+          word = word.slice(cut);
+        }
         const next = line ? `${line} ${word}` : word;
         if (font.widthOfTextAtSize(next, size) > width && line) {
           out.push(line);

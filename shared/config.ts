@@ -40,6 +40,18 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
     ],
   },
   {
+    id: "emailjs",
+    title: "EmailJS (welcome and password-reset emails)",
+    description:
+      "Sends the welcome email when a user is created and the forgot-password link. Used first when all four values are set; otherwise Brevo is used. In EmailJS: add an email service, create a template whose To address is {{to_email}}, Subject is {{subject}} and body is {{{message_html}}}, and turn on Account → Security → \"Allow EmailJS API for non-browser applications\".",
+    fields: [
+      { key: "EMAILJS_SERVICE_ID", label: "Service ID", kind: "text", placeholder: "service_xxxxxxx", help: "EmailJS → Email Services.", link: "https://dashboard.emailjs.com/admin" },
+      { key: "EMAILJS_TEMPLATE_ID", label: "Template ID", kind: "text", placeholder: "template_xxxxxxx", help: "EmailJS → Email Templates. Variables sent: to_email, to_name, subject, message_html, message.", link: "https://dashboard.emailjs.com/admin/templates" },
+      { key: "EMAILJS_PUBLIC_KEY", label: "Public key", kind: "text", help: "EmailJS → Account → General → Public Key.", link: "https://dashboard.emailjs.com/admin/account" },
+      { key: "EMAILJS_PRIVATE_KEY", label: "Private key (secret)", kind: "secret", help: "EmailJS → Account → General → Private Key. Stored encrypted and never shown in full.", link: "https://dashboard.emailjs.com/admin/account" },
+    ],
+  },
+  {
     id: "coldemail",
     title: "Cold email mailbox (Google Workspace)",
     description: "Lets the autopilot send from, and read replies in, a Google Workspace mailbox. Use a separate domain for cold email so your main domain's reputation stays safe.",
@@ -91,7 +103,10 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
     id: "workspace",
     title: "Workspace",
     description: "General settings.",
-    fields: [{ key: "APP_NAME", label: "Workspace name", kind: "text", placeholder: "Gexart CRM", help: "Shown to the phone app after pairing." }],
+    fields: [
+      { key: "APP_NAME", label: "Workspace name", kind: "text", placeholder: "Gexart CRM", help: "Shown to the phone app after pairing and in system emails." },
+      { key: "APP_URL", label: "CRM web address", kind: "text", placeholder: "https://crm.yourdomain.com", help: "Used in welcome and password-reset emails. Leave blank to use the address you are signed in on." },
+    ],
   },
 ];
 

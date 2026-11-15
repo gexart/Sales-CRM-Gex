@@ -9,6 +9,8 @@
     "run_worker_first": ["/api/*"]
   },
   "observability": { "enabled": true },
+  // Custom domain. `wrangler deploy` creates the DNS record and certificate automatically as long as gexart.com is a zone in this Cloudflare account.
+  "routes": [{ "pattern": "sales.gexart.com", "custom_domain": true }],
   "d1_databases": [
     {
       "binding": "DB",
@@ -33,6 +35,8 @@
     // Verified sender for Brevo transactional email (must be verified in your Brevo account).
     "BREVO_SENDER_EMAIL": "",
     "BREVO_SENDER_NAME": "Gexart",
+    // Public address used in emailed links (welcome / password reset), e.g. "https://crm.gexart.com". Blank = the address the request arrived on.
+    "APP_URL": "https://sales.gexart.com",
     // Daily call caps per external provider (protects paid credits). 0 disables the provider.
     "QUOTA_GOOGLE_PLACES": "100",
     "QUOTA_ENRICHMENT": "50",

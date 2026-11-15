@@ -11,6 +11,9 @@ import { ENTITIES } from "../entities";
 import { AUDIT_TYPES, auditType } from "../audits/registry";
 import { assertPublicUrl } from "../audits/crawler";
 import { enqueue } from "../jobs";
+import { buildAuditReportData } from "../../shared/audit-report";
+import { renderAuditPdf } from "../lib/audit-pdf";
+import { renderAuditDocx } from "../lib/audit-docx";
 import { saveAssessment } from "./crm";
 
 type Row = Record<string, unknown>;
@@ -129,29 +132,50 @@ auditRoutes.post("/audits/:id/cancel", async (c) => {
   return c.json({ data: { ok: true } });
 });
 
-auditRoutes.get("/audits/:id/compare", async (c) => {
-  const run = await loadRun(c, c.req.param("id"));
-  const db = c.env.DB;
-  const other = c.req.query("with")
-    ? await db.prepare("SELECT * FROM audit_runs WHERE id = ? AND account_id = ? AND audit_type = ?").bind(c.req.query("with"), run.account_id, run.audit_type).first<Row>()
+/** Compares a run with the previous completed run of the same type (or an explicit one). Null when there is nothing to compare. */
+async function compareRun(db: D1Database, run: Row, withId?: string) {
+  const other = withId
+    ? await db.prepare("SELECT * FROM audit_runs WHERE id = ? AND account_id = ? AND audit_type = ?").bind(withId, run.account_id, run.audit_type).first<Row>()
     : await db
         .prepare("SELECT * FROM audit_runs WHERE account_id = ? AND audit_type = ? AND created_at < ? AND status IN ('completed','completed_warnings') ORDER BY created_at DESC LIMIT 1")
         .bind(run.account_id, run.audit_type, run.created_at)
         .first<Row>();
-  if (!other) return c.json({ data: null });
+  if (!other) return null;
   const [a, b] = await db.batch<Row>([
     db.prepare("SELECT check_id, title, result FROM audit_findings WHERE run_id = ?").bind(other.id),
     db.prepare("SELECT check_id, title, result FROM audit_findings WHERE run_id = ?").bind(run.id),
   ]);
   const before = new Map(a.results.map((f) => [f.check_id, f]));
   const bad = (r: unknown) => r === "fail" || r === "warn";
-  return c.json({
-    data: {
-      previous: { id: other.id, created_at: other.created_at, overall_score: other.overall_score, audit_version: other.audit_version },
-      score_change: run.overall_score !== null && other.overall_score !== null ? Number(run.overall_score) - Number(other.overall_score) : null,
-      same_rubric: other.audit_version === run.audit_version,
-      resolved: b.results.filter((f) => !bad(f.result) && f.result !== "unavailable" && bad(before.get(f.check_id)?.result)).map((f) => f.title),
-      new_issues: b.results.filter((f) => bad(f.result) && !bad(before.get(f.check_id)?.result)).map((f) => f.title),
+  return {
+    previous: { id: other.id, created_at: other.created_at, overall_score: other.overall_score, audit_version: other.audit_version },
+    score_change: run.overall_score !== null && other.overall_score !== null ? Number(run.overall_score) - Number(other.overall_score) : null,
+    same_rubric: other.audit_version === run.audit_version,
+    resolved: b.results.filter((f) => !bad(f.result) && f.result !== "unavailable" && bad(before.get(f.check_id)?.result)).map((f) => f.title),
+    new_issues: b.results.filter((f) => bad(f.result) && !bad(before.get(f.check_id)?.result)).map((f) => f.title),
+  };
+}
+
+auditRoutes.get("/audits/:id/compare", async (c) => {
+  const run = await loadRun(c, c.req.param("id"));
+  return c.json({ data: await compareRun(c.env.DB, run, c.req.query("with")) });
+});
+
+/** Downloadable report on the Gexart letterhead: PDF or Word. (PowerPoint is built in the browser.) */
+auditRoutes.get("/audits/:id/report/:ext{pdf|docx}", async (c) => {
+  const detail = (await loadRunDetail(c, c.req.param("id"))) as Row;
+  if (!["completed", "completed_warnings"].includes(String(detail.status))) throw new ApiError(409, "not_ready", "The report is available once the audit has completed");
+  const user = c.get("user");
+  const data = buildAuditReportData(detail, await compareRun(c.env.DB, detail), user.name);
+  const ext = c.req.param("ext") as "pdf" | "docx";
+  const body = ext === "pdf" ? await renderAuditPdf(data) : await renderAuditDocx(data);
+  const base = `${data.typeLabel} report - ${data.accountName} - ${String(detail.created_at).slice(0, 10)}`.replace(/[^\w .-]+/g, "").trim();
+  c.executionCtx.waitUntil(auditStmt(c.env.DB, { actorId: user.id, action: "download", entityType: "audit_run", entityId: String(detail.id), summary: `Downloaded ${ext.toUpperCase()} audit report`, ip: clientIp(c) }).run());
+  return new Response(body, {
+    headers: {
+      "content-type": ext === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "content-disposition": `attachment; filename="${base}.${ext}"`,
+      "cache-control": "no-store",
     },
   });
 });

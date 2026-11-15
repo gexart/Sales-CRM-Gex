@@ -5,7 +5,7 @@ import { api, type Row } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import * as E from "../../shared/enums";
 import { money } from "../lib/format";
-import { buildPptx, type Slide } from "../lib/deck";
+import type { Slide } from "../lib/deck";
 import { RefSelect } from "../components/forms";
 import { CopyButton } from "../components/outreach";
 import { invalidateRecord } from "../components/records";
@@ -274,6 +274,7 @@ export function DeckDialog({ open, onClose, account }: { open: boolean; onClose:
     setBuilding(true);
     try {
       const title = `${E.labelOf(E.DECK_TEMPLATES, template)} - ${account.name}`;
+      const { buildPptx } = await import("../lib/deck");
       const blob = await buildPptx(outline.slides, { title, company: account.name, author: user!.name });
       const f = new FormData();
       f.set("file", new File([blob], `${title}.pptx`, { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" }));

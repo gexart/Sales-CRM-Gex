@@ -69,14 +69,14 @@ export function useDashboard(period: PeriodKey, custom: { from: string; to: stri
 
 function Kpi({ label, value, icon: Icon, sub, to, tone = "brand" }: { label: string; value: ReactNode; icon: LucideIcon; sub?: ReactNode; to?: string; tone?: "brand" | "red" | "green" }) {
   const body = (
-    <Card className={cn("flex items-start gap-3 p-3.5 transition-shadow", to && "hover:shadow-[var(--shadow-pop)]")}>
+    <Card className={cn("flex items-start gap-2.5 p-3 transition-shadow sm:gap-3 sm:p-3.5", to && "hover:shadow-[var(--shadow-pop)]")}>
       <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", tone === "red" ? "bg-red-50 text-red-600" : tone === "green" ? "bg-emerald-50 text-emerald-600" : "bg-brand-50 text-ink")}>
         <Icon className="size-4" />
       </span>
       <div className="min-w-0">
-        <div className="truncate text-xs text-muted">{label}</div>
+        <div className="text-xs leading-snug text-muted sm:truncate">{label}</div>
         <div className="truncate text-xl font-semibold tracking-tight tabular-nums">{value}</div>
-        {sub && <div className="truncate text-[11px] text-muted">{sub}</div>}
+        {sub && <div className="text-[11px] leading-snug text-muted sm:truncate">{sub}</div>}
       </div>
     </Card>
   );

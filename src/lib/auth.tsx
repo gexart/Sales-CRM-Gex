@@ -15,6 +15,8 @@ export interface Me {
 interface AuthState {
   user: Me | null;
   needsSetup: boolean;
+  /** True when password emails can be sent (Brevo key + sender configured). */
+  emailEnabled: boolean;
   loading: boolean;
   refresh: () => Promise<unknown>;
   isManager: boolean;
@@ -27,7 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const q = useQuery({
     queryKey: ["auth-status"],
-    queryFn: () => api.get<{ data: { needsSetup: boolean; user: Me | null } }>("/auth/status").then((r) => r.data),
+    queryFn: () => api.get<{ data: { needsSetup: boolean; emailEnabled: boolean; user: Me | null } }>("/auth/status").then((r) => r.data),
     staleTime: 5 * 60_000,
   });
   useEffect(() => {
@@ -42,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         needsSetup: q.data?.needsSetup ?? false,
+        emailEnabled: q.data?.emailEnabled ?? false,
         loading: q.isLoading,
         // Drop every cached record (they belong to the previous session), then reload who is signed in.
         refresh: async () => {

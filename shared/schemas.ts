@@ -212,7 +212,14 @@ export const userUpdateSchema = z.object({
   timezone: z.string().max(60).optional(),
   password: z.string().min(10, "At least 10 characters").max(200).optional(),
 });
+/** Admin-created user. `send_welcome` emails them a one-time link to choose their own password. */
+export const userInviteSchema = userCreateSchema.extend({ send_welcome: z.boolean().default(true) });
 export const loginSchema = z.object({ email: z.email().max(200), password: z.string().min(1).max(200) });
+export const forgotPasswordSchema = z.object({ email: z.email().max(200) });
+export const resetPasswordSchema = z.object({
+  token: z.string().min(20, "This link is not valid").max(200, "This link is not valid"),
+  password: z.string().min(10, "At least 10 characters").max(200),
+});
 export const setupSchema = userCreateSchema.omit({ role: true });
 
 export const auditRunSchema = z.object({

@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { AlertTriangle, CheckCircle2, Info, Loader2, X, type LucideIcon } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Eye, EyeOff, Info, Loader2, X, type LucideIcon } from "lucide-react";
 import { initials } from "../lib/format";
 
 export const cn = clsx;
@@ -44,7 +44,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       type={type}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md font-medium whitespace-nowrap transition-colors select-none",
+        "btn inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md font-medium whitespace-nowrap transition-colors select-none",
         "disabled:pointer-events-none disabled:opacity-50",
         size === "sm" ? "h-7 px-2 text-xs" : "h-8 px-3 text-[13px]",
         VARIANTS[variant],
@@ -85,6 +85,29 @@ export function Field({ label, error, help, children, className, required }: { l
     </div>
   );
 }
+
+/** Password input with a show/hide (eye) toggle. Accepts every normal <input> prop except `type`. */
+export const PasswordInput = forwardRef<HTMLInputElement, Omit<React.InputHTMLAttributes<HTMLInputElement>, "type">>(function PasswordInput({ className, ...rest }, ref) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <input ref={ref} {...rest} type={visible ? "text" : "password"} className={cn("input pr-10", className)} />
+      <button
+        type="button"
+        tabIndex={0}
+        aria-label={visible ? "Hide password" : "Show password"}
+        aria-pressed={visible}
+        title={visible ? "Hide password" : "Show password"}
+        // Keep keyboard focus (and the caret) in the field when clicking the eye.
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => setVisible((v) => !v)}
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-md text-slate-400 transition-colors hover:text-ink focus-visible:text-ink focus-visible:outline-none"
+      >
+        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </div>
+  );
+});
 
 export function Select({ options, placeholder, className, ...rest }: { options: { value: string; label: string }[]; placeholder?: string } & React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
@@ -209,7 +232,7 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { valu
           aria-selected={value === t.value}
           onClick={() => onChange(t.value)}
           className={cn(
-            "relative -mb-px flex h-9 shrink-0 items-center gap-1.5 border-b-2 px-3 text-[13px] font-medium transition-colors",
+            "relative -mb-px flex h-10 shrink-0 sm:h-9 items-center gap-1.5 border-b-2 px-3 text-[13px] font-medium transition-colors",
             value === t.value ? "border-brand-600 text-ink" : "border-transparent text-slate-500 hover:text-ink",
           )}
         >
@@ -224,7 +247,7 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { valu
 export function KeyValue({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-h-7 items-start gap-3 py-1">
-      <div className="w-32 shrink-0 text-xs text-muted">{label}</div>
+      <div className="w-24 shrink-0 text-xs text-muted sm:w-32">{label}</div>
       <div className="min-w-0 flex-1 break-words">{children ?? <span className="text-slate-400">—</span>}</div>
     </div>
   );
@@ -247,15 +270,15 @@ export function SlideOver({ open, onClose, title, subtitle, children, footer, wi
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 animate-fade-in bg-slate-900/25" onClick={onClose} />
       <div role="dialog" aria-modal="true" aria-label={title} className={cn("relative flex h-full w-full animate-slide-in flex-col bg-white shadow-[var(--shadow-pop)]", width)}>
-        <div className="flex items-start gap-3 border-b border-line px-5 py-3.5">
+        <div className="flex items-start gap-3 border-b border-line px-4 py-3.5 sm:px-5">
           <div className="min-w-0 flex-1">
             <h2 className="text-[15px] font-semibold">{title}</h2>
             {subtitle && <p className="text-xs text-muted">{subtitle}</p>}
           </div>
           <IconButton icon={X} label="Close" onClick={onClose} />
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-line bg-slate-50/60 px-5 py-3">{footer}</div>}
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5">{children}</div>
+        {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line bg-slate-50/60 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5">{footer}</div>}
       </div>
     </div>,
     document.body,
@@ -266,15 +289,15 @@ export function Dialog({ open, onClose, title, children, footer, width = "max-w-
   useEscape(onClose, open);
   if (!open) return null;
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 pt-[12vh]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 pt-[4vh] sm:p-4 sm:pt-[12vh]">
       <div className="fixed inset-0 animate-fade-in bg-slate-900/25" onClick={onClose} />
       <div role="dialog" aria-modal="true" aria-label={title} className={cn("relative w-full animate-pop-in rounded-xl bg-white shadow-[var(--shadow-pop)]", width)}>
-        <div className="flex items-center justify-between border-b border-line px-5 py-3">
-          <h2 className="text-[15px] font-semibold">{title}</h2>
+        <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
+          <h2 className="min-w-0 text-[15px] font-semibold">{title}</h2>
           <IconButton icon={X} label="Close" onClick={onClose} />
         </div>
-        <div className="px-5 py-4">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-line bg-slate-50/60 px-5 py-3 rounded-b-xl">{footer}</div>}
+        <div className="px-4 py-4 sm:px-5">{children}</div>
+        {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line bg-slate-50/60 px-4 py-3 rounded-b-xl sm:px-5">{footer}</div>}
       </div>
     </div>,
     document.body,
@@ -320,7 +343,7 @@ export function Menu({ trigger, children, align = "right", width = "w-56" }: { t
     <div ref={ref} className="relative">
       {trigger({ onClick: () => setOpen((o) => !o), "aria-expanded": open })}
       {open && (
-        <div role="menu" className={cn("absolute z-40 mt-1 animate-pop-in rounded-lg border border-line bg-white p-1 shadow-[var(--shadow-pop)]", width, align === "right" ? "right-0" : "left-0")}>
+        <div role="menu" className={cn("absolute z-40 mt-1 max-w-[calc(100vw-1rem)] animate-pop-in rounded-lg border border-line bg-white p-1 shadow-[var(--shadow-pop)]", width, align === "right" ? "right-0" : "left-0")}>
           {children(() => setOpen(false))}
         </div>
       )}
@@ -336,7 +359,7 @@ export function MenuItem({ icon: Icon, children, onClick, disabled, hint }: { ic
       disabled={disabled}
       title={hint}
       onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 max-lg:py-2.5 text-left text-[13px] text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
     >
       {Icon && <Icon className="size-3.5 text-slate-500" />}
       <span className="flex-1">{children}</span>
@@ -359,7 +382,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={push}>
       {children}
-      <div aria-live="polite" className="pointer-events-none fixed right-4 bottom-4 z-[60] flex w-80 flex-col gap-2">
+      <div aria-live="polite" className="pointer-events-none fixed right-3 bottom-3 left-3 z-[60] flex flex-col gap-2 pb-[env(safe-area-inset-bottom)] sm:right-4 sm:bottom-4 sm:left-auto sm:w-80">
         {toasts.map((t) => {
           const Icon = t.tone === "success" ? CheckCircle2 : t.tone === "error" ? AlertTriangle : Info;
           return (

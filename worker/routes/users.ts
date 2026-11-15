@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../env";
-import { userCreateSchema, userUpdateSchema } from "../../shared/schemas";
+import { userInviteSchema, userUpdateSchema } from "../../shared/schemas";
+import { appBaseUrl, emailConfigured, issueLinkToken, sendResetEmail, sendWelcomeEmail, type MailResult } from "../lib/mail";
 import { ApiError, notFound, parseJson } from "../lib/http";
 import { clientIp, hashPassword, requireRole } from "../lib/auth";
 import { auditStmt, diff } from "../lib/audit-log";
@@ -56,7 +57,7 @@ userRoutes.patch("/me", async (c) => {
 });
 
 userRoutes.post("/", requireRole("admin"), async (c) => {
-  const input = await parseJson(c, userCreateSchema);
+  const input = await parseJson(c, userInviteSchema);
   const pw = await hashPassword(input.password);
   const id = newId();
   const t = now();
@@ -73,7 +74,61 @@ userRoutes.post("/", requireRole("admin"), async (c) => {
       ip: clientIp(c),
     }),
   ]);
-  return c.json({ data: await c.env.DB.prepare(`SELECT ${PUBLIC} FROM users WHERE id = ?`).bind(id).first() }, 201);
+  // The account exists either way; a failed email is reported, never rolled back.
+  let welcome: MailResult | null = null;
+  if (input.send_welcome) {
+    const me = c.get("user");
+    const base = appBaseUrl(c.env, c.req.url);
+    try {
+      const token = await issueLinkToken(c.env.DB, id, "welcome", clientIp(c));
+      welcome = await sendWelcomeEmail(c.env, {
+        to: { email: input.email.toLowerCase(), name: input.name },
+        role: input.role,
+        invitedBy: me.name,
+        setupUrl: `${base}/reset-password?token=${token}`,
+        loginUrl: base,
+      });
+    } catch (e) {
+      welcome = { sent: false, reason: e instanceof Error ? e.message.slice(0, 200) : "Could not send the welcome email" };
+    }
+    await auditStmt(c.env.DB, {
+      actorId: me.id,
+      action: "welcome_email",
+      entityType: "user",
+      entityId: id,
+      summary: welcome.sent ? `Welcome email sent to ${input.email}` : `Welcome email not sent to ${input.email}: ${welcome.reason ?? "unknown"}`,
+      ip: clientIp(c),
+    }).run();
+  }
+  const user = await c.env.DB.prepare(`SELECT ${PUBLIC} FROM users WHERE id = ?`).bind(id).first();
+  return c.json({ data: { ...user, welcome_email: welcome } }, 201);
+});
+
+/** Admin: email the user a fresh one-time link to set a new password (welcome if they never signed in, otherwise reset). */
+userRoutes.post("/:id/send-link", requireRole("admin"), async (c) => {
+  const id = c.req.param("id");
+  const u = await c.env.DB.prepare("SELECT id, email, name, role, status, last_login_at FROM users WHERE id = ?").bind(id).first<Record<string, string | null>>();
+  if (!u) throw notFound("User");
+  if (u.status !== "active") throw new ApiError(409, "user_disabled", "This user is disabled");
+  if (!emailConfigured(c.env)) throw new ApiError(400, "not_configured", "Email is not set up. Add the EmailJS (or Brevo) details in Settings → Configuration.");
+  const base = appBaseUrl(c.env, c.req.url);
+  const first = !u.last_login_at;
+  const token = await issueLinkToken(c.env.DB, id, first ? "welcome" : "reset", clientIp(c));
+  const url = `${base}/reset-password?token=${token}`;
+  const to = { email: String(u.email), name: String(u.name) };
+  const res = first
+    ? await sendWelcomeEmail(c.env, { to, role: String(u.role), invitedBy: c.get("user").name, setupUrl: url, loginUrl: base })
+    : await sendResetEmail(c.env, { to, resetUrl: url });
+  await auditStmt(c.env.DB, {
+    actorId: c.get("user").id,
+    action: first ? "welcome_email" : "password_reset_requested",
+    entityType: "user",
+    entityId: id,
+    summary: res.sent ? `Sent ${first ? "welcome" : "password reset"} email to ${u.email}` : `Email to ${u.email} not sent: ${res.reason ?? "unknown"}`,
+    ip: clientIp(c),
+  }).run();
+  if (!res.sent) throw new ApiError(502, "email_failed", res.reason ?? "The email could not be sent");
+  return c.json({ data: { ok: true } });
 });
 
 userRoutes.patch("/:id", requireRole("admin"), async (c): Promise<Response> => {

@@ -66,7 +66,7 @@ function ThemeToggle() {
       aria-label={`Switch to ${next} mode`}
       title={`Switch to ${next} mode`}
       onClick={() => setPref(next)}
-      className="flex size-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-ink"
+      className="flex size-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-ink sm:size-9"
     >
       {resolved === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
     </button>
@@ -93,7 +93,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 onClick={onNavigate}
                 className={({ isActive }) =>
                   cn(
-                    "group relative flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors",
+                    "group relative flex h-8 items-center max-lg:h-10 gap-2.5 rounded-md px-2 text-[13px] transition-colors",
                     isActive ? "bg-snow/10 font-medium text-snow" : "text-snow/60 hover:bg-snow/[0.06] hover:text-snow",
                   )
                 }
@@ -149,7 +149,7 @@ function CommandSearch({ open, onClose }: { open: boolean; onClose: () => void }
     onClose();
   };
   return (
-    <div className="fixed inset-0 z-50 flex justify-center p-4 pt-[10vh]">
+    <div className="fixed inset-0 z-50 flex justify-center p-3 pt-[6vh] sm:p-4 sm:pt-[10vh]">
       <div className="fixed inset-0 animate-fade-in bg-slate-900/25" onClick={onClose} />
       <div role="dialog" aria-label="Search" className="relative h-fit w-full max-w-xl animate-pop-in overflow-hidden rounded-xl bg-white shadow-[var(--shadow-pop)]">
         <div className="flex items-center gap-2 border-b border-line px-4">
@@ -165,7 +165,7 @@ function CommandSearch({ open, onClose }: { open: boolean; onClose: () => void }
               if (e.key === "Enter" && rows[active]) go(rows[active]);
             }}
             placeholder="Search accounts, contacts, prospects, deals, campaigns…"
-            className="h-12 flex-1 bg-transparent text-sm outline-none"
+            className="h-12 min-w-0 flex-1 bg-transparent text-base outline-none sm:text-sm"
           />
           <kbd className="rounded border border-line px-1.5 text-[10px] text-slate-500">Esc</kbd>
         </div>
@@ -225,9 +225,9 @@ function Reminders() {
   const items = (notes.data?.data ?? []).filter((n) => !n.type?.startsWith("task_")).slice(0, 8);
   return (
     <Menu
-      width="w-96"
+      width="w-96 max-w-[calc(100vw-1rem)]"
       trigger={(p) => (
-        <button {...p} aria-label={`Notifications${badge ? ` (${badge})` : ""}`} className="relative inline-flex size-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-ink">
+        <button {...p} aria-label={`Notifications${badge ? ` (${badge})` : ""}`} className="relative inline-flex size-10 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-ink sm:size-8">
           <Bell className="size-4" />
           {badge > 0 && <span className="absolute top-1 right-1 flex min-w-3.5 items-center justify-center rounded-full bg-red-500 px-0.5 text-[9px] leading-3.5 font-bold text-white">{badge > 9 ? "9+" : badge}</span>}
         </button>
@@ -358,14 +358,14 @@ export function AppShell() {
   useEffect(() => setMobileNav(false), [loc.pathname]);
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   return (
-    <div className="flex h-dvh overflow-hidden">
+    <div className="flex h-dvh overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <aside className="hidden w-[220px] shrink-0 border-r border-line/0 bg-night lg:block dark:border-line">
         <Sidebar />
       </aside>
       {mobileNav && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 animate-fade-in bg-slate-900/25" onClick={() => setMobileNav(false)} />
-          <aside className="relative h-full w-64 animate-slide-in bg-night shadow-[var(--shadow-pop)]">
+          <aside className="relative h-full w-72 max-w-[85vw] animate-slide-in bg-night shadow-[var(--shadow-pop)]">
             <button aria-label="Close menu" onClick={() => setMobileNav(false)} className="absolute top-4 right-3 rounded p-1 text-snow/60 hover:bg-snow/10">
               <X className="size-4" />
             </button>
@@ -374,19 +374,23 @@ export function AppShell() {
         </div>
       )}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-line bg-white/90 px-3 backdrop-blur sm:px-5">
-          <button aria-label="Open menu" onClick={() => setMobileNav(true)} className="rounded-md p-1.5 text-slate-600 hover:bg-slate-100 lg:hidden">
+        <header className="flex h-14 shrink-0 items-center gap-1.5 border-b border-line bg-white/90 px-2 backdrop-blur sm:h-16 sm:gap-2 sm:px-5">
+          <button aria-label="Open menu" onClick={() => setMobileNav(true)} className="flex size-10 shrink-0 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 lg:hidden">
             <MenuIcon className="size-5" />
           </button>
+          {/* Phones: a search icon in the toolbar. Tablets and up: the full search bar. */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex h-9 w-full max-w-md items-center gap-2 rounded-lg border border-line bg-canvas px-3 text-left text-stone-400 transition-colors hover:border-stone-300 hover:bg-white"
+            className="hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-canvas px-3 text-left text-stone-400 transition-colors hover:border-stone-300 hover:bg-white sm:flex sm:max-w-md"
           >
-            <Search className="size-3.5" />
+            <Search className="size-3.5 shrink-0" />
             <span className="flex-1 truncate text-[13px]">Search accounts, contacts, campaigns…</span>
-            <kbd className="rounded border border-line bg-white px-1 text-[10px] text-slate-500 max-sm:hidden">{mac ? "⌘K" : "Ctrl K"}</kbd>
+            <kbd className="rounded border border-line bg-white px-1 text-[10px] text-slate-500 max-md:hidden">{mac ? "⌘K" : "Ctrl K"}</kbd>
           </button>
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1.5">
+            <button aria-label="Search" onClick={() => setSearchOpen(true)} className="flex size-10 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-ink sm:hidden">
+              <Search className="size-[18px]" />
+            </button>
             <QuickCreate />
             <ThemeToggle />
             <Reminders />
@@ -405,7 +409,7 @@ export function AppShell() {
 export function PageHeader({ title, crumbs, actions, subtitle, icon: Icon }: { title: ReactNode; crumbs?: { label: string; to?: string }[]; actions?: ReactNode; subtitle?: ReactNode; icon?: LucideIcon }) {
   return (
     <div className="flex flex-wrap items-end gap-3 px-4 pt-4 pb-3 sm:px-6">
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 max-sm:basis-full">
         {crumbs && (
           <nav aria-label="Breadcrumb" className="mb-1 flex items-center gap-1 text-xs text-muted">
             {crumbs.map((c, i) => (
@@ -422,7 +426,7 @@ export function PageHeader({ title, crumbs, actions, subtitle, icon: Icon }: { t
             ))}
           </nav>
         )}
-        <h1 className="flex items-center gap-2 truncate text-lg font-semibold tracking-tight">
+        <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight sm:truncate">
           {Icon && <Icon className="size-4.5 text-slate-400" />}
           {title}
         </h1>

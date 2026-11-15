@@ -146,6 +146,21 @@ Not yet performed for this project. Steps:
 11. Smoke test: `node scripts/smoke.mjs https://<your-worker>.workers.dev` after setting
    `SMOKE_ADMIN_EMAIL` / `SMOKE_ADMIN_PASSWORD` (note: it creates test records).
 
+### Automatic deploys from GitHub (sales.gexart.com)
+
+After the one-time steps above, every push to `main` deploys by itself via `.github/workflows/deploy.yml`
+(typecheck, tests, build, remote D1 migrations, `wrangler deploy`, then a health check on
+`https://sales.gexart.com/api/v1/health`). Android-only and Markdown-only pushes are skipped.
+
+1. GitHub repo → Settings → Secrets and variables → Actions → add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+   Create the token at dash.cloudflare.com → My Profile → API Tokens → Create Token → *Edit Cloudflare Workers*
+   template, then add D1 (Edit), Workers R2 Storage (Edit), Queues (Edit) and, for the domain, Zone (Read) +
+   DNS (Edit) on gexart.com.
+2. `gexart.com` must be a zone in the same Cloudflare account. `wrangler.jsonc` declares
+   `sales.gexart.com` as a custom domain, so the first deploy creates the DNS record and TLS certificate.
+3. Make sure `APP_URL` (wrangler var, or Settings → Configuration) is `https://sales.gexart.com` so emailed links are right.
+4. A failed check or migration stops the deploy, so a broken push never reaches the live site. Roll back with `npx wrangler rollback`.
+
 **Rollback:** `npx wrangler rollback` restores the previous Worker version. D1 migrations are forward-only;
 take a backup first with `npx wrangler d1 export gexart-crm --remote --output backup.sql`, and use
 D1 Time Travel (`wrangler d1 time-travel restore`) to recover data.

@@ -20,11 +20,17 @@ export interface Env {
   QUOTA_CLAUDE?: string;
   QUOTA_YOUTUBE?: string;
   GITHUB_REPO?: string;
+  /** Public address of this CRM (e.g. https://crm.example.com). Used in emailed links; defaults to the request's own origin. */
+  APP_URL?: string;
   // Optional secrets. Usually saved in Settings → Configuration (which overrides these);
   // `wrangler secret put` / .dev.vars also work. Never sent to the browser.
   ANTHROPIC_API_KEY?: string;
   BREVO_API_KEY?: string;
   BREVO_WEBHOOK_SECRET?: string;
+  EMAILJS_SERVICE_ID?: string;
+  EMAILJS_TEMPLATE_ID?: string;
+  EMAILJS_PUBLIC_KEY?: string;
+  EMAILJS_PRIVATE_KEY?: string;
   GOOGLE_PLACES_API_KEY?: string;
   YOUTUBE_API_KEY?: string;
   HUNTER_API_KEY?: string;

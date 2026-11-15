@@ -1,80 +1,16 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BarChart3, KeyRound, Package, Plug, Plus, ShieldCheck, UserCog, Users } from "lucide-react";
+import { BarChart3, KeyRound, Mail, Package, Plug, Plus, ShieldCheck, UserCog, Users } from "lucide-react";
 import { api, ApiError, type Row } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import * as E from "../../shared/enums";
 import { dateTime, money, moneyList, pct, relative } from "../lib/format";
-import { BrandMark, Logo, PageHeader } from "../components/layout";
-import { Badge, Button, Card, CardHeader, Dialog, ErrorState, Field, Select, Skeleton, StatusBadge, Tabs, useToast } from "../components/ui";
+import { PageHeader } from "../components/layout";
+import { Badge, Button, Card, CardHeader, Dialog, ErrorState, Field, PasswordInput, Select, Skeleton, StatusBadge, Tabs, useToast } from "../components/ui";
 import { Bars, PeriodPicker, useDashboard, type PeriodKey } from "./Dashboard";
 import { DevicesSettings } from "./Calls";
 import { ConfigurationSettings } from "./Configuration";
-
-// ─── Sign-in & first-run setup ───
-export function AuthPage({ mode }: { mode: "login" | "setup" }) {
-  const { refresh } = useAuth();
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await api.post(mode === "setup" ? "/auth/setup" : "/auth/login", mode === "setup" ? form : { email: form.email, password: form.password });
-      await refresh();
-    } catch (err) {
-      setError(err instanceof ApiError && err.code === "validation_error" ? Object.values(err.fieldErrors).join(" ") || err.message : (err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <div className="grid min-h-dvh bg-canvas lg:grid-cols-[1.05fr_1fr]">
-      <aside className="relative hidden overflow-hidden bg-night p-12 text-snow lg:flex lg:flex-col">
-        <Logo onDark />
-        <BrandMark variant="dark" className="pointer-events-none absolute -right-28 bottom-[-12%] w-[80%] opacity-[0.07]" />
-        <div className="pointer-events-none absolute -top-40 -left-40 size-[480px] rounded-full bg-brand-500/20 blur-3xl" />
-        <div className="relative mt-auto max-w-md">
-          <p className="text-[11px] font-semibold tracking-[0.2em] text-brand-400 uppercase">Gexart Sales CRM</p>
-          <h2 className="mt-3 text-3xl leading-tight font-semibold">Every account, audit, pitch and call in one place.</h2>
-          <p className="mt-3 text-sm text-snow/55">Research prospects, run audits, send proposals and track every deal from first touch to close.</p>
-        </div>
-      </aside>
-      <main className="flex items-center justify-center p-6">
-        <div className="w-full max-w-sm">
-          <div className="mb-8 lg:hidden">
-            <Logo />
-          </div>
-          <h1 className="text-xl font-semibold">{mode === "setup" ? "Create the administrator account" : "Welcome back"}</h1>
-          <p className="mt-1 text-[13px] text-muted">
-            {mode === "setup" ? "No users exist yet. This first account becomes the administrator; setup closes once it is created." : "Sign in to the Gexart sales workspace. Access is by invitation."}
-          </p>
-          <form onSubmit={submit} className="mt-7 space-y-4">
-            {mode === "setup" && (
-              <Field label="Full name">
-                <input className="input h-10" autoComplete="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              </Field>
-            )}
-            <Field label="Work email">
-              <input className="input h-10" type="email" autoComplete="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            </Field>
-            <Field label="Password" help={mode === "setup" ? "At least 10 characters." : undefined}>
-              <input className="input h-10" type="password" autoComplete={mode === "setup" ? "new-password" : "current-password"} required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-            </Field>
-            {error && <p className="rounded-md bg-red-50 px-2.5 py-2 text-xs text-red-700">{error}</p>}
-            <Button type="submit" variant="primary" loading={busy} className="h-10 w-full">
-              {mode === "setup" ? "Create administrator" : "Sign in"}
-            </Button>
-          </form>
-          <p className="mt-10 text-[11px] text-stone-400">© {new Date().getFullYear()} Gexart</p>
-        </div>
-      </main>
-    </div>
-  );
-}
 
 // ─── Reports ───
 function Metric({ label, value, formula }: { label: string; value: ReactNode; formula: string }) {
@@ -230,7 +166,7 @@ function Profile() {
         <Select options={zones.map((z) => ({ value: z, label: z }))} value={tz} onChange={(e) => setTz(e.target.value)} />
       </Field>
       <Field label="New password" help="Leave blank to keep the current password. At least 10 characters.">
-        <input className="input" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
+        <PasswordInput autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
       </Field>
       <Button variant="primary" loading={m.isPending} onClick={() => m.mutate()}>Save profile</Button>
     </Card>
@@ -240,10 +176,16 @@ function Profile() {
 function UsersAdmin() {
   const qc = useQueryClient();
   const toast = useToast();
-  const { user: me } = useAuth();
+  const { user: me, emailEnabled } = useAuth();
   const q = useQuery({ queryKey: ["users", "all"], queryFn: () => api.get<{ data: Row[] }>("/users?all=1").then((r) => r.data) });
   const [inviting, setInviting] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", role: "rep", password: "" });
+  const [sendWelcome, setSendWelcome] = useState(true);
+  const sendLink = useMutation({
+    mutationFn: (id: string) => api.post(`/users/${id}/send-link`),
+    onSuccess: () => toast("success", "Email sent"),
+    onError: (e) => toast("error", (e as Error).message),
+  });
   const update = useMutation({
     mutationFn: ({ id, body }: { id: string; body: Row }) => api.patch(`/users/${id}`, body),
     onSuccess: () => {
@@ -253,12 +195,15 @@ function UsersAdmin() {
     onError: (e) => toast("error", (e as Error).message),
   });
   const create = useMutation({
-    mutationFn: () => api.post("/users", form),
-    onSuccess: () => {
+    mutationFn: () => api.post<{ data: Row }>("/users", { ...form, send_welcome: sendWelcome && emailEnabled }),
+    onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["users"] });
       setInviting(false);
       setForm({ name: "", email: "", role: "rep", password: "" });
-      toast("success", "User created. Share the temporary password securely.");
+      const mail = r.data.welcome_email as { sent: boolean; reason?: string } | null;
+      if (mail?.sent) toast("success", `User created. A welcome email with a set-password link was sent to ${r.data.email}.`);
+      else if (mail) toast("error", `User created, but the welcome email was not sent: ${mail.reason ?? "unknown error"}. Share the temporary password securely instead.`);
+      else toast("success", "User created. Share the temporary password securely.");
     },
   });
   return (
@@ -267,7 +212,7 @@ function UsersAdmin() {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="border-b border-line bg-slate-50/70">
-            <tr><th className="th">Name</th><th className="th">Email</th><th className="th">Role</th><th className="th">Status</th><th className="th">Last sign-in</th></tr>
+            <tr><th className="th">Name</th><th className="th">Email</th><th className="th">Role</th><th className="th">Status</th><th className="th">Last sign-in</th><th className="th text-right">Password email</th></tr>
           </thead>
           <tbody className="divide-y divide-line">
             {q.data?.map((u) => (
@@ -281,6 +226,18 @@ function UsersAdmin() {
                   <Select className="h-7 w-28 text-xs" options={[{ value: "active", label: "Active" }, { value: "disabled", label: "Disabled" }]} value={u.status} onChange={(e) => update.mutate({ id: u.id, body: { status: e.target.value } })} />
                 </td>
                 <td className="td text-muted">{u.last_login_at ? relative(u.last_login_at) : "Never"}</td>
+                <td className="td text-right">
+                  <Button
+                    size="sm"
+                    icon={Mail}
+                    disabled={!emailEnabled || u.status !== "active"}
+                    loading={sendLink.isPending && sendLink.variables === u.id}
+                    title={!emailEnabled ? "Set up EmailJS or Brevo in Configuration first" : u.last_login_at ? "Email a link to set a new password" : "Resend the welcome email"}
+                    onClick={() => sendLink.mutate(u.id)}
+                  >
+                    {u.last_login_at ? "Send reset link" : "Resend invite"}
+                  </Button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -299,9 +256,18 @@ function UsersAdmin() {
           <Field label="Name"><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
           <Field label="Email"><input className="input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
           <Field label="Role"><Select options={E.ROLES.options} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} /></Field>
-          <Field label="Temporary password" help="At least 10 characters. Ask them to change it in Settings → Profile.">
-            <input className="input" type="password" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          <Field label="Temporary password" help="At least 10 characters. It works straight away; the welcome email lets them replace it with their own.">
+            <PasswordInput autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
           </Field>
+          <label className={`flex items-start gap-2 rounded-md border border-line p-2.5 text-xs ${emailEnabled ? "cursor-pointer" : "opacity-60"}`}>
+            <input type="checkbox" className="mt-0.5 accent-brand-600" disabled={!emailEnabled} checked={sendWelcome && emailEnabled} onChange={(e) => setSendWelcome(e.target.checked)} />
+            <span>
+              <span className="font-medium text-ink">Email a welcome message</span>
+              <span className="block text-muted">
+                {emailEnabled ? "Sends a one-time link (valid 72 hours) so they can choose their own password. The temporary password is never emailed." : "Add the EmailJS (or Brevo) details in Settings → Configuration to enable welcome emails."}
+              </span>
+            </span>
+          </label>
           {create.error && <p className="text-xs text-red-600">{create.error instanceof ApiError ? Object.values(create.error.fieldErrors).join(" ") || create.error.message : "Failed"}</p>}
         </div>
       </Dialog>

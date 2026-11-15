@@ -11,3 +11,9 @@
 # APOLLO_API_KEY=
 # ROCKETREACH_API_KEY=
 # LUSHA_API_KEY=
+# Optional: EmailJS for welcome + password-reset emails (or set these in Settings -> Configuration).
+# EMAILJS_SERVICE_ID=
+# EMAILJS_TEMPLATE_ID=
+# EMAILJS_PUBLIC_KEY=
+# EMAILJS_PRIVATE_KEY=
+# APP_URL=https://sales.gexart.com

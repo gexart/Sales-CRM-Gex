@@ -52,6 +52,23 @@
   ::selection { @apply bg-brand-200 text-ink; }
   html { color-scheme: light; }
   h1, h2 { letter-spacing: -0.015em; }
+  /* Stop iOS Safari zooming the page when a field is focused, and stop sideways bounce from stray overflow. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body { overflow-x: hidden; overscroll-behavior-y: none; }
+  /* Touch devices (phones, iPad): 16px fields and finger-sized controls. */
+  @media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px !important; }
+    .input { min-height: 2.5rem; }
+    textarea.input { min-height: 5rem; }
+    .btn { min-height: 2.5rem; }
+    button:not(.btn):not([aria-label]) { min-height: 2.25rem; }
+    button[aria-label] { min-width: 2.5rem; min-height: 2.5rem; }
+    input[type="checkbox"], input[type="radio"] { width: 1.1rem; height: 1.1rem; }
+    .td { height: 3rem; }
+  }
+  @media (max-width: 639px) {
+    .btn { padding-inline: 0.85rem; }
+  }
 }
 
 @layer components {

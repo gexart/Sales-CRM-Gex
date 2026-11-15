@@ -3,8 +3,10 @@ import { Link, Navigate, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertOctagon, AlertTriangle, ArrowLeft, Briefcase, CheckCircle2, ChevronDown, ChevronRight, CircleSlash, ClipboardCopy, FileSearch, Info, ListChecks,
-  Package, RefreshCw, TrendingDown, TrendingUp,
+  Download, FileText, Package, Presentation, RefreshCw, TrendingDown, TrendingUp,
 } from "lucide-react";
+import { useAuth } from "../lib/auth";
+import { buildAuditReportData } from "../../shared/audit-report";
 import { api, ApiError, type Row } from "../lib/api";
 import { CONFIGS } from "../lib/entities";
 import * as E from "../../shared/enums";
@@ -125,6 +127,54 @@ const SEVERITY_META: Record<string, { label: string; icon: typeof AlertOctagon; 
   unavailable: { label: "Could not be checked", icon: CircleSlash, cls: "text-slate-600 bg-slate-100 ring-slate-200" },
 };
 
+/** Download menu: PDF and Word come from the server on the Gexart letterhead; PowerPoint is built in the browser. */
+function ReportDownloads({ run, compare }: { run: Row; compare: Row | null }) {
+  const { user } = useAuth();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [building, setBuilding] = useState(false);
+  const pptx = async () => {
+    setBuilding(true);
+    try {
+      const [{ buildPptx }, { auditDeckSlides }] = await Promise.all([import("../lib/deck"), import("../lib/audit-deck")]);
+      const data = buildAuditReportData(run, compare, user?.name ?? "");
+      const blob = await buildPptx(auditDeckSlides(data), { title: `${data.typeLabel} report - ${data.accountName}`, company: data.accountName, author: user?.name ?? "Gexart" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${data.typeLabel} report - ${data.accountName}.pptx`.replace(/[^\w .-]+/g, "");
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+    } catch (e) {
+      toast("error", `Could not build the PowerPoint: ${(e as Error).message}`);
+    } finally {
+      setBuilding(false);
+      setOpen(false);
+    }
+  };
+  const item = "flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-slate-50";
+  return (
+    <div className="relative" onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setOpen(false)}>
+      <Button icon={Download} loading={building} onClick={() => setOpen((v) => !v)} aria-haspopup="menu" aria-expanded={open}>
+        Download report
+      </Button>
+      {open && (
+        <div role="menu" className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-md border border-line bg-white py-1 shadow-lg">
+          <a role="menuitem" className={item} href={`/api/v1/audits/${run.id}/report/pdf`} onClick={() => setOpen(false)}>
+            <FileText className="size-4 text-red-600" /> PDF document
+          </a>
+          <a role="menuitem" className={item} href={`/api/v1/audits/${run.id}/report/docx`} onClick={() => setOpen(false)}>
+            <FileText className="size-4 text-blue-600" /> Word document (.docx)
+          </a>
+          <button role="menuitem" className={item} onClick={pptx}>
+            <Presentation className="size-4 text-orange-600" /> PowerPoint (.pptx)
+          </button>
+          <p className="border-t border-line px-3 py-1.5 text-[11px] text-muted">PDF and Word use the Gexart letterhead.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AuditReport({ runId, account }: { runId: string; account: Row }) {
   const qc = useQueryClient();
   const nav = useNavigate();
@@ -212,6 +262,7 @@ export function AuditReport({ runId, account }: { runId: string; account: Row })
             </div>
           </div>
           <div className="flex gap-2">
+            {done && r.status !== "failed" && r.status !== "cancelled" && <ReportDownloads run={r} compare={compare.data ?? null} />}
             {ACTIVE.includes(r.status) ? (
               <Button onClick={() => cancel.mutate()} loading={cancel.isPending}>Cancel</Button>
             ) : (

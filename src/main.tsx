@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./index.css";
 import { ApiError } from "./lib/api";
@@ -13,7 +13,8 @@ import { EntityListPage } from "./pages/EntityListPage";
 import { RecordDetailPage } from "./pages/RecordDetailPage";
 import { AccountWorkspace } from "./pages/AccountWorkspace";
 import { OpportunitiesPage, TasksPage } from "./pages/Pipeline";
-import { AuthPage, ReportsPage, SettingsPage } from "./pages/Misc";
+import { ReportsPage, SettingsPage } from "./pages/Misc";
+import { AuthPage, ForgotPasswordPage, ResetPasswordPage } from "./pages/Auth";
 import { AutopilotPage } from "./pages/Autopilot";
 import { AssetDetailPage, PriceBookPage, ProductsNav, SalesAssetsPage } from "./pages/Library";
 import { DiscoveryPage, ImportPage, ProspectsPage } from "./pages/Prospecting";
@@ -33,13 +34,19 @@ const queryClient = new QueryClient({
 
 function Gate() {
   const { user, needsSetup, loading } = useAuth();
+  const { pathname } = useLocation();
+  // The emailed link works whether or not someone is signed in on this browser.
+  if (pathname === "/reset-password") return <ResetPasswordPage />;
   if (loading)
     return (
       <div className="flex h-dvh items-center justify-center">
         <Spinner className="size-6" />
       </div>
     );
-  if (!user) return <AuthPage mode={needsSetup ? "setup" : "login"} />;
+  if (!user) {
+    if (!needsSetup && pathname === "/forgot-password") return <ForgotPasswordPage />;
+    return <AuthPage mode={needsSetup ? "setup" : "login"} />;
+  }
   const C = CONFIGS;
   return (
     <Routes>
