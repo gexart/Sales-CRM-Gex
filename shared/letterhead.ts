@@ -9,7 +9,7 @@ export const LETTERHEAD = {
   addressShort: "Rajarhat, New Town, Kolkata – 700135",
 } as const;
 
-export { CONTACT_NUMBERS, DEFAULT_PHONE, resolvePhone } from "./contact";
+export { CONTACT_NUMBERS, DEFAULT_PHONE, parsePhones, resolvePhone } from "./contact";
 
 /** Full-colour logo with wordmark on white (624 x 198 px), from Gexart_Letterhead.docx. */
 export const LOGO_PNG_BASE64 =

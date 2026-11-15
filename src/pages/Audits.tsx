@@ -3,18 +3,18 @@ import { Link, Navigate, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertOctagon, AlertTriangle, ArrowLeft, Briefcase, CheckCircle2, ChevronDown, ChevronRight, CircleSlash, ClipboardCopy, FileSearch, Info, ListChecks,
-  Download, FileText, Package, Presentation, RefreshCw, TrendingDown, TrendingUp,
+  Download, FileText, MessageCircle, Package, Presentation, RefreshCw, TrendingDown, TrendingUp,
 } from "lucide-react";
 import { useAuth } from "../lib/auth";
+import { shareFile } from "../components/contact-actions";
 import { buildAuditReportData } from "../../shared/audit-report";
-import { CONTACT_NUMBERS } from "../../shared/contact";
 import { api, ApiError, type Row } from "../lib/api";
 import { CONFIGS } from "../lib/entities";
 import * as E from "../../shared/enums";
 import { dateTime, hostOf, relative } from "../lib/format";
 import { EntityForm } from "../components/forms";
 import { invalidateRecord } from "../components/records";
-import { Badge, Button, Card, CardHeader, cn, EmptyState, ErrorState, ScoreRing, Select, Skeleton, StatusBadge, usePhoneChoice, useToast } from "../components/ui";
+import { Badge, Button, Card, CardHeader, cn, EmptyState, ErrorState, PhonePicker, ScoreRing, Skeleton, StatusBadge, usePhoneChoice, useToast } from "../components/ui";
 
 export function useAuditTypes() {
   return useQuery({ queryKey: ["audit-types"], queryFn: () => api.get<{ data: Row[] }>("/audits/types").then((r) => r.data), staleTime: Infinity });
@@ -162,8 +162,8 @@ function ReportDownloads({ run, compare }: { run: Row; compare: Row | null }) {
       {open && (
         <div role="menu" className="absolute right-0 z-20 mt-1 w-64 max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border border-line bg-white py-1 shadow-lg">
           <div className="border-b border-line px-3 pt-1 pb-2">
-            <label className="mb-1 block text-[11px] text-muted">Number printed on the report</label>
-            <Select className="h-8 text-xs" options={CONTACT_NUMBERS.map((n) => ({ value: n, label: n }))} value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <label className="mb-1 block text-[11px] text-muted">Numbers printed on the report</label>
+            <PhonePicker compact value={phone} onChange={setPhone} />
           </div>
           <a role="menuitem" className={item} href={`/api/v1/audits/${run.id}/report/pdf?phone=${encodeURIComponent(phone)}`} onClick={() => setOpen(false)}>
             <FileText className="size-4 text-red-600" /> PDF document
@@ -171,6 +171,21 @@ function ReportDownloads({ run, compare }: { run: Row; compare: Row | null }) {
           <a role="menuitem" className={item} href={`/api/v1/audits/${run.id}/report/docx?phone=${encodeURIComponent(phone)}`} onClick={() => setOpen(false)}>
             <FileText className="size-4 text-blue-600" /> Word document (.docx)
           </a>
+          <button
+            role="menuitem"
+            className={item}
+            onClick={async () => {
+              setOpen(false);
+              try {
+                const r = await shareFile({ url: `/api/v1/audits/${run.id}/report/pdf?phone=${encodeURIComponent(phone)}`, fileName: `${run.type_label} report - ${run.account_name}.pdf`, mime: "application/pdf", text: `Hi, sharing the ${run.type_label} report for ${run.account_name} from Gexart.` });
+                if (r === "fallback") toast("info", "The PDF was downloaded. Attach it in the WhatsApp chat that just opened.");
+              } catch (e) {
+                toast("error", (e as Error).message || "Could not share the report");
+              }
+            }}
+          >
+            <MessageCircle className="size-4 text-emerald-600" /> Share PDF on WhatsApp
+          </button>
           <button role="menuitem" className={item} onClick={pptx}>
             <Presentation className="size-4 text-orange-600" /> PowerPoint (.pptx)
           </button>

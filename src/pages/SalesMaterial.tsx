@@ -7,6 +7,7 @@ import * as E from "../../shared/enums";
 import { money } from "../lib/format";
 import type { Slide } from "../lib/deck";
 import { RefSelect } from "../components/forms";
+import { ShareWhatsApp } from "../components/contact-actions";
 import { CopyButton } from "../components/outreach";
 import { invalidateRecord } from "../components/records";
 import { Badge, Button, Card, CardHeader, cn, Dialog, EmptyState, Field, PhonePicker, Select, SlideOver, usePhoneChoice, useToast } from "../components/ui";
@@ -199,6 +200,7 @@ export function ProposalDialog({ open, onClose, account }: { open: boolean; onCl
             <Button onClick={onClose}>Close</Button>
             <a href={`/api/v1/assets/${done.asset_id}/download`}><Button variant="primary" icon={Download}>Download PDF</Button></a>
             {done.docx_asset_id && <a href={`/api/v1/assets/${done.docx_asset_id}/download`}><Button icon={Download}>Download Word (.docx)</Button></a>}
+            <ShareWhatsApp url={`/api/v1/assets/${done.asset_id}/download`} fileName={`${done.title}.pdf`} text={`Hi, sharing our proposal for ${account.name}: ${done.title}.`} />
           </>
         ) : (
           <>
@@ -324,6 +326,7 @@ export function DeckDialog({ open, onClose, account }: { open: boolean; onClose:
         <>
           {saved && <a href={`/api/v1/assets/${saved.pptx}/download`}><Button icon={Download}>Download .pptx</Button></a>}
           {saved?.pdf && <a href={`/api/v1/assets/${saved.pdf}/download`}><Button icon={Download}>Download PDF</Button></a>}
+          {saved && <ShareWhatsApp url={`/api/v1/assets/${saved.pdf ?? saved.pptx}/download`} fileName={`${account.name} - pitch deck.${saved.pdf ? "pdf" : "pptx"}`} mime={saved.pdf ? "application/pdf" : "application/vnd.openxmlformats-officedocument.presentationml.presentation"} text={`Hi, sharing our pitch deck for ${account.name} from Gexart.`} />}
           <Button variant="primary" icon={Presentation} disabled={!outline?.slides.length} loading={building} onClick={build}>{saved ? "Rebuild & save again" : "Build PowerPoint + PDF"}</Button>
         </>
       }

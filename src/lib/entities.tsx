@@ -1,5 +1,6 @@
 // Client-side description of each CRM entity: form fields, list columns and filters.
 // Validation itself comes from shared/schemas.ts, the same schemas the Worker enforces.
+import { PhoneActions } from "../components/contact-actions";
 import type { ReactNode } from "react";
 import type { ZodObject } from "zod";
 import {
@@ -172,7 +173,7 @@ export const contactsConfig: EntityConfig = {
     { key: "job_title", label: "Title", render: (r) => muted(r.job_title) },
     { key: "account", label: "Account", sort: "account", render: (r) => muted(r.account_name) },
     { key: "email", label: "Email", render: (r) => muted(r.email) },
-    { key: "phone", label: "Phone", render: (r) => muted(r.phone), hidden: true },
+    { key: "phone", label: "Phone", render: (r) => (r.phone ? <PhoneActions phone={String(r.phone)} /> : muted(r.phone)), hidden: true },
     { key: "decision_role", label: "Role", render: (r) => (r.decision_role ? L(E.DECISION_ROLES, r.decision_role) : muted(null)) },
     { key: "status", label: "Status", render: (r) => <StatusBadge value={r.status} label={L(E.CONTACT_STATUSES, r.status)} /> },
     { key: "last_contacted_at", label: "Last contacted", sort: "last_contacted_at", render: (r) => <span className="text-muted">{relative(r.last_contacted_at)}</span> },

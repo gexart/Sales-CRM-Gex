@@ -14,7 +14,7 @@ import {
 import { createPortal } from "react-dom";
 import { AlertTriangle, CheckCircle2, Eye, EyeOff, Info, Loader2, X, type LucideIcon } from "lucide-react";
 import { initials } from "../lib/format";
-import { CONTACT_NUMBERS, DEFAULT_PHONE, resolvePhone } from "../../shared/contact";
+import { CONTACT_NUMBERS, DEFAULT_PHONE, parsePhones } from "../../shared/contact";
 
 export const cn = clsx;
 
@@ -272,11 +272,11 @@ export function KeyValue({ label, children }: { label: string; children: ReactNo
   );
 }
 
-/** The contact number printed on a letterhead / deck. Remembers the last choice on this device. */
+/** The contact numbers printed on a letterhead / deck (one to three). Remembered on this device. Value is comma-separated. */
 export function usePhoneChoice(): [string, (v: string) => void] {
   const [v, setV] = useState<string>(() => {
     try {
-      return resolvePhone(localStorage.getItem("gx-phone"));
+      return parsePhones(localStorage.getItem("gx-phones")).join(",");
     } catch {
       return DEFAULT_PHONE;
     }
@@ -284,10 +284,10 @@ export function usePhoneChoice(): [string, (v: string) => void] {
   return [
     v,
     (n) => {
-      const r = resolvePhone(n);
+      const r = parsePhones(n).join(",");
       setV(r);
       try {
-        localStorage.setItem("gx-phone", r);
+        localStorage.setItem("gx-phones", r);
       } catch {
         /* storage unavailable: the choice just is not remembered */
       }
@@ -295,10 +295,30 @@ export function usePhoneChoice(): [string, (v: string) => void] {
   ];
 }
 
-export function PhonePicker({ value, onChange, className }: { value: string; onChange: (v: string) => void; className?: string }) {
+export function PhonePicker({ value, onChange, className, compact }: { value: string; onChange: (v: string) => void; className?: string; compact?: boolean }) {
+  const selected = parsePhones(value);
+  const toggle = (n: string) => {
+    const next = selected.includes(n) ? selected.filter((x) => x !== n) : [...selected, n];
+    if (next.length) onChange(next.join(",")); // at least one number always stays on the document
+  };
+  const boxes = (
+    <div className={cn("flex flex-wrap gap-2", compact && "flex-col gap-1")}>
+      {CONTACT_NUMBERS.map((n) => {
+        const on = selected.includes(n);
+        return (
+          <label key={n} className={cn("flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-1.5 text-[13px]", on ? "border-brand-500 bg-brand-50 text-ink" : "border-line text-slate-600 hover:bg-slate-50", compact && "py-1 text-xs")}>
+            <input type="checkbox" className="accent-brand-600" checked={on} onChange={() => toggle(n)} />
+            <span className="tabular-nums">{n}</span>
+            {n === DEFAULT_PHONE && <span className="text-[10px] text-muted">default</span>}
+          </label>
+        );
+      })}
+    </div>
+  );
+  if (compact) return <div className={className}>{boxes}</div>;
   return (
-    <Field label="Contact number to print" help="Printed only on the letterhead or slides of this document." className={className}>
-      <Select options={CONTACT_NUMBERS.map((n) => ({ value: n, label: n === DEFAULT_PHONE ? `${n} (default)` : n }))} value={value} onChange={(e) => onChange(e.target.value)} />
+    <Field label="Contact numbers to print" help="Tick one to three. Only the ticked numbers are printed, on the letterhead or slides of this document." className={className}>
+      {boxes}
     </Field>
   );
 }

@@ -9,6 +9,7 @@ import { api, ApiError, qs, type Page, type Row } from "../lib/api";
 import * as E from "../../shared/enums";
 import { CONFIGS, type FieldDef } from "../lib/entities";
 import { date, dateTime, fromLocalInput, hostOf, isOverdue, money, relative, toLocalInput } from "../lib/format";
+import { PhoneActions } from "./contact-actions";
 import { Badge, Button, Card, CardHeader, Dialog, EmptyState, Field, KeyValue, Select, Skeleton, StatusBadge, cn, useToast } from "./ui";
 import { EntityForm } from "./forms";
 
@@ -333,7 +334,7 @@ export function displayValue(f: FieldDef, r: Row): ReactNode {
     case "number":
       return f.name === "probability" ? `${v}%` : String(v);
     default:
-      return String(v);
+      return /phone/i.test(f.name) ? <PhoneActions phone={String(v)} /> : String(v);
   }
 }
 

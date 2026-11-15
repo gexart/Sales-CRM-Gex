@@ -111,7 +111,7 @@ export async function buildDeckPdf(slides: Slide[], meta: DeckMeta): Promise<Blo
       circle(p, 560, 380, 11, ORANGE);
       rect(p, 43, 43, 118, 44, "FFFFFF");
       p.drawImage(logo, { x: 52, y: PH - 50 - 100 / LOGO_ASPECT, width: 100, height: 100 / LOGO_ASPECT });
-      text(p, spaced(`${LETTERHEAD.company}  ·  ${LETTERHEAD.unit}`), 43, 112, 9, bold, ORANGE, { w: 800, max: 1 });
+      text(p, spaced(`${LETTERHEAD.company}  ·  ${LETTERHEAD.unit}`), 43, 112, 9, bold, ORANGE);
       const th = text(p, sl.title, 43, 144, sl.title.length > 60 ? 30 : 38, bold, "FFFFFF", { w: 590, lh: sl.title.length > 60 ? 38 : 47, max: 4 });
       if (sl.subtitle) text(p, sl.subtitle, 43, 144 + th + 18, 16, font, PALE, { w: 590, max: 3 });
       let x = 43;
@@ -158,7 +158,7 @@ export async function buildDeckPdf(slides: Slide[], meta: DeckMeta): Promise<Blo
       text(p, "Start with a short discovery call. We confirm priorities, scope and timelines, then send a fixed-price proposal.", 624, 244, 9.5, font, MUTED, { w: 270, max: 4, lh: 12.5 });
       [LETTERHEAD.email, phone, LETTERHEAD.web, LETTERHEAD.addressShort].forEach((t, i) => {
         circle(p, 630, 324 + i * 22 + 6, 3.5, ORANGE);
-        text(p, t, 642, 324 + i * 22, 10, i < 3 ? bold : font, INK, { w: 260, max: 1 });
+        text(p, t, 642, 324 + i * 22, i === 1 ? Math.min(10, 258 / bold.widthOfTextAtSize(safe(t), 1)) : 10, i < 3 ? bold : font, INK, { w: 262, max: 1 });
       });
       rect(p, 624, 420, 270, 36, ORANGE);
       text(p, "Book a discovery call  ->", 624, 431, 12, bold, "FFFFFF", { w: 270, align: "center" });

@@ -146,9 +146,10 @@ export async function buildPptx(slides: Slide[], meta: DeckMeta): Promise<Blob> 
       s.addText("Let's build your growth plan.", { x: 8.7, y: 2.65, w: 3.7, h: 0.9, fontFace: FONT, fontSize: 20, bold: true, color: INK, margin: 0, valign: "top" });
       s.addText("Start with a short discovery call. We confirm priorities, scope and timelines, then send a fixed-price proposal.", { x: 8.7, y: 3.5, w: 3.7, h: 0.85, fontFace: FONT, fontSize: 10.5, color: MUTED, margin: 0, valign: "top" });
       const contacts = [LETTERHEAD.email, phone, LETTERHEAD.web, LETTERHEAD.addressShort];
+      const phoneSize = Math.max(8, Math.min(10.5, (3.5 * 72) / (phone.length * 0.56)));
       contacts.forEach((t, i) => {
         s.addShape(pptx.ShapeType.ellipse, { x: 8.72, y: 4.5 + i * 0.3 + 0.09, w: 0.1, h: 0.1, fill: { color: ORANGE }, line: { color: ORANGE, width: 0 } });
-        s.addText(t, { x: 8.95, y: 4.5 + i * 0.3, w: 3.6, h: 0.28, fontFace: FONT, fontSize: 10.5, bold: i < 3, color: INK, margin: 0, valign: "middle" });
+        s.addText(t, { x: 8.95, y: 4.5 + i * 0.3, w: 3.6, h: 0.28, fontFace: FONT, fontSize: i === 1 ? phoneSize : 10.5, bold: i < 3, color: INK, margin: 0, valign: "middle" });
       });
       s.addText("Book a discovery call  →", { x: 8.7, y: 5.85, w: 3.7, h: 0.5, fontFace: FONT, fontSize: 12, bold: true, color: "FFFFFF", align: "center", valign: "middle", shape: pptx.ShapeType.roundRect, rectRadius: 0.25, fill: { color: ORANGE }, line: { color: ORANGE, width: 0 } });
       if (sl.notes) s.addNotes(sl.notes);

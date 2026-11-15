@@ -395,7 +395,7 @@ export const pitchSchema = z.object({
 });
 
 export const proposalSchema = z.object({
-  phone: z.string().max(30).optional(),
+  phone: z.string().max(100).optional(),
   title: optText(150),
   contact_id: optId,
   opportunity_id: optId,
