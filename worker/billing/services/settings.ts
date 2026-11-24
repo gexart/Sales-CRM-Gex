@@ -59,6 +59,22 @@ export class SettingsService {
     return branches;
   }
 
+  async updateBranch(id: string, patch: { name?: string; gstin?: string | null; stateCode?: string; address?: string; phone?: string }): Promise<any> {
+    const rawSql = this.getSql();
+    const sets: string[] = [];
+    const args: unknown[] = [];
+    const add = (col: string, v: unknown) => (sets.push(`${col} = ?`), args.push(v));
+    if (patch.name !== undefined) add('name', patch.name);
+    if (patch.gstin !== undefined) add('gstin', patch.gstin || null);
+    if (patch.stateCode !== undefined) add('state_code', patch.stateCode);
+    if (patch.address !== undefined) add('address', patch.address);
+    if (patch.phone !== undefined) add('phone', patch.phone);
+    if (!sets.length) return { id };
+    add('updated_at', new Date().toISOString());
+    rawSql.exec(`UPDATE branches SET ${sets.join(', ')} WHERE id = ? AND deleted_at IS NULL`, ...args, id);
+    return { id };
+  }
+
   async createBranch(input: BranchInput): Promise<any> {
     const rawSql = this.getSql();
     const id = newId();

@@ -645,9 +645,12 @@ export class InvoiceService {
     const isInterState = String(branch.state_code) !== String(inv.party_state_code);
 
     // Approximate GST split proportional to original invoice
-    const taxableRatio = Number(inv.subtotal_paise || 1) / Number(inv.total_paise || 1);
+    // (value after discount, before tax) / total, so discounts and round-off do not skew the split.
+    const taxableRatio = Math.max(0, Number(inv.total_paise || 1) - Number(inv.tax_total_paise || 0)) / Number(inv.total_paise || 1);
     const returnTaxable = Math.round(returnTotalPaise * taxableRatio);
     const returnTax = returnTotalPaise - returnTaxable;
+    // Halves must add back to the tax exactly, or the journal would not balance by a paisa.
+    const halfTax = Math.floor(returnTax / 2);
 
     this.postingService.postCreditNote({
       creditNoteId: noteId,
@@ -658,8 +661,8 @@ export class InvoiceService {
       partyId: inv.party_id,
       isInterState,
       taxableAmountPaise: returnTaxable,
-      cgstPaise: isInterState ? 0 : Math.round(returnTax / 2),
-      sgstPaise: isInterState ? 0 : Math.round(returnTax / 2),
+      cgstPaise: isInterState ? 0 : halfTax,
+      sgstPaise: isInterState ? 0 : returnTax - halfTax,
       igstPaise: isInterState ? returnTax : 0,
       totalAmountPaise: returnTotalPaise,
       narration: `Credit Note ${noteNo} against ${inv.invoice_no}: ${input.reason}`,

@@ -50,6 +50,14 @@ export const billingSettingsSchema = z.object({
       showBusinessName: z.boolean().default(false),
     })
     .prefault({}),
+  company: z
+    .object({
+      legalName: z.string().max(120).default(''),
+      mobile: z.string().max(80).default(''),
+      email: z.string().max(120).default(''),
+      website: z.string().max(120).default(''),
+    })
+    .prefault({}),
   branding: z
     .object({
       logo: imageDataUrl.or(z.literal('')).default(''),
@@ -71,7 +79,7 @@ export const billingSettingsSchema = z.object({
     .prefault({}),
   template: z
     .object({
-      id: z.string().max(40).default('classic-black'),
+      id: z.string().max(40).default('classic-black'), // 'classic-black' (Swipe style) or 'letterhead' (Gexart letterhead)
     })
     .prefault({}),
 });

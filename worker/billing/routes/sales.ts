@@ -4,6 +4,21 @@ import { locate } from './location';
 import { z } from 'zod';
 import type { Env } from '../types';
 import type { BusinessVariables } from '../middleware/tenant';
+import { renderDocumentFile } from '../invoice-docs';
+
+const FILE_TYPES: Record<string, string> = {
+  pdf: 'application/pdf',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+};
+const asFile = (body: Uint8Array, fmt: string, name: string, inline = false) =>
+  new Response(body as unknown as BodyInit, {
+    headers: {
+      'content-type': FILE_TYPES[fmt] ?? 'application/octet-stream',
+      'content-disposition': `${inline ? 'inline' : 'attachment'}; filename="${name.replace(/[^\w.-]+/g, '_')}.${fmt}"`,
+      'cache-control': 'no-store',
+    },
+  });
+
 
 export const salesRoutes = new Hono<{ Bindings: Env; Variables: BusinessVariables }>();
 
@@ -152,6 +167,20 @@ salesRoutes.post('/invoices', async (c) => {
   } catch (err: any) {
     return c.json({ error: err.message || 'Failed to create sales invoice' }, 400);
   }
+});
+
+// 3a. CREDIT NOTES (list)
+salesRoutes.get('/credit-notes', async (c) => c.json({ ok: true, notes: await c.get('businessStub').listCreditNotes() }));
+
+// 3b. INVOICE AS PDF OR WORD (Gexart letterhead)
+salesRoutes.get('/invoices/:id/:fmt{pdf|docx}', async (c) => {
+  const stub = c.get('businessStub');
+  const inv = await stub.getSalesInvoice(c.req.param('id'));
+  const ownOnly = c.get('ownOnlyUserId' as never) as string | undefined;
+  if (!inv || (ownOnly && (inv as { created_by_id?: string }).created_by_id !== ownOnly)) return c.json({ error: 'Invoice not found' }, 404);
+  const fmt = c.req.param('fmt') as 'pdf' | 'docx';
+  const body = await renderDocumentFile(stub, inv, inv.invoice_type === 'BILL_OF_SUPPLY' ? 'Bill of supply' : 'Tax invoice', fmt, c.req.query('template'));
+  return asFile(body, fmt, inv.invoice_no, c.req.query('inline') === '1');
 });
 
 // 4. RECORD PAYMENT AGAINST INVOICE

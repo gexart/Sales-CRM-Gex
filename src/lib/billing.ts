@@ -41,4 +41,5 @@ export const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : e ins
 export const today = () => new Date().toISOString().slice(0, 10);
 export const addDays = (iso: string, n: number) => new Date(new Date(iso).getTime() + n * 86400000).toISOString().slice(0, 10);
 
-export const INVOICE_STATUS_TONE: Record<string, "green" | "amber" | "red" | "gray" | "blue"> = { PAID: "green", PENDING: "amber", PARTIAL: "amber", OVERDUE: "red", CANCELLED: "gray", DRAFT: "gray", OPEN: "blue" };
+export const INVOICE_STATUS_TONE: Record<string, "green" | "amber" | "red" | "gray" | "blue"> = { PAID: "green", UNPAID: "amber", PARTIALLY_PAID: "amber", PENDING: "amber", OVERDUE: "red", CANCELLED: "gray", DRAFT: "gray", OPEN: "blue" };
+export const fileUrl = (path: string, fmt: "pdf" | "docx", inline = false) => `/api/v1/billing${path}/${fmt}${inline ? "?inline=1" : ""}`;

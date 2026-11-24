@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3, Bell, Briefcase, Building2, CheckSquare, ChevronRight, FolderOpen, LayoutDashboard, LogOut, Megaphone, Menu as MenuIcon, Moon, Rocket, Sun,
-  Package, Plus, Search, Send, Settings, Users, X, Telescope, ClipboardCheck, FileSignature, Landmark, Receipt, ShieldCheck, WalletCards, type LucideIcon,
+  Package, Plus, Search, Send, Settings, Users, X, Telescope, ClipboardCheck, ClipboardList, FileMinus2, FileSignature, FileText, FileX2, Landmark, PackageCheck, Receipt, ShieldCheck, ShoppingCart, Truck, WalletCards, type LucideIcon,
 } from "lucide-react";
 import { api, qs, type Page, type Row } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -41,15 +41,39 @@ const NAV: { group?: string; items: NavItem[] }[] = [
     ],
   },
   {
+    group: "Sales",
+    items: [
+      { to: "/billing/invoices", label: "Invoices", icon: Receipt, perm: ["invoice.view"] },
+      { to: "/billing/credit-notes", label: "Credit notes", icon: FileMinus2, perm: ["invoice.view"] },
+      { to: "/billing/approvals", label: "Approvals", icon: ClipboardCheck, perm: ["invoice.approve", "invoice.request"], badge: "approvals" },
+    ],
+  },
+  {
+    group: "Quotations+",
+    items: [
+      { to: "/billing/quotations", label: "Quotations", icon: FileSignature, perm: ["documents.view", "quotation.create"] },
+      { to: "/billing/sales-orders", label: "Sales orders", icon: ClipboardList, perm: ["documents.view", "sales_order.create"] },
+      { to: "/billing/proforma", label: "Pro forma invoices", icon: FileText, perm: ["documents.view", "proforma.create"] },
+      { to: "/billing/challans", label: "Delivery challans", icon: Truck, perm: ["documents.view", "challan.create"] },
+      { to: "/billing/packing-lists", label: "Packing lists", icon: PackageCheck, perm: ["documents.view", "challan.create"] },
+    ],
+  },
+  {
+    group: "Purchases",
+    items: [
+      { to: "/billing/purchases", label: "Purchases", icon: ShoppingCart, perm: ["purchases.view"] },
+      { to: "/billing/purchase-orders", label: "Purchase orders", icon: ClipboardList, perm: ["purchases.view", "purchase_order.create"] },
+      { to: "/billing/debit-notes", label: "Debit notes", icon: FileX2, perm: ["purchases.view"] },
+    ],
+  },
+  {
     group: "Billing",
     items: [
       { to: "/billing", label: "Billing home", icon: Landmark, perm: ["billing.access"] },
-      { to: "/billing/approvals", label: "Approvals", icon: ClipboardCheck, perm: ["invoice.approve", "invoice.request"], badge: "approvals" },
-      { to: "/billing/invoices", label: "Sales invoices", icon: Receipt, perm: ["invoice.view"] },
-      { to: "/billing/documents", label: "Quotes & proforma", icon: FileSignature, perm: ["documents.view", "quotation.create", "proforma.create"] },
       { to: "/billing/parties", label: "Parties", icon: Users, perm: ["parties.view"] },
       { to: "/billing/items", label: "Items & services", icon: Package, perm: ["items.view"] },
       { to: "/billing/reports", label: "Money & reports", icon: WalletCards, perm: ["collections.view", "reports.view", "accounting.view"] },
+      { to: "/billing/settings", label: "Billing settings", icon: Settings, perm: ["settings.view", "settings.manage"] },
       { to: "/billing/access", label: "Roles & access", icon: ShieldCheck, perm: ["roles.manage", "audit.view"] },
     ],
   },

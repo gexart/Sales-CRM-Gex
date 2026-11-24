@@ -42,7 +42,11 @@ const BillingHome = lazy(() => import("./pages/billing/Home").then((m) => ({ def
 const ApprovalsPage = lazy(() => import("./pages/billing/Approvals").then((m) => ({ default: m.ApprovalsPage })));
 const AccessPage = lazy(() => import("./pages/billing/Access").then((m) => ({ default: m.AccessPage })));
 const InvoicesPage = lazy(() => import("./pages/billing/Invoices").then((m) => ({ default: m.InvoicesPage })));
-const NewInvoicePage = lazy(() => import("./pages/billing/Invoices").then((m) => ({ default: m.NewInvoicePage })));
+const NewInvoicePage = lazy(() => import("./pages/billing/InvoiceForm").then((m) => ({ default: m.NewInvoicePage })));
+const PurchasesPage = lazy(() => import("./pages/billing/Purchases").then((m) => ({ default: m.PurchasesPage })));
+const CreditNotesPage = lazy(() => import("./pages/billing/Purchases").then((m) => ({ default: m.CreditNotesPage })));
+const DebitNotesPage = lazy(() => import("./pages/billing/Purchases").then((m) => ({ default: m.DebitNotesPage })));
+const BillingSettingsPage = lazy(() => import("./pages/billing/Settings").then((m) => ({ default: m.BillingSettingsPage })));
 const InvoiceDetailPage = lazy(() => import("./pages/billing/Invoices").then((m) => ({ default: m.InvoiceDetailPage })));
 const PartiesPage = lazy(() => import("./pages/billing/Masters").then((m) => ({ default: m.PartiesPage })));
 const ItemsPage = lazy(() => import("./pages/billing/Masters").then((m) => ({ default: m.ItemsPage })));
@@ -122,6 +126,16 @@ function Gate() {
         <Route path="billing/invoices/new" element={<NewInvoicePage />} />
         <Route path="billing/invoices/:id" element={<InvoiceDetailPage />} />
         <Route path="billing/documents" element={<DocumentsPage />} />
+        <Route path="billing/quotations" element={<DocumentsPage key="q" fixed="QUOTATION" />} />
+        <Route path="billing/sales-orders" element={<DocumentsPage key="so" fixed="SALES_ORDER" />} />
+        <Route path="billing/proforma" element={<DocumentsPage key="pf" fixed="PROFORMA" />} />
+        <Route path="billing/challans" element={<DocumentsPage key="dc" fixed="DELIVERY_CHALLAN" />} />
+        <Route path="billing/packing-lists" element={<DocumentsPage key="pl" fixed="PACKING_LIST" />} />
+        <Route path="billing/purchase-orders" element={<DocumentsPage key="po" fixed="PURCHASE_ORDER" />} />
+        <Route path="billing/purchases" element={<PurchasesPage />} />
+        <Route path="billing/credit-notes" element={<CreditNotesPage />} />
+        <Route path="billing/debit-notes" element={<DebitNotesPage />} />
+        <Route path="billing/settings" element={<BillingSettingsPage />} />
         <Route path="billing/parties" element={<PartiesPage />} />
         <Route path="billing/items" element={<ItemsPage />} />
         <Route path="billing/reports" element={<ReportsBillingPage />} />

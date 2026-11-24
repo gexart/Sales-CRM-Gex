@@ -141,7 +141,7 @@ billingRoutes.use("*", async (c, next) => {
   c.set("businessStub" as never, stub as never);
   c.set("businessId" as never, companyId as never);
   c.set("userId" as never, user.id as never);
-  c.set("membership" as never, { id: user.id, userId: user.id, businessId: companyId, roleKey: access.isAdmin ? "owner" : "member", permissions: access.isAdmin ? ["*"] : [...access.permissions], branchIds: ["*"] } as never);
+  c.set("membership" as never, { id: user.id, userId: user.id, businessId: companyId, roleKey: access.isAdmin || can("settings.manage") ? "owner" : "member", permissions: access.isAdmin ? ["*"] : [...access.permissions], branchIds: ["*"] } as never);
   if (!can("invoice.view_all") && /^\/sales\/invoices/.test(path)) c.set("ownOnlyUserId" as never, user.id as never);
 
   await next();

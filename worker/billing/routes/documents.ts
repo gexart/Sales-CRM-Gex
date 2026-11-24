@@ -4,6 +4,21 @@ import { isTradeDocType, TRADE_DOC_TYPES } from '@billing/shared';
 import type { Env } from '../types';
 import { locate } from './location';
 import type { BusinessVariables } from '../middleware/tenant';
+import { renderDocumentFile } from '../invoice-docs';
+
+const FILE_TYPES: Record<string, string> = {
+  pdf: 'application/pdf',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+};
+const asFile = (body: Uint8Array, fmt: string, name: string, inline = false) =>
+  new Response(body as unknown as BodyInit, {
+    headers: {
+      'content-type': FILE_TYPES[fmt] ?? 'application/octet-stream',
+      'content-disposition': `${inline ? 'inline' : 'attachment'}; filename="${name.replace(/[^\w.-]+/g, '_')}.${fmt}"`,
+      'cache-control': 'no-store',
+    },
+  });
+
 
 /**
  * /api/documents — quotations, proforma invoices, sales orders, delivery challans, packing lists, purchase orders.
@@ -82,6 +97,19 @@ documentRoutes.get('/:id', async (c) => {
   } catch (e) {
     return fail(c, e, 404);
   }
+});
+
+const DOC_KIND: Record<string, string> = { QUOTATION: 'Quotation', PROFORMA: 'Proforma invoice', SALES_ORDER: 'Sales order', DELIVERY_CHALLAN: 'Delivery challan', PACKING_LIST: 'Packing list', PURCHASE_ORDER: 'Purchase order' };
+documentRoutes.get('/:id/:fmt{pdf|docx}', async (c) => {
+  let d: any;
+  try {
+    d = await stubOf(c).getTradeDocument(c.req.param('id'));
+  } catch (e) {
+    return fail(c, e, 404);
+  }
+  const fmt = c.req.param('fmt') as 'pdf' | 'docx';
+  const body = await renderDocumentFile(stubOf(c), d, DOC_KIND[d.doc_type] ?? 'Document', fmt, c.req.query('template'));
+  return asFile(body, fmt, d.doc_no, c.req.query('inline') === '1');
 });
 
 documentRoutes.put('/:id/status', async (c) => {

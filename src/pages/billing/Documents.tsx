@@ -4,7 +4,7 @@ import { FileSignature, Plus, Printer } from "lucide-react";
 import { PageHeader } from "../../components/layout";
 import { Badge, Button, Card, EmptyState, ErrorState, Field, Skeleton, SlideOver, Tabs, useToast } from "../../components/ui";
 import { date as fmtDate } from "../../lib/format";
-import { addDays, bill, errMsg, inr, today, useBillingAccess } from "../../lib/billing";
+import { addDays, bill, errMsg, fileUrl, inr, today, useBillingAccess } from "../../lib/billing";
 import { LineEditor, PartyPicker, blankLine, rupeesToPaise, totalsOf, type Line, type Party } from "./parts";
 
 const TYPES = [
@@ -12,14 +12,17 @@ const TYPES = [
   { value: "PROFORMA", label: "Proforma", one: "Proforma invoice", perm: "proforma.create" },
   { value: "SALES_ORDER", label: "Sales orders", one: "Sales order", perm: "sales_order.create" },
   { value: "DELIVERY_CHALLAN", label: "Challans", one: "Delivery challan", perm: "challan.create" },
+  { value: "PACKING_LIST", label: "Packing lists", one: "Packing list", perm: "challan.create" },
+  { value: "PURCHASE_ORDER", label: "Purchase orders", one: "Purchase order", perm: "purchase_order.create" },
 ] as const;
 type DT = (typeof TYPES)[number]["value"];
 
 /** Quotations, proforma invoices, sales orders and challans: everything that comes before (or beside) a sales invoice. */
-export function DocumentsPage() {
+export function DocumentsPage({ fixed }: { fixed?: DT }) {
   const { can } = useBillingAccess();
-  const visible = TYPES.filter((t) => can(t.perm) || can("documents.view"));
-  const [type, setType] = useState<DT>("QUOTATION");
+  const visible = TYPES.filter((t) => ["QUOTATION", "PROFORMA", "SALES_ORDER", "DELIVERY_CHALLAN"].includes(t.value) && (can(t.perm) || can("documents.view")));
+  const [typeState, setType] = useState<DT>("QUOTATION");
+  const type = fixed ?? typeState;
   const [make, setMake] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const cur = TYPES.find((t) => t.value === type)!;
@@ -27,9 +30,9 @@ export function DocumentsPage() {
   const rows: any[] = q.data?.documents ?? []; // eslint-disable-line @typescript-eslint/no-explicit-any
   return (
     <div className="pb-8">
-      <PageHeader title="Quotes & proforma" icon={FileSignature} actions={can(cur.perm) && <Button variant="primary" icon={Plus} onClick={() => setMake(true)}>New {cur.one.toLowerCase()}</Button>} />
+      <PageHeader title={fixed ? cur.label : "Quotes & proforma"} icon={FileSignature} actions={can(cur.perm) && <Button variant="primary" icon={Plus} onClick={() => setMake(true)}>New {cur.one.toLowerCase()}</Button>} />
       <div className="px-4 sm:px-6">
-        <Tabs<DT> value={type} onChange={setType} tabs={visible.map((t) => ({ value: t.value, label: t.label }))} />
+        {!fixed && <Tabs<DT> value={type} onChange={setType} tabs={visible.map((t) => ({ value: t.value, label: t.label }))} />}
         <div className="mt-3">
           {q.isError ? <ErrorState error={q.error} /> : q.isLoading ? <Skeleton className="h-24" /> : rows.length === 0 ? <Card><EmptyState icon={FileSignature} title={`No ${cur.label.toLowerCase()} yet`} /></Card> : (
             <Card className="divide-y divide-line">
@@ -68,7 +71,7 @@ function NewDoc({ open, type, label, onClose }: { open: boolean; type: DT; label
   return (
     <SlideOver open={open} onClose={onClose} title={`New ${label.toLowerCase()}`} width="max-w-2xl" footer={<><div className="mr-auto text-sm font-semibold tabular-nums">≈ {inr(totalsOf(lines).total)}</div><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={!ready} loading={save.isPending} onClick={() => save.mutate()}>Create</Button></>}>
       <div className="space-y-4">
-        <PartyPicker value={party} onPick={setParty} />
+        <PartyPicker value={party} onPick={setParty} type={type === "PURCHASE_ORDER" ? "VENDOR" : "CUSTOMER"} label={type === "PURCHASE_ORDER" ? "Vendor" : "Customer"} />
         {(type === "QUOTATION" || type === "PROFORMA") && <Field label="Valid until"><input className="input" type="date" value={valid} onChange={(e) => setValid(e.target.value)} /></Field>}
         <LineEditor lines={lines} onChange={setLines} />
         <Field label="Notes"><textarea className="input min-h-16" value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
@@ -90,7 +93,7 @@ function DocView({ id, onClose }: { id: string | null; onClose: () => void }) {
   });
   const targets: { to: string; label: string }[] = !d ? [] : d.doc_type === "QUOTATION" ? [{ to: "PROFORMA", label: "Make proforma" }, { to: "SALES_ORDER", label: "Make sales order" }] : d.doc_type === "PROFORMA" ? [{ to: "SALES_ORDER", label: "Make sales order" }] : [];
   return (
-    <SlideOver open={!!id} onClose={onClose} title={d ? `${d.doc_no} · ${d.party_name}` : "Document"} width="max-w-xl" footer={<><Button icon={Printer} onClick={() => window.print()}>Print</Button>{can("documents.convert") && targets.map((t) => <Button key={t.to} variant="primary" loading={convert.isPending} onClick={() => convert.mutate(t.to)}>{t.label}</Button>)}</>}>
+    <SlideOver open={!!id} onClose={onClose} title={d ? `${d.doc_no} · ${d.party_name}` : "Document"} width="max-w-xl" footer={<><Button icon={Printer} onClick={() => window.open(fileUrl(`/documents/${id}`, "pdf", true), "_blank", "noopener")}>PDF</Button><a href={fileUrl(`/documents/${id}`, "docx")}><Button>Word</Button></a>{can("documents.convert") && targets.map((t) => <Button key={t.to} variant="primary" loading={convert.isPending} onClick={() => convert.mutate(t.to)}>{t.label}</Button>)}</>}>
       {!d ? <Skeleton className="h-32" /> : (
         <div className="space-y-3 text-[13px]">
           <div className="flex justify-between text-muted"><span>{fmtDate(d.date)}</span><Badge>{d.status}</Badge></div>

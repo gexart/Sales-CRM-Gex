@@ -155,6 +155,8 @@ purchaseRoutes.post('/bills/:id/payments', async (c) => {
 });
 
 // POST /api/purchases/debit-notes
+purchaseRoutes.get('/debit-notes', async (c) => c.json({ ok: true, notes: await (c.get('businessStub') as any).listDebitNotes() }));
+
 purchaseRoutes.post('/debit-notes', async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const parse = createDebitNoteSchema.safeParse(body);

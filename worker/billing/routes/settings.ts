@@ -33,6 +33,17 @@ const createBranchSchema = z.object({
   isDefault: z.boolean().optional(),
 });
 
+settingsRoutes.put('/branches/:id', async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const parsed = z
+    .object({ name: z.string().min(1).max(120).optional(), gstin: z.string().max(15).nullish(), stateCode: z.string().length(2).optional(), address: z.string().max(400).optional(), phone: z.string().max(20).optional() })
+    .safeParse(body);
+  if (!parsed.success) return c.json({ error: 'Validation failed', details: parsed.error.flatten() }, 400);
+  const stub = getStub(c);
+  await (stub as any).updateBranch(c.req.param('id'), parsed.data);
+  return c.json({ ok: true });
+});
+
 settingsRoutes.post('/branches', async (c) => {
   const stub = getStub(c);
   const body = await c.req.json();

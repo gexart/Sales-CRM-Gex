@@ -873,6 +873,30 @@ export class BillingDO extends DurableObject {
     return this.settingsService.listBranches();
   }
 
+  async updateBranch(id: string, patch: { name?: string; gstin?: string | null; stateCode?: string; address?: string; phone?: string }): Promise<any> {
+    return (this.ctx.storage as any).transactionSync(() => this.settingsService.updateBranch(id, patch));
+  }
+
+  /** The bank printed on invoices: the one asked for, else the default, else the first with an account number. Includes the full account number. */
+  async bankForInvoice(preferredId?: string): Promise<any | null> {
+    const banks = this.bankService.list() as any[];
+    const pick = banks.find((b) => b.id === preferredId) ?? banks.find((b) => b.isDefault && b.accountType === 'BANK') ?? banks.find((b) => b.accountType === 'BANK' && b.last4) ?? null;
+    if (!pick) return null;
+    return { ...pick, accountNumber: (await this.bankService.revealAccountNumber(pick.id)) ?? '' };
+  }
+
+  async listCreditNotes(): Promise<any[]> {
+    return this.platformSql
+      .exec(`SELECT c.id, c.note_no, c.date, c.reason, c.total_paise, c.status, c.invoice_id, i.invoice_no, p.name AS party_name FROM credit_notes c LEFT JOIN invoices i ON i.id = c.invoice_id LEFT JOIN parties p ON p.id = c.party_id ORDER BY c.created_at DESC LIMIT 200`)
+      .toArray();
+  }
+
+  async listDebitNotes(): Promise<any[]> {
+    return this.platformSql
+      .exec(`SELECT d.id, d.note_no, d.date, d.reason, d.total_paise, d.bill_id, b.bill_no, p.name AS party_name FROM debit_notes d LEFT JOIN purchase_bills b ON b.id = d.bill_id LEFT JOIN parties p ON p.id = d.party_id ORDER BY d.created_at DESC LIMIT 200`)
+      .toArray();
+  }
+
   async createBranch(input: BranchInput): Promise<any> {
     return (this.ctx.storage as any).transactionSync(() => {
       return this.settingsService.createBranch(input);

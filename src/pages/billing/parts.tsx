@@ -79,7 +79,7 @@ export function LineEditor({ lines, onChange }: { lines: Line[]; onChange: (l: L
       {lines.map((l, i) => (
         <div key={i} className="rounded-lg border border-line p-3">
           <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1"><ItemSearch value={l.name} onPick={(it) => set(i, { itemId: it.id, name: it.name, hsnSac: it.hsnSac ?? "", unitId: it.unitId || defaultUnit || "", price: String((it.salePricePaise ?? 0) / 100), taxPct: pct(it.taxRateId), inclusive: !!it.priceIncludesTax })} /></div>
+            <div className="min-w-0 flex-1"><ItemSearch pct={pct} value={l.name} onPick={(it) => set(i, { itemId: it.id, name: it.name, hsnSac: it.hsnSac ?? "", unitId: it.unitId || defaultUnit || "", price: String((it.salePricePaise ?? 0) / 100), taxPct: pct(it.taxRateId), inclusive: !!it.priceIncludesTax })} /></div>
             {lines.length > 1 && <Button variant="ghost" size="sm" aria-label="Remove line" icon={Trash2} onClick={() => onChange(lines.filter((_, j) => j !== i))} />}
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -98,7 +98,7 @@ export function LineEditor({ lines, onChange }: { lines: Line[]; onChange: (l: L
   );
 }
 
-function ItemSearch({ value, onPick }: { value: string; onPick: (it: any) => void }) { // eslint-disable-line @typescript-eslint/no-explicit-any
+function ItemSearch({ value, onPick, pct }: { value: string; onPick: (it: any) => void; pct: (id: string) => number }) { // eslint-disable-line @typescript-eslint/no-explicit-any
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const dq = useDebounced(q, 250);
@@ -112,7 +112,7 @@ function ItemSearch({ value, onPick }: { value: string; onPick: (it: any) => voi
         <div className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-line bg-white shadow-lg dark:bg-night">
           {rows.length ? rows.map((it: any) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
             <button key={it.id} type="button" className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-slate-50 dark:hover:bg-white/5" onMouseDown={(e) => (e.preventDefault(), onPick(it), setOpen(false))}>
-              <span className="truncate text-[13px] font-medium">{it.name}</span><span className="text-xs text-muted tabular-nums">{inr(it.salePricePaise)}</span>
+              <span className="min-w-0"><span className="block truncate text-[13px] font-medium">{it.name}</span><span className="text-[11px] text-muted">{it.hsnSac ? `HSN/SAC ${it.hsnSac}` : it.type === "SERVICE" ? "Service" : "Goods"}</span></span><span className="shrink-0 text-right"><span className="block text-[13px] font-medium tabular-nums">{inr(it.salePricePaise)}</span><span className="text-[11px] text-muted">{it.priceIncludesTax ? "incl." : "+"} tax {pct(it.taxRateId)}%</span></span>
             </button>
           )) : <div className="p-3 text-xs text-muted">{list.isLoading ? "Searching…" : "No items. Add them under Billing → Items."}</div>}
         </div>

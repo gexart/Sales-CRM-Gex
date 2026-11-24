@@ -69,9 +69,10 @@ export function ruleFor(method: string, path: string, hints: { docType?: string;
 
   // Sales
   if (is(/^\/sales\/invoices$/)) return read ? all("invoice.view") : m === "POST" ? { special: "invoice_create" } : null;
-  if (is(/^\/sales\/invoices\/[^/]+$/) && read) return all("invoice.view");
+  if (is(/^\/sales\/invoices\/[^/]+(\/(pdf|docx))?$/) && read) return all("invoice.view");
   if (is(/^\/sales\/invoices\/[^/]+\/payments$/) && m === "POST") return all("payment.receive");
   if (is(/^\/sales\/invoices\/[^/]+\/credit-note$/) && m === "POST") return all("invoice.credit_note");
+  if (is(/^\/sales\/credit-notes$/) && read) return all("invoice.view");
   if (is(/^\/sales\/invoices\/[^/]+\/cancel$/) && m === "POST") return all("invoice.cancel");
 
   // Quotation / proforma / order / challan / purchase order
@@ -82,7 +83,7 @@ export function ruleFor(method: string, path: string, hints: { docType?: string;
       return need ? all(need) : null;
     }
   }
-  if (is(/^\/documents\/[^/]+$/) && read) return all("documents.view");
+  if (is(/^\/documents\/[^/]+(\/(pdf|docx))?$/) && read) return all("documents.view");
   if (is(/^\/documents\/[^/]+\/status$/) && m === "PUT") return all("documents.edit");
   if (is(/^\/documents\/[^/]+\/convert$/) && m === "POST") {
     // Converting into a sales invoice is creating one: it follows the invoice rules, not the document rules.
@@ -120,7 +121,7 @@ export function ruleFor(method: string, path: string, hints: { docType?: string;
   if (is(/^\/einvoice(\/|$)/)) return all("einvoice.manage");
 
   // Settings that matter for day-to-day work; roles/members/data-sharing/export stay admin-only.
-  if (is(/^\/settings\/(branches|locations|config|numbering|billing)$/)) return read ? all("settings.view") : all("settings.manage");
+  if (is(/^\/settings\/(branches(\/[^/]+)?|locations|config|numbering|billing)$/)) return read ? all("settings.view") : all("settings.manage");
 
   // Shared utilities every billing user needs
   if (is(/^\/notifications(\/|$)/) || is(/^\/offline(\/|$)/)) return all("billing.access");
