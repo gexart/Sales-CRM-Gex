@@ -27,6 +27,7 @@ import { harveyRoutes } from "./routes/harvey";
 import { billingRoutes } from "./billing";
 import { billingAccessRoutes } from "./billing/access-routes";
 import { draftRoutes } from "./billing/drafts";
+import { attachmentRoutes } from "./billing/attachments";
 import { publicBillingRoutes } from "./billing/public";
 import { appReleaseRoutes, publicDownloadRoutes } from "./routes/app-releases";
 
@@ -87,6 +88,7 @@ api.route("/imports", importRoutes);
 api.route("/assets", assetRoutes);
 api.route("/billing", billingRoutes);
 api.route("/billing-access/drafts", draftRoutes);
+api.route("/billing-access/attachments", attachmentRoutes);
 api.route("/billing-access", billingAccessRoutes);
 api.route("/", crmRoutes);
 api.route("/", dashboardRoutes);

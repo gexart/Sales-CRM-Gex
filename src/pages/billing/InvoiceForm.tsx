@@ -37,6 +37,7 @@ export function NewInvoicePage() {
   const [paidFull, setPaidFull] = useState(false);
   const [paid, setPaid] = useState("");
   const [mode, setMode] = useState("UPI");
+  const [splits, setSplits] = useState<{ amt: string; mode: string }[]>([]);
   const [autoWa, setAutoWa] = useState(getAutoWhatsApp);
   const [ref] = useState(newRef);
   const [draftId, setDraftId] = useState<string | null>(sp.get("draft"));
@@ -71,11 +72,13 @@ export function NewInvoicePage() {
   const maxPct = me?.limits.maxDiscountPct ?? 0;
   const discPct = t.sub > 0 ? (t.disc / t.sub) * 100 : 0;
   const ready = !!party && lines.every((l) => l.itemId && Number(l.qty) > 0 && l.price !== "");
-  const paidPaise = paidFull ? total : Math.min(rupeesToPaise(paid), total);
+  const firstPaid = paidFull ? total : Math.min(rupeesToPaise(paid), total);
+  const splitPaid = paidFull ? 0 : splits.reduce((a, s) => a + rupeesToPaise(s.amt), 0);
+  const paidPaise = Math.min(firstPaid + splitPaid, total);
 
   const body = () => ({
     partyId: party!.id, partyName: party!.name, partyGstin: party!.gstin || undefined, partyStateCode: party!.stateCode || "19", date: inv, dueDate: due,
-    paymentMode: paidPaise > 0 ? mode : "CREDIT", paidAmountPaise: paidPaise,
+    paymentMode: firstPaid > 0 ? mode : "CREDIT", paidAmountPaise: firstPaid,
     items: lines.map((l) => ({ itemId: l.itemId, name: l.name, hsnSac: l.hsnSac, quantityThousandths: Math.round(Number(l.qty) * 1000), unitId: l.unitId, unitPricePaise: rupeesToPaise(l.price), discountPaise: rupeesToPaise(l.disc), taxRatePercent: l.taxPct, isTaxInclusive: l.inclusive })),
     extraDiscountPaise: rupeesToPaise(String(extraRupees)), enableRoundOff: roundOff, notes: notes || undefined, terms: terms || undefined, bankAccountId: bank || undefined, signatoryName: signatory || undefined,
   });
@@ -88,6 +91,8 @@ export function NewInvoicePage() {
     if (r.pending) { toast("success", "Sent for approval. You will be told when it is decided."); return nav("/billing/approvals"); }
     const i = r.invoice;
     toast("success", `Invoice ${i?.invoiceNo ?? ""} created`);
+    // Further payments of a split payment are recorded against the new invoice.
+    if (i?.id) for (const sp of splits) if (rupeesToPaise(sp.amt) > 0 && !paidFull) bill.post(`/sales/invoices/${i.id}/payments`, { amountPaise: rupeesToPaise(sp.amt), paymentMode: sp.mode, branchId: i.branchId, date: inv }).catch((e) => toast("error", errMsg(e)));
     if (print && i?.id) window.open(`/api/v1/billing/sales/invoices/${i.id}/pdf?inline=1`, "_blank", "noopener");
     else if (autoWa && party && hasDigits(party.phone ?? "")) openWhatsApp(party.phone!, invoiceMessage({ party: party.name, invoiceNo: i?.invoiceNo, totalPaise: i?.totalPaise ?? i?.total_paise ?? total, balancePaise: Math.max(0, total - paidPaise), dueDate: due, token: i?.shareToken ?? r.shareToken }));
     nav(`/billing/invoices/${i?.id}`);
@@ -154,6 +159,14 @@ export function NewInvoicePage() {
                   <Field label="Amount (₹)"><input className="input" inputMode="decimal" disabled={paidFull} value={paidFull ? String(total / 100) : paid} onChange={(e) => setPaid(e.target.value)} placeholder="0" /></Field>
                   <Field label="Mode"><Select value={mode} onChange={(e) => setMode(e.target.value)} options={["UPI", "CASH", "BANK", "CARD"].map((v) => ({ value: v, label: v[0] + v.slice(1).toLowerCase() }))} /></Field>
                 </div>
+                {!paidFull && splits.map((sp, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+                    <Field label={`Payment ${i + 2} (₹)`}><input className="input" inputMode="decimal" value={sp.amt} onChange={(e) => setSplits(splits.map((x, j) => (j === i ? { ...x, amt: e.target.value } : x)))} /></Field>
+                    <Field label="Mode"><Select value={sp.mode} onChange={(e) => setSplits(splits.map((x, j) => (j === i ? { ...x, mode: e.target.value } : x)))} options={["UPI", "CASH", "BANK", "CARD"].map((v) => ({ value: v, label: v[0] + v.slice(1).toLowerCase() }))} /></Field>
+                    <Button variant="ghost" size="sm" aria-label="Remove payment" onClick={() => setSplits(splits.filter((_, j) => j !== i))}>✕</Button>
+                  </div>
+                ))}
+                {!paidFull && <button type="button" className="text-xs font-medium text-brand-700 underline" onClick={() => setSplits([...splits, { amt: "", mode: "CASH" }])}>+ Split payment</button>}
                 {paidPaise > 0 && <p className="text-xs text-muted">Balance due {inr(Math.max(0, total - paidPaise))}</p>}
               </div>
             )}

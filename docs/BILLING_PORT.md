@@ -55,9 +55,15 @@ roles & access (roles, team assignment, audit log). Menu items appear only for p
 - Drafts (per user), credit notes (list, create from an invoice), debit notes, purchases with payments.
 - Fixed in the imported engine: partial credit notes with an odd tax amount posted a journal that was one paisa out of balance.
 
+## Finishing pass
+- Android app 2: opens the CRM full screen, pairs itself on first sign-in (no token to type), shows approval / approved / rejected / reminder
+  notifications (polls `/api/v1/device/notifications` every 15 min with the device token; no Google push needed), opens the right screen when tapped,
+  shows a retry page with no signal, keeps the call recorder.
+- Attachments (up to 5 files, 5 MB each, private in R2), split payments, expenses and stock screens.
+
 ## Not done yet
 - TDS/TCS toggles, reverse charge and e-invoice / e-way bill switches on the invoice form (the engine has the APIs; needs GSP credentials).
-- Attach files to invoices; split payments; barcode and thermal print screens; subscriptions (recurring invoices) screen; expenses and inventory screens.
+- Barcode and thermal print screens; subscriptions (recurring invoices) screen; stock adjustments and transfers screens.
 - Push notifications to the phone (needs FCM/VAPID keys); today the app polls every 30 s while open.
 - Voice-note / meeting recording types (calls only), mapping recordings to billing parties and invoices.
 - JETSA data import; GSTR exports UI; purchases, expenses and inventory screens (APIs exist).

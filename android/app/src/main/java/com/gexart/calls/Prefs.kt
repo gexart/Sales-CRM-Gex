@@ -33,6 +33,11 @@ class Prefs(context: Context) {
         get() = p.getLong("sync_from", 0L)
         set(v) = p.edit().putLong("sync_from", v).apply()
 
+    /** Notifications created after this moment (ISO time) have not been shown on the phone yet. */
+    var notifySince: String
+        get() = p.getString("notify_since", "") ?: ""
+        set(v) = p.edit().putString("notify_since", v).apply()
+
     fun isProcessed(key: String) = p.getStringSet("processed", emptySet())!!.contains(key)
 
     fun markProcessed(key: String) {

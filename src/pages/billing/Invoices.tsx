@@ -10,6 +10,7 @@ import { telHref, hasDigits } from "../../lib/contact-links";
 import { invoiceMessage, openWhatsApp, reminderMessage } from "../../lib/invoice-share";
 import { INVOICE_STATUS_TONE, access, bill, errMsg, fileUrl, inr, today, useBillingAccess } from "../../lib/billing";
 import { rupeesToPaise } from "./parts";
+import { Attachments } from "./Attachments";
 
 type Tab = "ALL" | "PENDING" | "OVERDUE" | "PAID" | "DRAFTS";
 
@@ -128,6 +129,7 @@ export function InvoiceDetailPage() {
           {inv.amountInWords && <div className="pt-1 text-xs text-muted">{inv.amountInWords}</div>}
         </Card>
         {inv.notes && <Card className="p-3.5 text-[13px]"><div className="mb-0.5 text-xs text-muted">Notes</div>{inv.notes}</Card>}
+        <Attachments type="invoice" id={inv.id} />
       </div>
       <Dialog open={pay} onClose={() => setPay(false)} title="Record payment" footer={<><Button onClick={() => setPay(false)}>Cancel</Button><Button variant="primary" loading={payM.isPending} disabled={rupeesToPaise(amt) <= 0} onClick={() => payM.mutate()}>Save</Button></>}>
         <div className="space-y-3">

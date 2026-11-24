@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3, Bell, Briefcase, Building2, CheckSquare, ChevronRight, FolderOpen, LayoutDashboard, LogOut, Megaphone, Menu as MenuIcon, Moon, Rocket, Sun,
-  Package, Plus, Search, Send, Settings, Users, X, Telescope, ClipboardCheck, ClipboardList, FileMinus2, FileSignature, FileText, FileX2, Landmark, PackageCheck, Receipt, ShieldCheck, ShoppingCart, Truck, WalletCards, type LucideIcon,
+  Package, Plus, Search, Send, Settings, Users, X, Telescope, Boxes, ClipboardCheck, ClipboardList, FileMinus2, FileSignature, FileText, FileX2, Landmark, PackageCheck, Receipt, ShieldCheck, ShoppingCart, Truck, WalletCards, type LucideIcon,
 } from "lucide-react";
 import { api, qs, type Page, type Row } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -64,6 +64,8 @@ const NAV: { group?: string; items: NavItem[] }[] = [
       { to: "/billing/purchases", label: "Purchases", icon: ShoppingCart, perm: ["purchases.view"] },
       { to: "/billing/purchase-orders", label: "Purchase orders", icon: ClipboardList, perm: ["purchases.view", "purchase_order.create"] },
       { to: "/billing/debit-notes", label: "Debit notes", icon: FileX2, perm: ["purchases.view"] },
+      { to: "/billing/expenses", label: "Expenses", icon: Receipt, perm: ["expenses.view"] },
+      { to: "/billing/stock", label: "Stock", icon: Boxes, perm: ["inventory.view"] },
     ],
   },
   {

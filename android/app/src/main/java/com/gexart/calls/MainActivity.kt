@@ -6,11 +6,13 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -39,6 +41,7 @@ class MainActivity : Activity() {
             return
         }
 
+        window.statusBarColor = Color.parseColor("#141E2E")
         web = WebView(this)
         web.setBackgroundColor(Color.parseColor("#141E2E"))
         with(web.settings) {
@@ -52,6 +55,18 @@ class MainActivity : Activity() {
 
         web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = route(request.url)
+
+            // No signal: show a clear page with a retry link instead of the browser's error screen.
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                if (!request.isForMainFrame) return
+                view.loadDataWithBaseURL(
+                    null,
+                    "<html><body style='font-family:sans-serif;background:#141E2E;color:#fff;text-align:center;padding:64px 24px'>" +
+                        "<h2>No connection</h2><p style='opacity:.7'>Gexart needs the internet to open. Invoice requests you make offline are saved and sent later.</p>" +
+                        "<p><a href='$home' style='color:#F47A20;font-size:18px'>Try again</a></p></body></html>",
+                    "text/html", "UTF-8", null,
+                )
+            }
         }
         web.webChromeClient = object : WebChromeClient() {
             override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
@@ -71,14 +86,34 @@ class MainActivity : Activity() {
 
         setContentView(web)
         if (savedInstanceState != null) web.restoreState(savedInstanceState) else web.loadUrl(deepLink() ?: home)
-        if (prefs.configured) CallSyncWorker.schedulePeriodic(this)
+        if (prefs.configured) {
+            CallSyncWorker.schedulePeriodic(this)
+            NotifyWorker.schedule(this)
+        }
+        askNotificationPermission()
     }
 
     /** Opened from an app shortcut or a link to this CRM: go straight there. */
     private fun deepLink(): String? {
+        val path = intent?.getStringExtra("path")
+        if (!path.isNullOrBlank() && path.startsWith("/")) return home + path
         val d = intent?.data ?: return null
         val homeHost = Uri.parse(home).host
         return if (d.scheme == "https" && d.host == homeHost) d.toString() else null
+    }
+
+    /** A tap on a notification while the app is open goes straight to that screen. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val path = intent.getStringExtra("path")
+        if (::web.isInitialized && !path.isNullOrBlank() && path.startsWith("/")) web.loadUrl(home + path)
+    }
+
+    private fun askNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 9)
+        }
     }
 
     /** true = handled outside the app; false = load inside the WebView. */
@@ -135,6 +170,7 @@ class MainActivity : Activity() {
             if (!prefs.configured) return false
             if (prefs.syncFrom == 0L) prefs.syncFrom = System.currentTimeMillis()
             CallSyncWorker.schedulePeriodic(this@MainActivity)
+            NotifyWorker.schedule(this@MainActivity)
             return true
         }
 

@@ -37,6 +37,10 @@ class CrmClient(private val baseUrl: String, private val token: String) {
     /** Returns the signed-in user's name if the token is valid. */
     fun ping(): String = read(open("/ping", "GET")).optString("user")
 
+    /** New notifications for this user since the given ISO time, oldest first. */
+    fun notifications(sinceIso: String): org.json.JSONArray =
+        read(open("/notifications?since=${URLEncoder.encode(sinceIso, "UTF-8")}", "GET")).optJSONArray("items") ?: org.json.JSONArray()
+
     /** Whether the number belongs to a CRM contact or prospect, and their name. */
     fun lookup(phone: String): Pair<Boolean, String?> {
         val r = read(open("/lookup?phone=${URLEncoder.encode(phone, "UTF-8")}", "GET"))

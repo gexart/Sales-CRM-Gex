@@ -85,6 +85,15 @@ deviceRoutes.use("*", async (c, next) => {
   await next();
 });
 
+// Notifications for the phone (approvals, reminders). The Android app polls this with its device token and shows them natively.
+deviceRoutes.get("/notifications", async (c) => {
+  const since = c.req.query("since") ?? "1970-01-01T00:00:00.000Z";
+  const r = await c.env.DB.prepare("SELECT id, title, body, entity_type, entity_id, created_at FROM notifications WHERE user_id = ? AND created_at > ? ORDER BY created_at ASC LIMIT 20")
+    .bind(c.get("user").id, since)
+    .all();
+  return c.json({ data: { items: r.results ?? [] } });
+});
+
 deviceRoutes.get("/ping", (c) => {
   const u = c.get("user");
   return c.json({ data: { ok: true, user: u.name, app: c.env.APP_NAME } });

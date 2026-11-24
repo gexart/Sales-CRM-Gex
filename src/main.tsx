@@ -9,6 +9,7 @@ import { CONFIGS } from "./lib/entities";
 import { AppShell } from "./components/layout";
 import { Spinner, ToastProvider } from "./components/ui";
 import { OfflineSync } from "./components/offline-sync";
+import { AppPairing } from "./components/app-pairing";
 
 // Pages load on demand so the first screen is small and fast on a phone connection.
 const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
@@ -46,6 +47,8 @@ const NewInvoicePage = lazy(() => import("./pages/billing/InvoiceForm").then((m)
 const PurchasesPage = lazy(() => import("./pages/billing/Purchases").then((m) => ({ default: m.PurchasesPage })));
 const CreditNotesPage = lazy(() => import("./pages/billing/Purchases").then((m) => ({ default: m.CreditNotesPage })));
 const DebitNotesPage = lazy(() => import("./pages/billing/Purchases").then((m) => ({ default: m.DebitNotesPage })));
+const ExpensesPage = lazy(() => import("./pages/billing/Stock").then((m) => ({ default: m.ExpensesPage })));
+const InventoryPage = lazy(() => import("./pages/billing/Stock").then((m) => ({ default: m.InventoryPage })));
 const BillingSettingsPage = lazy(() => import("./pages/billing/Settings").then((m) => ({ default: m.BillingSettingsPage })));
 const InvoiceDetailPage = lazy(() => import("./pages/billing/Invoices").then((m) => ({ default: m.InvoiceDetailPage })));
 const PartiesPage = lazy(() => import("./pages/billing/Masters").then((m) => ({ default: m.PartiesPage })));
@@ -86,6 +89,7 @@ function Gate() {
   return (
     <>
     <OfflineSync />
+    <AppPairing />
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<Dashboard />} />
@@ -136,6 +140,8 @@ function Gate() {
         <Route path="billing/credit-notes" element={<CreditNotesPage />} />
         <Route path="billing/debit-notes" element={<DebitNotesPage />} />
         <Route path="billing/settings" element={<BillingSettingsPage />} />
+        <Route path="billing/expenses" element={<ExpensesPage />} />
+        <Route path="billing/stock" element={<InventoryPage />} />
         <Route path="billing/parties" element={<PartiesPage />} />
         <Route path="billing/items" element={<ItemsPage />} />
         <Route path="billing/reports" element={<ReportsBillingPage />} />
