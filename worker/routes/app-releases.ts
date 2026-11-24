@@ -60,6 +60,8 @@ export async function syncGithubRelease(env: Env, userId: string | null): Promis
   const headers: Record<string, string> = { accept: "application/vnd.github+json", "user-agent": "gexart-crm", "x-github-api-version": "2022-11-28" };
   if (env.GITHUB_TOKEN) headers.authorization = `Bearer ${env.GITHUB_TOKEN}`;
   const res = await fetch(`https://api.github.com/repos/${repo}/releases?per_page=20`, { headers });
+  // GitHub's API limits anonymous callers per shared address and Cloudflare shares addresses, so a public repository falls back to the plain release pages.
+  if (!res.ok && (res.status === 403 || res.status === 429)) return syncFromReleasePage(env, repo, userId);
   if (!res.ok) throw new ApiError(502, "provider_error", res.status === 404 ? `GitHub repository ${repo} was not found (private repositories need a token)` : `GitHub returned ${res.status}`);
   const list = (await res.json()) as { tag_name: string; body: string | null; draft: boolean; assets: { name: string; size: number; url: string }[] }[];
   const rel = list.find((x) => !x.draft && x.tag_name.startsWith("android-v") && x.assets.some((a) => a.name.endsWith(".apk")));
@@ -75,6 +77,23 @@ export async function syncGithubRelease(env: Env, userId: string | null): Promis
   if (!file.ok) throw new ApiError(502, "provider_error", `Downloading the build from GitHub failed (${file.status})`);
   const release = await storeRelease(env, { buf: await file.arrayBuffer(), versionName: rel.tag_name.replace(/^android-v/, ""), source: "github", sourceRef: rel.tag_name, notes: rel.body, userId });
   return { imported: true, message: `Imported ${release?.version_name}`, release };
+}
+
+/** Same import without the API: /releases/latest redirects to the newest tag, and the APK has a predictable name. */
+async function syncFromReleasePage(env: Env, repo: string, userId: string | null) {
+  const latest = await fetch(`https://github.com/${repo}/releases/latest`, { redirect: "manual", headers: { "user-agent": "gexart-crm" } });
+  const tag = (latest.headers.get("location") ?? "").split("/tag/")[1];
+  if (!tag || !tag.startsWith("android-v")) return { imported: false, message: "No Android build has been published on GitHub yet", release: null as Release | null };
+  const existing = await env.DB.prepare(`${SELECT} WHERE r.platform = 'android' AND r.source_ref = ?`).bind(tag).first<Release>();
+  if (existing) return { imported: false, message: `Already up to date (${existing.version_name})`, release: existing };
+  const version = tag.replace(/^android-v/, "");
+  for (const name of [`SalesGexart-${version}.apk`, `GexartSales-${version}.apk`, `GexartCalls-${version}.apk`]) {
+    const file = await fetch(`https://github.com/${repo}/releases/download/${tag}/${name}`, { headers: { "user-agent": "gexart-crm" } });
+    if (!file.ok) continue;
+    const release = await storeRelease(env, { buf: await file.arrayBuffer(), versionName: version, source: "github", sourceRef: tag, notes: null, userId });
+    return { imported: true, message: `Imported ${release?.version_name}`, release };
+  }
+  throw new ApiError(502, "provider_error", "Could not download the newest build from GitHub");
 }
 
 const SYNC_ROW = "__github_sync_at";
