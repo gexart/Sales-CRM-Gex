@@ -217,6 +217,7 @@ export async function renderInvoiceDocx(d: InvoiceDoc): Promise<Uint8Array> {
 
 // ─── "Classic black" template ───────────────────────────────────────────────────────────────────────────────────────
 import { getStateByCode, normalizeBillingSettings } from "@billing/shared";
+import { BRAND_LOGO } from "./brand-logo";
 import { renderClassicInvoicePdf, type ClassicDoc } from "./invoice-classic";
 
 export interface ClassicContext {
@@ -332,7 +333,7 @@ export function buildClassicDoc(inv: L, kind: string, ctx: ClassicContext): Clas
     mobile: s.company.mobile || branch.phone || null,
     email: s.company.email || null,
     website: s.company.website || null,
-    logoDataUrl: s.branding.logo || null,
+    logoDataUrl: BRAND_LOGO,
   };
   const bank = ctx.bank
     ? { bank: String(ctx.bank.name ?? ""), account: String(ctx.bank.accountNumber ?? ctx.bank.account_number ?? ""), ifsc: String(ctx.bank.ifsc ?? ""), branch: String(ctx.bank.branch ?? ""), beneficiary: company.name, type: "Current" }
