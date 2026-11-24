@@ -12,7 +12,6 @@
   // The *.workers.dev address stays on for paired phones and Harvey. A custom domain ("routes": [{ "pattern": "...", "custom_domain": true }])
   // needs the domain's DNS to be hosted on Cloudflare; see DEVELOPMENT.md.
   "workers_dev": true,
-  "limits": { "cpu_ms": 30000 },
   "d1_databases": [
     {
       "binding": "DB",
@@ -37,6 +36,8 @@
   "vars": {
     "APP_NAME": "Sales Gexart",
     "DEMO_MODE": "false",
+    // "true" prints invoices in the Inter font (needs the Workers Paid plan: 10 ms CPU on Free is not enough). "false" uses built-in fonts.
+    "PDF_INTER": "false",
     // Verified sender for Brevo transactional email (must be verified in your Brevo account).
     "BREVO_SENDER_EMAIL": "",
     "BREVO_SENDER_NAME": "Gexart",

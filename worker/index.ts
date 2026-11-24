@@ -1,3 +1,4 @@
+import { pdfOptions } from "./billing/invoice-classic";
 import { Hono, type MiddlewareHandler } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 import type { AppEnv, Env, Job } from "./env";
@@ -114,7 +115,10 @@ export { BillingDO } from "./billing";
 
 // Settings saved in the CRM (API keys, sender, quotas) are layered over the Worker env everywhere.
 export default {
-  fetch: async (req: Request, env: Env, ctx: ExecutionContext) => app.fetch(req, await withSettings(env), ctx),
+  fetch: async (req: Request, env: Env, ctx: ExecutionContext) => {
+    pdfOptions.inter = env.PDF_INTER === "true";
+    return app.fetch(req, await withSettings(env), ctx);
+  },
   queue: async (batch: MessageBatch<Job>, env: Env) => handleQueue(batch, await withSettings(env)),
   scheduled: (_event: ScheduledController, env: Env, ctx: ExecutionContext) => ctx.waitUntil(withSettings(env).then(async (e) => { await scheduled(e); await runDueRecurring(e); })),
 } satisfies ExportedHandler<Env, Job>;

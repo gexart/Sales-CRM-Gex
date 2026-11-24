@@ -15,6 +15,7 @@ export interface Env {
   AI?: Ai;
   APP_NAME: string;
   DEMO_MODE: string;
+  PDF_INTER?: string;
   BREVO_SENDER_EMAIL?: string;
   GSTIN_API_URL?: string;
   GSTIN_API_KEY?: string;

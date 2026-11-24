@@ -2,7 +2,7 @@
 // invoice facts, black table header with banded rows, tax lines, HSN summary, UPI QR + bank, signature, notes and terms.
 // Inter replaces Apple's SF UI (not licensed for embedding). One page for a normal invoice (it tightens itself if needed); a second
 // page only when the items or terms really do not fit.
-import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import { encode } from "uqr";
 
 export interface ClassicDoc {
@@ -64,21 +64,28 @@ interface Mode {
 const NORMAL: Mode = { rowPitch: 17, hsnPitch: 12.8, termSize: 7.2, termPitch: 8.7, gap: 1, noteSize: 8.1 };
 const TIGHT: Mode = { rowPitch: 15.4, hsnPitch: 11.4, termSize: 6.7, termPitch: 7.8, gap: 0.62, noteSize: 7.6 };
 
-async function draw(d: ClassicDoc, mode: Mode): Promise<{ pdf: Uint8Array; pages: number }> {
+async function draw(d: ClassicDoc, mode: Mode, inter: boolean): Promise<{ pdf: Uint8Array; pages: number }> {
   const doc = await PDFDocument.create();
-  // Loaded only when a PDF is made, so the worker starts fast (these are large).
-  const fontkit = (await import("@pdf-lib/fontkit")).default;
-  const { INTER_400, INTER_600, INTER_700, INTER_RUPEE } = await import("./inter-fonts");
-  doc.registerFontkit(fontkit);
-  doc.setTitle(`${d.title} ${d.meta[0]?.[1] ?? ""} - ${d.party.name}`.replace(/[^\x20-\x7E]/g, ""));
-  doc.setAuthor(clean(d.company.name));
-  doc.setCreator("Sales Gexart");
-  const f: Record<Weight, PDFFont> = {
-    r: await doc.embedFont(bytes(INTER_400), { subset: true }),
-    s: await doc.embedFont(bytes(INTER_600), { subset: true }),
-    b: await doc.embedFont(bytes(INTER_700), { subset: true }),
-  };
-  const rupee = await doc.embedFont(bytes(INTER_RUPEE), { subset: true });
+  let f: Record<Weight, PDFFont>;
+  let rupee: PDFFont;
+  if (inter) {
+    // Inter, like the original invoices. Needs a lot of CPU time per PDF (Workers Paid plan).
+    const fontkit = (await import("@pdf-lib/fontkit")).default;
+    const { INTER_400, INTER_600, INTER_700, INTER_RUPEE } = await import("./inter-fonts");
+    doc.registerFontkit(fontkit);
+    f = {
+      r: await doc.embedFont(bytes(INTER_400), { subset: true }),
+      s: await doc.embedFont(bytes(INTER_600), { subset: true }),
+      b: await doc.embedFont(bytes(INTER_700), { subset: true }),
+    };
+    rupee = await doc.embedFont(bytes(INTER_RUPEE), { subset: true });
+  } else {
+    // Built-in PDF fonts: almost no CPU, so it fits the Free plan. The rupee sign is written "Rs."
+    const reg = await doc.embedFont(StandardFonts.Helvetica);
+    const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+    f = { r: reg, s: bold, b: bold };
+    rupee = bold;
+  }
   const logo = await embedDataUrl(doc, d.company.logoDataUrl);
   const sig = await embedDataUrl(doc, d.signature.dataUrl);
   const stamp = await embedDataUrl(doc, d.signature.stampDataUrl);
@@ -413,10 +420,15 @@ async function draw(d: ClassicDoc, mode: Mode): Promise<{ pdf: Uint8Array; pages
   return { pdf: await doc.save(), pages: pages.length };
 }
 
-export async function renderClassicInvoicePdf(d: ClassicDoc): Promise<Uint8Array> {
-  const first = await draw(d, NORMAL);
+/** Set per request from the PDF_INTER variable (true only on a paid Workers plan). */
+export const pdfOptions = { inter: false };
+
+export async function renderClassicInvoicePdf(input: ClassicDoc): Promise<Uint8Array> {
+  const inter = pdfOptions.inter;
+  const d: ClassicDoc = inter ? input : JSON.parse(JSON.stringify(input).replace(/₹/g, "Rs. "));
+  const first = await draw(d, NORMAL, inter);
   if (first.pages === 1) return first.pdf;
   // Does the tighter layout keep it on one page (or fewer)? Use it; otherwise keep the roomier one.
-  const second = await draw(d, TIGHT);
+  const second = await draw(d, TIGHT, inter);
   return second.pages < first.pages ? second.pdf : first.pdf;
 }
