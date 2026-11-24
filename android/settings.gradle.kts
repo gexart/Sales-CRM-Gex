@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "GexartCalls"
+rootProject.name = "GexartSales"
 include(":app")

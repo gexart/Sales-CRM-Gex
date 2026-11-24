@@ -1,4 +1,4 @@
-# Builds the Gexart Calls Android app and publishes it as a GitHub release (android-v1.0.<run>).
+# Builds the Gexart Sales Android app (CRM, billing and call recording in one) and publishes it as a GitHub release (android-v1.0.<run>).
 # The CRM imports new releases every hour (Settings → Phone app → "Get latest from GitHub" for now).
 name: Android app
 
@@ -69,8 +69,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           V="1.0.${{ github.run_number }}"
-          cp android/app/build/outputs/apk/release/app-release.apk "GexartCalls-$V.apk"
-          gh release create "android-v$V" "GexartCalls-$V.apk" \
-            --title "Gexart Calls $V" \
+          cp android/app/build/outputs/apk/release/app-release.apk "GexartSales-$V.apk"
+          gh release create "android-v$V" "GexartSales-$V.apk" \
+            --title "Gexart Sales $V" \
             --notes "Built from ${GITHUB_SHA::7}. The CRM imports this build automatically (Settings → Phone app)." \
             --target "$GITHUB_SHA"

@@ -34,9 +34,9 @@ class RecorderActivity : Activity() {
         val pad = dp(20)
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(pad, pad, pad, pad) }
 
-        col.addView(TextView(this).apply { text = "Gexart"; textSize = 26f; setTypeface(typeface, Typeface.BOLD); setTextColor(brand) })
+        col.addView(TextView(this).apply { text = "Call recording"; textSize = 26f; setTypeface(typeface, Typeface.BOLD); setTextColor(brand) })
         col.addView(TextView(this).apply {
-            text = "Uploads recordings of your client calls to the Gexart CRM, where they are matched to the contact, transcribed and summarised."
+            text = "Part of Gexart Sales. Uploads recordings of your client calls to the CRM, where they are matched to the contact, transcribed and summarised."
             setTextColor(Color.DKGRAY); setPadding(0, dp(4), 0, dp(16))
         })
 

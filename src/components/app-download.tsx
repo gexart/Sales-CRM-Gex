@@ -1,6 +1,6 @@
-// Settings → Phone app: download the Gexart Calls Android app (button or QR code) and, for admins,
+// Settings → Phone app: download the Gexart Sales Android app (button or QR code) and, for admins,
 // publish new builds (import from GitHub Actions or upload an .apk).
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { encode } from "uqr";
 import { CloudDownload, Download, Trash2, Upload } from "lucide-react";
@@ -61,8 +61,8 @@ export function AndroidAppCard() {
           <div className="relative flex items-center gap-3">
             <span className="flex size-12 items-center justify-center rounded-[14px] bg-snow shadow-sm"><BrandMark className="h-8 w-[30px]" /></span>
             <div>
-              <div className="text-[15px] font-semibold">Gexart Calls for Android</div>
-              <div className="text-xs text-snow/55">Uploads your client call recordings to the CRM automatically</div>
+              <div className="text-[15px] font-semibold">Gexart Sales for Android</div>
+              <div className="text-xs text-snow/55">The whole app in one: CRM, billing, approvals and call recording</div>
             </div>
           </div>
           {q.isLoading ? (
@@ -132,6 +132,7 @@ export function AndroidAppCard() {
           )}
         </div>
       )}
+      <PwaInstall />
       <UploadApkDialog open={uploading} onClose={() => setUploading(false)} key={uploading ? "open" : "closed"} />
       <ConfirmDialog
         open={!!removing}
@@ -183,5 +184,33 @@ function UploadApkDialog({ open, onClose }: { open: boolean; onClose: () => void
         </div>
       </div>
     </Dialog>
+  );
+}
+
+/** The same app without call recording, installed straight from the browser (Android, iPhone, computer). */
+function PwaInstall() {
+  const [evt, setEvt] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [installed, setInstalled] = useState(() => typeof window !== "undefined" && !!window.matchMedia?.("(display-mode: standalone)").matches);
+  useEffect(() => {
+    const onPrompt = (e: Event) => (e.preventDefault(), setEvt(e));
+    const onInstalled = () => setInstalled(true);
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+  return (
+    <div className="border-t border-line px-5 py-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] font-semibold">Install as a web app (no call recording)</div>
+          <div className="text-xs text-muted">Same CRM, billing and approvals, installed from the browser in seconds. It cannot record calls; use the Android app above for that.</div>
+        </div>
+        {installed ? <span className="text-xs font-medium text-emerald-700">Installed on this device</span> : evt ? <Button size="sm" icon={Download} onClick={() => evt.prompt()}>Install web app</Button> : null}
+      </div>
+      {!installed && !evt && <p className="mt-2 text-xs text-muted">On Android open this site in Chrome, tap the ⋮ menu, then <b>Install app</b> (or Add to Home screen). On iPhone use Share, then Add to Home Screen.</p>}
+    </div>
   );
 }

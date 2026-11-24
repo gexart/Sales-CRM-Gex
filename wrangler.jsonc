@@ -34,7 +34,7 @@
   // Task reminders, notification generation and Google Places result purging.
   "triggers": { "crons": ["*/15 * * * *"] },
   "vars": {
-    "APP_NAME": "Sales CRM",
+    "APP_NAME": "Gexart Sales",
     "DEMO_MODE": "false",
     // Verified sender for Brevo transactional email (must be verified in your Brevo account).
     "BREVO_SENDER_EMAIL": "",

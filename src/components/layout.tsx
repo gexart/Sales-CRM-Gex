@@ -109,7 +109,7 @@ export function Logo({ onDark = false, subtitle = true }: { onDark?: boolean; su
       <BrandMark variant={dark ? "dark" : "light"} className="h-9 w-[34px]" />
       <span className="leading-none">
         <span className={cn("block font-brand text-[19px] font-semibold tracking-[-0.01em]", onDark ? "text-snow" : "text-ink")}>Gexart</span>
-        {subtitle && <span className={cn("mt-1 block text-[9.5px] font-semibold tracking-[0.2em] uppercase", onDark ? "text-snow/45" : "text-muted")}>Sales CRM</span>}
+        {subtitle && <span className={cn("mt-1 block text-[9.5px] font-semibold tracking-[0.2em] uppercase", onDark ? "text-snow/45" : "text-muted")}>Sales &amp; Billing</span>}
       </span>
     </span>
   );

@@ -22,7 +22,7 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle?: Re
         <BrandMark variant="dark" className="pointer-events-none absolute -right-28 bottom-[-12%] w-[80%] opacity-[0.07]" />
         <div className="pointer-events-none absolute -top-40 -left-40 size-[480px] rounded-full bg-brand-500/20 blur-3xl" />
         <div className="relative mt-auto max-w-md">
-          <p className="text-[11px] font-semibold tracking-[0.2em] text-brand-400 uppercase">Gexart Sales CRM</p>
+          <p className="text-[11px] font-semibold tracking-[0.2em] text-brand-400 uppercase">Gexart Sales</p>
           <h2 className="mt-3 text-3xl leading-tight font-semibold">Every account, audit, pitch and call in one place.</h2>
           <p className="mt-3 text-sm text-snow/55">Research prospects, run audits, send proposals and track every deal from first touch to close.</p>
         </div>
