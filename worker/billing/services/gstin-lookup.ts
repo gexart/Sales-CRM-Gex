@@ -27,7 +27,8 @@ interface PortalAddress {
 
 /** Map GST-portal taxpayer JSON (field names used by the GST network and GSPs) to our shape. */
 export function mapPortalTaxpayer(raw: unknown): Partial<GstinDetails> {
-  const r = (raw && typeof raw === 'object' && 'data' in (raw as Record<string, unknown>) ? (raw as { data: unknown }).data : raw) as Record<string, unknown>;
+  const unwrap = (x: any): any => (x && typeof x === 'object' ? x.taxpayerInfo ?? x.data ?? x.result ?? x.taxpayer ?? x : x); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const r = unwrap(unwrap(raw)) as Record<string, unknown>;
   if (!r || typeof r !== 'object') return {};
   const a = ((r.pradr as { addr?: PortalAddress } | undefined)?.addr ?? {}) as PortalAddress;
   const parts = [a.bno, a.bnm, a.flno, a.st, a.loc, a.city || a.dst, a.stcd].map((x) => (typeof x === 'string' ? x.trim() : '')).filter(Boolean);
@@ -78,9 +79,11 @@ export async function lookupGstin(
     /* cache miss */
   }
   try {
-    const res = await fetchImpl(`${env.GSTIN_API_URL!.replace(/\/+$/, '')}/${encodeURIComponent(gstin)}`, {
-      headers: { 'x-api-key': env.GSTIN_API_KEY!, Accept: 'application/json' },
-    });
+    // A template like https://provider/verify?gstNo={gstin}&key_secret={key} works with most providers; otherwise GET <url>/<gstin> with an x-api-key header.
+    const tpl = env.GSTIN_API_URL!;
+    const res = tpl.includes('{gstin}')
+      ? await fetchImpl(tpl.replace('{gstin}', encodeURIComponent(gstin)).replace('{key}', encodeURIComponent(env.GSTIN_API_KEY!)), { headers: { Accept: 'application/json' } })
+      : await fetchImpl(`${tpl.replace(/\/+$/, '')}/${encodeURIComponent(gstin)}`, { headers: { 'x-api-key': env.GSTIN_API_KEY!, Accept: 'application/json' } });
     if (!res.ok) return base;
     const mapped = mapPortalTaxpayer(await res.json());
     if (!mapped.legalName && !mapped.tradeName) return base;

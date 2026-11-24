@@ -3,22 +3,23 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, Dialog, Field, Select, useToast } from "../../components/ui";
 import { bill, errMsg } from "../../lib/billing";
 import { rupeesToPaise, useBillingMasters, type Party } from "./parts";
+import { GstinStatus } from "./gstin";
 
 /** Add a customer (or vendor) without leaving the invoice. Only the essentials; the rest can be filled in later under Parties. */
 export function QuickParty({ open, onClose, onCreated, type = "CUSTOMER", name = "" }: { open: boolean; onClose: () => void; onCreated: (p: Party) => void; type?: string; name?: string }) {
   const toast = useToast();
   const qc = useQueryClient();
-  const [f, setF] = useState({ name, phone: "", gstin: "", email: "", address: "", stateCode: "19" });
+  const [f, setF] = useState({ name, company: "", phone: "", gstin: "", email: "", address: "", stateCode: "19" });
   const [seed, setSeed] = useState(name);
   if (name !== seed) (setSeed(name), setF((x) => ({ ...x, name })));
   const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v, ...(k === "gstin" && /^\d{2}/.test(v) ? { stateCode: v.slice(0, 2) } : {}) }));
   const save = useMutation({
-    mutationFn: () => bill.post("/masters/parties", { name: f.name.trim(), type, phone: f.phone, gstin: f.gstin.trim().toUpperCase() || undefined, email: f.email || undefined, billingAddress: f.address || undefined, stateCode: f.stateCode }),
+    mutationFn: () => bill.post("/masters/parties", { name: f.name.trim(), company: f.company || undefined, type, phone: f.phone, gstin: f.gstin.trim().toUpperCase() || undefined, email: f.email || undefined, billingAddress: f.address || undefined, stateCode: f.stateCode }),
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["billing-parties"] });
       toast("success", `${type === "VENDOR" ? "Vendor" : "Customer"} added`);
       onCreated({ id: r.party.id, name: r.party.name, phone: r.party.phone, stateCode: r.party.stateCode, gstin: r.party.gstin ?? null, type });
-      setF({ name: "", phone: "", gstin: "", email: "", address: "", stateCode: "19" });
+      setF({ name: "", company: "", phone: "", gstin: "", email: "", address: "", stateCode: "19" });
       onClose();
     },
     onError: (e) => toast("error", errMsg(e)),
@@ -28,7 +29,7 @@ export function QuickParty({ open, onClose, onCreated, type = "CUSTOMER", name =
       <div className="space-y-3">
         <Field label="Name" required><input className="input" autoFocus value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
         <Field label="Phone" required><input className="input" inputMode="tel" value={f.phone} onChange={(e) => set("phone", e.target.value)} placeholder="10-digit mobile" /></Field>
-        <Field label="GSTIN" help="State is filled in from it"><input className="input uppercase" maxLength={15} value={f.gstin} onChange={(e) => set("gstin", e.target.value)} /></Field>
+        <Field label="GSTIN" help="Type it and the details fill in"><input className="input uppercase" maxLength={15} value={f.gstin} onChange={(e) => set("gstin", e.target.value)} /><GstinStatus gstin={f.gstin} onFill={(d) => setF((x) => ({ ...x, name: x.name || d.tradeName || d.legalName || x.name, company: d.legalName && d.legalName !== (x.name || d.tradeName) ? d.legalName : x.company, address: x.address || [d.address, d.pincode].filter(Boolean).join(" ") || x.address, stateCode: d.stateCode ?? x.stateCode }))} /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Email"><input className="input" type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
           <Field label="State code"><input className="input" maxLength={2} value={f.stateCode} onChange={(e) => set("stateCode", e.target.value)} /></Field>

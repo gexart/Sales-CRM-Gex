@@ -51,18 +51,21 @@ export function DocumentsPage({ fixed }: { fixed?: DT }) {
         </div>
       </div>
       {can(cur.perm) && <Fab onClick={() => setMake(true)} label={`New ${cur.one.toLowerCase()}`} />}
-      <NewDoc open={make} type={type} label={cur.one} onClose={() => setMake(false)} />
+      <NewDoc open={make} type={type} label={cur.one} partyId={sp.get("party")} onClose={() => setMake(false)} />
       <DocView id={open} onClose={() => setOpen(null)} />
     </div>
   );
 }
 
-function NewDoc({ open, type, label, onClose }: { open: boolean; type: DT; label: string; onClose: () => void }) {
+function NewDoc({ open, type, label, partyId, onClose }: { open: boolean; type: DT; label: string; partyId?: string | null; onClose: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
   const [party, setParty] = useState<Party | null>(null);
   const [lines, setLines] = useState<Line[]>([blankLine()]);
   const [valid, setValid] = useState(addDays(today(), 15));
+  const pre = useQuery({ queryKey: ["billing-party", partyId], queryFn: () => bill.get(`/masters/parties/${partyId}`), enabled: !!partyId && open });
+  const preP = pre.data?.party ?? pre.data;
+  if (preP?.id && !party) setParty({ id: preP.id, name: preP.name, phone: preP.phone, stateCode: preP.stateCode, gstin: preP.gstin ?? null });
   const [notes, setNotes] = useState("");
   const ready = !!party && lines.every((l) => l.itemId && Number(l.qty) > 0 && l.price !== "");
   const save = useMutation({

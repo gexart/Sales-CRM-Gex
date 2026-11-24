@@ -80,6 +80,16 @@ roles & access (roles, team assignment, audit log). Menu items appear only for p
 - Engine fixes: stock adjustments saved their lines before their header (foreign key error); import now maps unit and GST rate to ids.
 - Android: pull-to-refresh added.
 
+## Old invoices, GSTIN lookup, account to invoice
+- Import -> Old invoices (admin): loads company details, bank, notes and terms, signature, customers, products, invoices (original numbers GX/n/26-27,
+  dates, amounts) and payments from a prepared .json file; refuses to run on a workspace that already has invoices. The file is made from the old PDFs
+  and is never committed (import-data/ is git-ignored).
+- GSTIN: state and PAN fill in from the number; name and address fill in when a GST data provider is set (Settings -> Configuration -> GST lookup,
+  address template with {gstin} and {key}).
+- CRM account -> "Create invoice" / "Quotation" on the account page links or creates the billing customer, opens the invoice with the client chosen,
+  and the account shows billed / received / due. Invoices are emailed to the client and pushed to crm.gexart.com.
+- Fixed: invoice and purchase totals could differ from their parts by a paisa, which the ledger rejected (some invoices could not be saved).
+
 ## Not done yet
 - TDS/TCS toggles, reverse charge and e-invoice / e-way bill switches on the invoice form (the engine has the APIs; needs GSP credentials).
 - Barcode and thermal print screens; subscriptions (recurring invoices) screen; stock adjustments and transfers screens.

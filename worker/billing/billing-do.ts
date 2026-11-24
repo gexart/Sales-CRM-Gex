@@ -873,6 +873,16 @@ export class BillingDO extends DurableObject {
     return this.settingsService.listBranches();
   }
 
+  async countInvoices(): Promise<number> {
+    const r = this.platformSql.exec("SELECT COUNT(*) AS n FROM invoices").toArray()[0] as { n: number };
+    return Number(r?.n ?? 0);
+  }
+
+  /** Next number the series will issue (used when carrying over invoices from another tool). */
+  async setNextNumber(docType: string, next: number): Promise<void> {
+    this.platformSql.exec("UPDATE document_series SET next_number = ? WHERE doc_type = ?", Math.max(1, Math.trunc(next)), docType);
+  }
+
   async updateBranch(id: string, patch: { name?: string; gstin?: string | null; stateCode?: string; address?: string; phone?: string }): Promise<any> {
     return (this.ctx.storage as any).transactionSync(() => this.settingsService.updateBranch(id, patch));
   }

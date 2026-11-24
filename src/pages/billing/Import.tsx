@@ -3,9 +3,10 @@ import { Download, FileUp, Upload } from "lucide-react";
 import { ITEM_IMPORT_FIELDS, PARTY_IMPORT_FIELDS, autoDetectColumnMapping, parseItemImportRow, parsePartyImportRow, type ColumnMappingConfig } from "@billing/shared";
 import { PageHeader } from "../../components/layout";
 import { Badge, Button, Card, CardHeader, EmptyState, Field, Select, Tabs, useToast } from "../../components/ui";
-import { bill, errMsg, useBillingAccess } from "../../lib/billing";
+import { access, bill, errMsg, inr, useBillingAccess } from "../../lib/billing";
+import { useAuth } from "../../lib/auth";
 
-type Kind = "parties" | "items";
+type Kind = "parties" | "items" | "history";
 
 /** Minimal CSV reader: quoted fields, commas and line breaks inside quotes, Windows or Unix line ends. */
 export function parseCsv(text: string): string[][] {
@@ -32,20 +33,21 @@ export function parseCsv(text: string): string[][] {
   return rows;
 }
 
-const TEMPLATES: Record<Kind, string> = {
+const TEMPLATES: Record<"parties" | "items", string> = {
   parties: "Name,Phone,Type,GSTIN,Company,Email,Address,State Code,Opening Balance\nAcme Traders,9876543210,Customer,19AAACU7929H1ZX,Acme Pvt Ltd,accounts@acme.test,\"1 Park Street, Kolkata\",19,0\n",
   items: "Item Name,Sale Price,Purchase Price,GST Rate,HSN,Unit,Opening Stock\nWebsite design,25000,0,18,9983,NOS,0\nWidget,120,80,18,8479,PCS,50\n",
 };
 
 export function ImportPage() {
   const { can } = useBillingAccess();
+  const { isAdmin } = useAuth();
   const toast = useToast();
   const [kind, setKind] = useState<Kind>(can("parties.manage") ? "parties" : "items");
   const [table, setTable] = useState<string[][]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ done: number; failed: { row: number; reason: string }[] } | null>(null);
-  const fields: ColumnMappingConfig[] = kind === "parties" ? PARTY_IMPORT_FIELDS : ITEM_IMPORT_FIELDS;
+  const fields: ColumnMappingConfig[] = kind === "items" ? ITEM_IMPORT_FIELDS : PARTY_IMPORT_FIELDS;
   const headers = table[0] ?? [];
   const objects = useMemo(() => table.slice(1).map((r) => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ""]))), [table, headers]);
   const parsed = useMemo(() => objects.map((o, i) => (kind === "parties" ? parsePartyImportRow(o, mapping, i + 2) : parseItemImportRow(o, mapping, i + 2))), [objects, mapping, kind]);
@@ -99,6 +101,7 @@ export function ImportPage() {
   };
   const download = () => {
     const a = document.createElement("a");
+    if (kind === "history") return;
     a.href = URL.createObjectURL(new Blob([TEMPLATES[kind]], { type: "text/csv" }));
     a.download = kind === "parties" ? "customers-template.csv" : "products-template.csv";
     a.click();
@@ -106,13 +109,15 @@ export function ImportPage() {
   const tabs: { value: Kind; label: string }[] = [];
   if (can("parties.manage")) tabs.push({ value: "parties", label: "Customers & vendors" });
   if (can("items.manage")) tabs.push({ value: "items", label: "Products & services" });
+  if (isAdmin) tabs.push({ value: "history", label: "Old invoices" });
   if (!tabs.length) return <div className="p-6"><EmptyState icon={Upload} title="Not available" body="Ask an administrator for permission to manage parties or items." /></div>;
 
   return (
     <div className="pb-10">
-      <PageHeader title="Import" icon={FileUp} subtitle="Bring your customers and products from a spreadsheet" actions={<Button icon={Download} onClick={download}>Template</Button>} />
+      <PageHeader title="Import" icon={FileUp} subtitle="Bring your customers and products from a spreadsheet" actions={kind !== "history" && <Button icon={Download} onClick={download}>Template</Button>} />
       <div className="max-w-3xl space-y-3 px-4 sm:px-6">
         <Tabs<Kind> tabs={tabs} value={kind} onChange={reset} />
+        {kind === "history" ? <HistoryImport /> : <>
         <Card className="p-4">
           <p className="text-[13px] text-muted">Export from Swipe, Vyapar, Tally or Excel and save as <b>CSV</b>. Columns are matched by name (for example "Item Name", "Rate", "GST %", "HSN"). You can fix any column below before importing.</p>
           <label className="mt-3 flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-line text-sm hover:border-brand-300">
@@ -156,7 +161,74 @@ export function ImportPage() {
             {result.failed.slice(0, 20).map((f) => <div key={f.row} className="mt-1 text-xs text-muted">Row {f.row}: {f.reason}</div>)}
           </Card>
         )}
+        </>}
       </div>
     </div>
+  );
+}
+
+/** Loads invoices made in another billing tool (from their PDFs) in one go: company details, bank, terms, signature, customers, products, invoices and payments. */
+function HistoryImport() {
+  const toast = useToast();
+  const [data, setData] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [preview, setPreview] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [result, setResult] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [markPaid, setMarkPaid] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const load = async (f: File) => {
+    try {
+      const json = JSON.parse(await f.text());
+      setData(json);
+      setResult(null);
+      const r = await access.post("/import", { ...json, dryRun: true });
+      setPreview(r.data);
+    } catch (e) {
+      setData(null);
+      setPreview(null);
+      toast("error", errMsg(e));
+    }
+  };
+  const run = async () => {
+    setBusy(true);
+    try {
+      const r = await access.post("/import", { ...data, markPaid, dryRun: false });
+      setResult(r.data);
+      toast("success", `${r.data.createdInvoices} invoices imported`);
+    } catch (e) {
+      toast("error", errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <Card className="p-4">
+        <p className="text-[13px] text-muted">Choose the file prepared from your old invoices. It sets up your company details, bank, notes and terms and signature, then creates every customer and product, every invoice with its original number and date, and the payments already received. It only runs on a workspace with no invoices yet.</p>
+        <label className="mt-3 flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-line text-sm hover:border-brand-300">
+          <Upload className="size-5 text-slate-500" />
+          <span>{data ? "File loaded. Choose another" : "Choose the .json file"}</span>
+          <input type="file" accept=".json,application/json" className="sr-only" onChange={(e) => e.target.files?.[0] && load(e.target.files[0])} />
+        </label>
+      </Card>
+      {preview && !result && (
+        <Card>
+          <CardHeader title="What will be created" subtitle={preview.existingInvoices ? `This workspace already has ${preview.existingInvoices} invoice(s), so the import will be refused.` : "Nothing has been saved yet"} />
+          <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-3">
+            {[["Customers", preview.customers], ["Products", preview.products], ["Invoices", preview.invoices], ["Billed", inr(preview.billedPaise)], ["Already received", inr(preview.receivedPaise)], ["Still due", inr(preview.billedPaise - preview.receivedPaise)]].map(([l, v]) => (
+              <div key={String(l)} className="rounded-lg border border-line p-2.5"><div className="text-[11px] text-muted">{l}</div><div className="text-lg font-semibold tabular-nums">{v}</div></div>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 px-4 pb-3 text-[13px]"><input type="checkbox" className="size-4" checked={markPaid} onChange={(e) => setMarkPaid(e.target.checked)} />Record the payments that were already received (to the bank, on the invoice date)</label>
+          <div className="flex justify-end p-3"><Button variant="primary" loading={busy} disabled={preview.existingInvoices > 0} onClick={run}>Import everything</Button></div>
+        </Card>
+      )}
+      {result && (
+        <Card className="space-y-2 p-4 text-[13px]">
+          <div className="font-semibold">Done: {result.createdInvoices} invoices, {result.customers} customers, {result.products} products, {result.paymentsRecorded} payments</div>
+          {result.totalMismatches?.length ? <div className="text-amber-700 dark:text-amber-300">Totals that differ from the file: {result.totalMismatches.join("; ")}</div> : <div className="text-emerald-700 dark:text-emerald-300">Every invoice total matches the file exactly.</div>}
+          {result.warnings?.map((w: string) => <div key={w} className="text-xs text-red-600">{w}</div>)}
+        </Card>
+      )}
+    </>
   );
 }

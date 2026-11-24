@@ -16,6 +16,8 @@ export interface Env {
   APP_NAME: string;
   DEMO_MODE: string;
   BREVO_SENDER_EMAIL?: string;
+  GSTIN_API_URL?: string;
+  GSTIN_API_KEY?: string;
   BILLING_EMAIL_PROVIDER?: string;
   BILLING_EMAIL_AUTO?: string;
   RESEND_API_KEY?: string;

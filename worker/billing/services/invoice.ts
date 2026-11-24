@@ -198,9 +198,11 @@ export class InvoiceService {
     const sgstTotalPaise = calcResult.sgstTotal.mul(100).round().toNumber();
     const igstTotalPaise = calcResult.igstTotal.mul(100).round().toNumber();
     const cessTotalPaise = calcResult.cessTotal.mul(100).round().toNumber();
-    const taxTotalPaise = calcResult.taxTotal.mul(100).round().toNumber();
-    const roundOffPaise = calcResult.roundOffAmount.mul(100).round().toNumber();
+    // Every figure is rounded to paise on its own, so they can disagree by a paisa. The total is the truth; the round-off is whatever makes
+    // subtotal + tax + round-off equal it exactly, which keeps the ledger entry (debit = credit) balanced.
+    const taxTotalPaise = cgstTotalPaise + sgstTotalPaise + igstTotalPaise + cessTotalPaise;
     const totalPaise = calcResult.grandTotal.mul(100).round().toNumber();
+    const roundOffPaise = totalPaise - (subtotalPaise + taxTotalPaise);
     const discountPaise = (input.extraDiscountPaise || 0) +
       input.items.reduce((s, it) => s + (it.discountPaise || 0), 0);
 

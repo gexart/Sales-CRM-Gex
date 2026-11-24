@@ -44,6 +44,8 @@ export function useInsights(id: string) {
   return useQuery({ queryKey: ["insights", id], queryFn: () => api.get(`/accounts/${id}/insights`).then((r) => r.data) });
 }
 
+import { AccountBilling } from "../components/account-billing";
+
 export function AccountWorkspace() {
   const { id = "", runId } = useParams();
   const [sp, setSp] = useSearchParams();
@@ -104,6 +106,7 @@ export function AccountWorkspace() {
           <IntelligencePanel a={a} insights={insights.data} loading={insights.isLoading} onTab={setTab} />
           {tab !== "services" && <ServicesTab accountId={id} />}
           <PresencePanel a={a} />
+          <AccountBilling accountId={id} />
           {tab === "activities" && <RelatedTasks parent={{ account_id: id }} defaults={{ account_name: a.name }} />}
         </aside>
       </div>

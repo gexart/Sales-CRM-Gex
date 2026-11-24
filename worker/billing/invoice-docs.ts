@@ -247,7 +247,12 @@ export function buildClassicDoc(inv: L, kind: string, ctx: ClassicContext): Clas
       igst = l.igst_amount_paise ?? 0;
     const cess = l.cess_amount_paise ?? 0;
     let taxable: number;
-    if (hasSplit) taxable = (l.line_total_paise ?? 0) - cgst - sgst - igst - cess;
+    if (hasSplit) {
+      // Exclusive pricing: show the exact quantity x rate (no stray paisa from tax rounding); otherwise back it out of the line total.
+      const gross = Math.round(((l.quantity_thousandths ?? 0) * (l.unit_price_paise ?? 0)) / 1000) - (l.discount_paise ?? 0);
+      const derived = (l.line_total_paise ?? 0) - cgst - sgst - igst - cess;
+      taxable = Math.abs(gross - derived) <= 2 ? gross : derived;
+    }
     else {
       const gross = Math.round(((l.quantity_thousandths ?? 0) * (l.unit_price_paise ?? 0)) / 1000) - (l.discount_paise ?? 0);
       const incl = Math.abs((l.line_total_paise ?? 0) - gross) > 1;

@@ -23,6 +23,15 @@ export interface ConfigSection {
 
 export const CONFIG_SECTIONS: ConfigSection[] = [
   {
+    id: "gst_lookup",
+    title: "GST lookup",
+    description: "Type a customer's GSTIN and their registered name and address fill in. The state and PAN always fill in without this.",
+    fields: [
+      { key: "GSTIN_API_URL", label: "GST data provider address", kind: "text", placeholder: "https://appyflow.in/api/verifyGST?gstNo={gstin}&key_secret={key}", help: "From a GST data provider you sign up with (for example AppyFlow). Keep {gstin} and {key} exactly as written." },
+      { key: "GSTIN_API_KEY", label: "GST data provider key", kind: "secret", placeholder: "key", help: "The key the provider gives you." },
+    ],
+  },
+  {
     id: "billing_mail",
     title: "Billing emails and CRM link",
     description: "Emails to clients when an invoice is generated or paid, and the push of invoices to crm.gexart.com.",

@@ -12,3 +12,6 @@ android/signing/
 # Harvey bridge local state/secrets
 integrations/harvey/.env
 integrations/harvey/.crm_sync_state.json
+
+# Customer, bank and invoice data read from old invoices: never commit
+import-data/

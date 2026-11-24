@@ -7,6 +7,7 @@ import { useDebounced } from "../../components/forms";
 import { Badge, Button, Card, Dialog, EmptyState, ErrorState, Field, Select, Skeleton, Tabs, useToast } from "../../components/ui";
 import { bill, errMsg, inr, useBillingAccess } from "../../lib/billing";
 import { PhoneActions } from "../../components/contact-actions";
+import { GstinStatus } from "./gstin";
 import { rupeesToPaise, useBillingMasters } from "./parts";
 import { Fab } from "./ui";
 
@@ -21,11 +22,11 @@ export function PartiesPage() {
   const dq = useDebounced(search, 300);
   const [sp] = useSearchParams();
   const [add, setAdd] = useState(sp.get("new") === "1" && can("parties.manage"));
-  const [f, setF] = useState({ name: "", phone: "", gstin: "", email: "", billingAddress: "", stateCode: "19", creditDays: "0" });
+  const [f, setF] = useState({ name: "", company: "", phone: "", gstin: "", email: "", billingAddress: "", stateCode: "19", creditDays: "0" });
   const q = useQuery({ queryKey: ["billing-parties", type, dq], queryFn: () => bill.get(`/masters/parties?type=${type}&search=${encodeURIComponent(dq)}&limit=100`) });
   const rows: any[] = q.data?.parties ?? []; // eslint-disable-line @typescript-eslint/no-explicit-any
   const save = useMutation({
-    mutationFn: () => bill.post("/masters/parties", { name: f.name, type, phone: f.phone, gstin: f.gstin || undefined, email: f.email || undefined, billingAddress: f.billingAddress || undefined, stateCode: f.stateCode, creditDays: Number(f.creditDays) || 0 }),
+    mutationFn: () => bill.post("/masters/parties", { name: f.name, company: f.company || undefined, type, phone: f.phone, gstin: f.gstin || undefined, email: f.email || undefined, billingAddress: f.billingAddress || undefined, stateCode: f.stateCode, creditDays: Number(f.creditDays) || 0 }),
     onSuccess: () => (toast("success", "Saved"), setAdd(false), setF({ ...f, name: "", phone: "", gstin: "", email: "", billingAddress: "" }), qc.invalidateQueries({ queryKey: ["billing-parties"] })),
     onError: (e) => toast("error", errMsg(e)),
   });
@@ -51,7 +52,7 @@ export function PartiesPage() {
         <div className="space-y-3">
           <Field label="Name" required><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
           <Field label="Phone" required><input className="input" inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
-          <Field label="GSTIN"><input className="input uppercase" maxLength={15} value={f.gstin} onChange={(e) => setF({ ...f, gstin: e.target.value.toUpperCase() })} /></Field>
+          <Field label="GSTIN" help="Type it and the details fill in"><input className="input uppercase" maxLength={15} value={f.gstin} onChange={(e) => setF({ ...f, gstin: e.target.value.toUpperCase() })} /><GstinStatus gstin={f.gstin} onFill={(d) => setF((x) => ({ ...x, name: x.name || d.tradeName || d.legalName || x.name, company: d.legalName && d.legalName !== (x.name || d.tradeName) ? d.legalName : x.company, billingAddress: x.billingAddress || [d.address, d.pincode].filter(Boolean).join(" ") || x.billingAddress, stateCode: d.stateCode ?? x.stateCode }))} /></Field>
           <Field label="Email"><input className="input" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
           <Field label="Address"><textarea className="input min-h-16" value={f.billingAddress} onChange={(e) => setF({ ...f, billingAddress: e.target.value })} /></Field>
           <div className="grid grid-cols-2 gap-3">

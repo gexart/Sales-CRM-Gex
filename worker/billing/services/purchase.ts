@@ -149,8 +149,9 @@ export class PurchaseService {
     const cgstPaise = Math.round(gstCalc.cgstTotal.mul(100).toNumber());
     const sgstPaise = Math.round(gstCalc.sgstTotal.mul(100).toNumber());
     const igstPaise = Math.round(gstCalc.igstTotal.mul(100).toNumber());
-    const taxTotalPaise = Math.round(gstCalc.taxTotal.mul(100).toNumber());
-    const totalPaise = Math.round(gstCalc.grandTotal.mul(100).toNumber());
+    // Parts are rounded one by one; the total is their exact sum so the ledger entry always balances.
+    const taxTotalPaise = cgstPaise + sgstPaise + igstPaise;
+    const totalPaise = subtotalPaise + taxTotalPaise;
     const paidAmountPaise = Math.min(input.paidAmountPaise || 0, totalPaise);
     const status = paidAmountPaise >= totalPaise ? 'PAID' : paidAmountPaise > 0 ? 'PARTIALLY_PAID' : 'UNPAID';
 
@@ -534,7 +535,7 @@ export class PurchaseService {
     const cgstPaise = Math.round(gstCalc.cgstTotal.mul(100).toNumber());
     const sgstPaise = Math.round(gstCalc.sgstTotal.mul(100).toNumber());
     const igstPaise = Math.round(gstCalc.igstTotal.mul(100).toNumber());
-    const grandTotalPaise = Math.round(gstCalc.grandTotal.mul(100).toNumber());
+    const grandTotalPaise = taxableSubtotalPaise + cgstPaise + sgstPaise + igstPaise;
 
     const noteNo = this.nextDocNumber(bill.branch_id, 'DEBIT_NOTE');
     const noteId = newId();

@@ -29,6 +29,8 @@ import { billingAccessRoutes } from "./billing/access-routes";
 import { draftRoutes } from "./billing/drafts";
 import { attachmentRoutes } from "./billing/attachments";
 import { recurringRoutes, runDueRecurring } from "./billing/recurring";
+import { historyImportRoutes } from "./billing/history-import";
+import { accountLinkRoutes } from "./billing/account-link";
 import { publicBillingRoutes } from "./billing/public";
 import { appReleaseRoutes, publicDownloadRoutes } from "./routes/app-releases";
 
@@ -91,6 +93,8 @@ api.route("/billing", billingRoutes);
 api.route("/billing-access/drafts", draftRoutes);
 api.route("/billing-access/attachments", attachmentRoutes);
 api.route("/billing-access/recurring", recurringRoutes);
+api.route("/billing-access/import", historyImportRoutes);
+api.route("/billing-access/from-account", accountLinkRoutes);
 api.route("/billing-access", billingAccessRoutes);
 api.route("/", crmRoutes);
 api.route("/", dashboardRoutes);

@@ -56,6 +56,13 @@ export function NewInvoicePage() {
     setSignatory(S.branding.signatures?.[0]?.name || S.branding.signatoryName || "");
   }, [S, loadedDefaults, sp]);
 
+  const partyParam = sp.get("party");
+  const preParty = useQuery({ queryKey: ["billing-party", partyParam], queryFn: () => bill.get(`/masters/parties/${partyParam}`), enabled: !!partyParam });
+  useEffect(() => {
+    const p = preParty.data?.party ?? preParty.data;
+    if (p?.id && !party) setParty({ id: p.id, name: p.name, phone: p.phone, stateCode: p.stateCode, gstin: p.gstin ?? null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preParty.data]);
   const draft = useQuery({ queryKey: ["billing-draft", sp.get("draft")], queryFn: () => access.get(`/drafts/${sp.get("draft")}`), enabled: !!sp.get("draft") });
   useEffect(() => {
     const p = draft.data?.data?.payload;
