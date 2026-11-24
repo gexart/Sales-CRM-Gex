@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Gexart Sales</string>
+    <string name="app_name">Sales Gexart</string>
     <!-- The live CRM. Leave blank to ask for the address on first launch. -->
     <string name="default_crm_url">https://sales-crm-gexart.tech-gexart.workers.dev</string>
 </resources>

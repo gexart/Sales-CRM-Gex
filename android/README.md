@@ -1,4 +1,4 @@
-# Gexart Sales — Android app (CRM, billing and call recording in one)
+# Sales Gexart — Android app (CRM, billing and call recording in one)
 
 Uploads recordings of your client calls to the Gexart CRM. The CRM matches the number to a
 contact or prospect, adds the call to their timeline, transcribes it (Workers AI Whisper) and

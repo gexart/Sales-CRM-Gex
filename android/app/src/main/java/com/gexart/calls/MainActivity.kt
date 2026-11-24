@@ -35,16 +35,18 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
-        home = prefs.baseUrl.ifBlank { getString(R.string.default_crm_url) }
-        if (!home.startsWith("https://")) {
-            // No CRM address yet: the setup screen asks for it (and the recorder token).
-            startActivity(Intent(this, RecorderActivity::class.java))
+        // A leftover or odd saved address must never stop the app opening: fall back to the built-in one.
+        home = prefs.baseUrl.takeIf { it.startsWith("https://") } ?: getString(R.string.default_crm_url)
+
+        window.statusBarColor = Color.parseColor("#141E2E")
+        window.navigationBarColor = Color.parseColor("#141E2E")
+        web = try {
+            WebView(this)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Update Android System WebView from the Play Store, then reopen the app", Toast.LENGTH_LONG).show()
             finish()
             return
         }
-
-        window.statusBarColor = Color.parseColor("#141E2E")
-        web = WebView(this)
         web.setBackgroundColor(Color.parseColor("#141E2E"))
         with(web.settings) {
             javaScriptEnabled = true
@@ -98,8 +100,22 @@ class MainActivity : Activity() {
             setOnChildScrollUpCallback { _, _ -> web.scrollY > 0 }
             setOnRefreshListener { web.reload() }
         }
+        // Android 15 draws apps edge to edge: keep the page clear of the status bar, the gesture bar and the keyboard.
+        swipe.setBackgroundColor(Color.parseColor("#141E2E"))
+        swipe.setOnApplyWindowInsetsListener { v, insets ->
+            val bars = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(android.view.WindowInsets.Type.systemBars()) else null
+            val ime = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(android.view.WindowInsets.Type.ime()) else null
+            val top = bars?.top ?: insets.systemWindowInsetTop
+            val bottom = maxOf(bars?.bottom ?: insets.systemWindowInsetBottom, ime?.bottom ?: 0)
+            v.setPadding(0, top, 0, bottom)
+            insets
+        }
         setContentView(swipe)
-        if (savedInstanceState != null) web.restoreState(savedInstanceState) else web.loadUrl(deepLink() ?: home)
+        swipe.requestApplyInsets()
+        if (savedInstanceState == null || web.restoreState(savedInstanceState) == null) web.loadUrl(deepLink() ?: home)
+        // Light status-bar icons on the dark header.
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = window.decorView.systemUiVisibility and android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
         if (prefs.configured) {
             CallSyncWorker.schedulePeriodic(this)
             NotifyWorker.schedule(this)

@@ -36,7 +36,7 @@ class RecorderActivity : Activity() {
 
         col.addView(TextView(this).apply { text = "Call recording"; textSize = 26f; setTypeface(typeface, Typeface.BOLD); setTextColor(brand) })
         col.addView(TextView(this).apply {
-            text = "Part of Gexart Sales. Uploads recordings of your client calls to the CRM, where they are matched to the contact, transcribed and summarised."
+            text = "Part of Sales Gexart. Uploads recordings of your client calls to the CRM, where they are matched to the contact, transcribed and summarised."
             setTextColor(Color.DKGRAY); setPadding(0, dp(4), 0, dp(16))
         })
 
