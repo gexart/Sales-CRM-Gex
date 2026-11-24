@@ -1,8 +1,9 @@
-// "Classic black" invoice (Swipe-style): logo and company block, bill-to with place of supply, black table header,
-// tax breakdown, HSN summary, UPI QR + bank details, signature, notes and terms. One PDF, any number of pages.
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+// "Classic black" invoice, laid out to match the original Swipe invoices measure for measure: logo and company block, bill-to with
+// invoice facts, black table header with banded rows, tax lines, HSN summary, UPI QR + bank, signature, notes and terms.
+// Inter replaces Apple's SF UI (not licensed for embedding). One page for a normal invoice (it tightens itself if needed); a second
+// page only when the items or terms really do not fit.
+import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import { encode } from "uqr";
-import { pdfSafe } from "../lib/pdf";
 
 export interface ClassicDoc {
   title: string;
@@ -10,11 +11,11 @@ export interface ClassicDoc {
   company: { name: string; gstin?: string | null; addressLines: string[]; mobile?: string | null; email?: string | null; website?: string | null; logoDataUrl?: string | null };
   party: { name: string; company?: string | null; gstin?: string | null; addressLines: string[]; phone?: string | null };
   meta: Array<[string, string]>;
-  lines: Array<{ n: number; name: string; hsn: string; rate: string; qty: string; amount: string }>;
+  lines: Array<{ n: number; name: string; hsn: string; rate: string; qty: string; unit: string; amount: string }>;
   totals: Array<{ label: string; value: string; strong?: boolean }>;
   itemCountLine: string;
   words?: string | null;
-  payable?: string | null;
+  payment: { balance?: string | null; paid?: string | null; fullyPaid: boolean } | null;
   hsn: { head: [string, string, string, string, string, string, string]; rows: string[][]; total: string[] } | null;
   upiLink?: string | null;
   bank?: { bank: string; account: string; ifsc: string; branch: string; beneficiary: string; type: string } | null;
@@ -26,250 +27,396 @@ export interface ClassicDoc {
 
 const W = 595.28;
 const H = 841.89;
-const M = 36;
-const INK = rgb(0.07, 0.07, 0.07);
-const GRAY = rgb(0.4, 0.4, 0.4);
-const LIGHT = rgb(0.82, 0.82, 0.82);
+const L = 24; // left edge of bars and rules
+const R = 571.3; // right edge of bars and rules
+const TX = 29; // text left
+const TR = 566.4; // text right
+const INK = rgb(0.05, 0.05, 0.05);
+const GRAY = rgb(0.42, 0.42, 0.42);
+const BAND = rgb(0.953, 0.953, 0.953);
+const HAIR = rgb(0.82, 0.82, 0.82);
 const BLACK = rgb(0, 0, 0);
 const WHITE = rgb(1, 1, 1);
+const GREEN = rgb(0.13, 0.62, 0.34);
 
-const bytes = (dataUrl: string) => Uint8Array.from(atob(dataUrl.split(",")[1] ?? ""), (c) => c.charCodeAt(0));
+const bytes = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+const dataBytes = (url: string) => bytes(url.split(",")[1] ?? "");
+const clean = (s: string | null | undefined) => String(s ?? "").replace(/\r/g, "").replace(/[^\n -~ -ÿ‐-•…₹]/g, "");
 
 async function embedDataUrl(doc: PDFDocument, url?: string | null): Promise<PDFImage | null> {
   if (!url) return null;
   try {
-    return url.startsWith("data:image/png") ? await doc.embedPng(bytes(url)) : await doc.embedJpg(bytes(url));
+    return url.startsWith("data:image/png") ? await doc.embedPng(dataBytes(url)) : await doc.embedJpg(dataBytes(url));
   } catch {
-    return null; // an unreadable image must never stop an invoice from printing
+    return null; // an unreadable picture must never stop an invoice from printing
   }
 }
 
-export async function renderClassicInvoicePdf(d: ClassicDoc): Promise<Uint8Array> {
+type Weight = "r" | "s" | "b";
+interface Mode {
+  rowPitch: number;
+  hsnPitch: number;
+  termSize: number;
+  termPitch: number;
+  gap: number;
+  noteSize: number;
+}
+const NORMAL: Mode = { rowPitch: 17, hsnPitch: 12.8, termSize: 7.2, termPitch: 8.7, gap: 1, noteSize: 8.1 };
+const TIGHT: Mode = { rowPitch: 15.4, hsnPitch: 11.4, termSize: 6.7, termPitch: 7.8, gap: 0.62, noteSize: 7.6 };
+
+async function draw(d: ClassicDoc, mode: Mode): Promise<{ pdf: Uint8Array; pages: number }> {
   const doc = await PDFDocument.create();
-  doc.setTitle(pdfSafe(`${d.title} ${d.meta[0]?.[1] ?? ""} - ${d.party.name}`));
-  doc.setAuthor(pdfSafe(d.company.name));
-  doc.setCreator("Gexart Sales & Billing");
-  const font = await doc.embedFont(StandardFonts.Helvetica);
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  // Loaded only when a PDF is made, so the worker starts fast (these are large).
+  const fontkit = (await import("@pdf-lib/fontkit")).default;
+  const { INTER_400, INTER_600, INTER_700, INTER_RUPEE } = await import("./inter-fonts");
+  doc.registerFontkit(fontkit);
+  doc.setTitle(`${d.title} ${d.meta[0]?.[1] ?? ""} - ${d.party.name}`.replace(/[^\x20-\x7E]/g, ""));
+  doc.setAuthor(clean(d.company.name));
+  doc.setCreator("Sales Gexart");
+  const f: Record<Weight, PDFFont> = {
+    r: await doc.embedFont(bytes(INTER_400), { subset: true }),
+    s: await doc.embedFont(bytes(INTER_600), { subset: true }),
+    b: await doc.embedFont(bytes(INTER_700), { subset: true }),
+  };
+  const rupee = await doc.embedFont(bytes(INTER_RUPEE), { subset: true });
   const logo = await embedDataUrl(doc, d.company.logoDataUrl);
   const sig = await embedDataUrl(doc, d.signature.dataUrl);
   const stamp = await embedDataUrl(doc, d.signature.stampDataUrl);
 
   const pages: PDFPage[] = [];
   let page!: PDFPage;
-  let y = 0; // distance from the top of the page
   const newPage = () => {
     page = doc.addPage([W, H]);
     pages.push(page);
-    y = M;
   };
-  const txt = (s: string, x: number, top: number, size: number, f: PDFFont = font, color = INK) => page.drawText(pdfSafe(s), { x, y: H - top - size, size, font: f, color });
-  const right = (s: string, xr: number, top: number, size: number, f: PDFFont = font, color = INK) => txt(s, xr - f.widthOfTextAtSize(pdfSafe(s), size), top, size, f, color);
-  const rule = (top: number, h = 0.6, color = BLACK, x = M, w = W - 2 * M) => page.drawRectangle({ x, y: H - top - h, width: w, height: h, color });
-  const wrap = (s: string, size: number, width: number, f: PDFFont = font): string[] => {
+  /** Text width, with the rupee sign taken from the font that has it. */
+  const width = (t: string, size: number, w: Weight) => [...clean(t)].reduce((a, ch) => a + (ch === "₹" ? rupee : f[w]).widthOfTextAtSize(ch, size), 0);
+  const put = (t: string, x: number, top: number, size: number, w: Weight = "r", color = INK) => {
+    let cx = x;
+    let run = "";
+    const base = H - top - size * 0.86;
+    const flush = () => {
+      if (!run) return;
+      page.drawText(run, { x: cx, y: base, size, font: f[w], color });
+      cx += f[w].widthOfTextAtSize(run, size);
+      run = "";
+    };
+    for (const ch of clean(t)) {
+      if (ch === "₹") {
+        flush();
+        page.drawText(ch, { x: cx, y: base, size, font: rupee, color });
+        cx += rupee.widthOfTextAtSize(ch, size);
+      } else run += ch;
+    }
+    flush();
+  };
+  const right = (t: string, xr: number, top: number, size: number, w: Weight = "r", color = INK) => put(t, xr - width(t, size, w), top, size, w, color);
+  const center = (t: string, xc: number, top: number, size: number, w: Weight = "r", color = INK) => put(t, xc - width(t, size, w) / 2, top, size, w, color);
+  const spaced = (t: string, xr: number, top: number, size: number, w: Weight, gap: number, color = INK) => {
+    const chars = [...clean(t)];
+    const total = chars.reduce((a, ch) => a + f[w].widthOfTextAtSize(ch, size) + gap, -gap);
+    let cx = xr - total;
+    for (const ch of chars) {
+      page.drawText(ch, { x: cx, y: H - top - size * 0.86, size, font: f[w], color });
+      cx += f[w].widthOfTextAtSize(ch, size) + gap;
+    }
+  };
+  const rect = (x: number, top: number, w: number, h: number, color = BLACK) => page.drawRectangle({ x, y: H - top - h, width: w, height: h, color });
+  const wrap = (t: string, size: number, maxW: number, w: Weight = "r"): string[] => {
     const out: string[] = [];
-    for (const para of pdfSafe(s).split("\n")) {
+    for (const para of clean(t).split("\n")) {
       let line = "";
-      for (const word of para.split(/\s+/)) {
+      for (const word of para.split(/\s+/).filter(Boolean)) {
         const next = line ? `${line} ${word}` : word;
-        if (f.widthOfTextAtSize(next, size) > width && line) (out.push(line), (line = word));
-        else line = next;
+        if (width(next, size, w) > maxW && line) {
+          out.push(line);
+          line = word;
+        } else line = next;
       }
       out.push(line);
     }
     return out;
   };
-  const ensure = (h: number) => {
-    if (y + h > H - M - 24) newPage();
-  };
+  const g = (n: number) => n * mode.gap;
 
   newPage();
-
-  // ── Header: logo, company, document title ──
-  const logoSize = logo ? 64 : 56;
-  const logoW = logo ? Math.min(150, (logoSize * logo.width) / logo.height) : logoSize;
-  if (logo) page.drawImage(logo, { x: M, y: H - y - logoSize, width: logoW, height: logoSize });
-  else {
-    page.drawRectangle({ x: M, y: H - y - logoSize, width: logoSize, height: logoSize, color: BLACK });
-    txt("GX", M + 12, y + 17, 22, bold, WHITE);
+  // ── Header ─────────────────────────────────────────────────────────────────────────────────────────────
+  let textX = 128;
+  if (logo) {
+    const box = 90;
+    const k = Math.min(box / logo.width, box / logo.height);
+    const lw = logo.width * k;
+    const lh = logo.height * k;
+    page.drawImage(logo, { x: L, y: H - 29.4 - lh, width: lw, height: lh });
+    textX = Math.max(128, L + lw + 14);
+  } else {
+    rect(L, 29.4, 90, 90, BLACK);
+    center("GX", L + 45, 57, 30, "b", WHITE);
   }
-  const cx = M + logoW + 16;
-  let cy = y;
-  txt(d.company.name.toUpperCase(), cx, cy, 15, bold);
-  cy += 19;
-  if (d.company.gstin) (txt(`GSTIN ${d.company.gstin}`, cx, cy, 8.5, bold), (cy += 11.5));
-  for (const l of d.company.addressLines) (txt(l, cx, cy, 8.5), (cy += 11));
-  const labelled = (k: string, v?: string | null) => {
+  put(d.company.name.toUpperCase(), textX, 31.9, 15.3, "b");
+  let cy = 50.4;
+  if (d.company.gstin) {
+    put("GSTIN", textX, cy + 0.7, 9, "b");
+    put(d.company.gstin, textX + width("GSTIN ", 9, "b"), cy, 9.9, "b");
+    cy += 11.8;
+  }
+  for (const a of d.company.addressLines.slice(0, 5)) {
+    put(a, textX, cy, 9);
+    cy += 11.6;
+  }
+  const kv = (k: string, v?: string | null) => {
     if (!v) return;
-    txt(k, cx, cy, 8.5, bold);
-    txt(v, cx + bold.widthOfTextAtSize(pdfSafe(`${k} `), 8.5), cy, 8.5);
-    cy += 11;
+    put(k, textX, cy + 0.5, 9, "b");
+    put(v, textX + width(`${k} `, 9, "b") + 0.5, cy, 9.9);
+    cy += 12.4;
   };
-  labelled("Mobile", d.company.mobile);
-  labelled("Email", d.company.email);
-  labelled("Website", d.company.website);
-  // spaced title, top right
-  const spaced = d.title.toUpperCase().split("").join(" ");
-  right(spaced, W - M, y + 2, 12, bold);
-  if (d.copyLabel) right(d.copyLabel, W - M, y + 19, 7.5, font, GRAY);
-  y = Math.max(cy, y + logoSize) + 18;
+  cy += 0.6;
+  kv("Mobile", d.company.mobile);
+  kv("Email", d.company.email);
+  kv("Website", d.company.website);
+  spaced(d.title.toUpperCase(), 564.2, 30.9, 10.8, "b", 2.6);
+  if (d.copyLabel) spaced(d.copyLabel, 565.5, 44.4, 8, "s", 1.5);
 
-  // ── Bill to (left) and invoice facts (right) ──
+  // ── Bill to (left) and invoice facts (right) ───────────────────────────────────────────────────────────
+  let y = Math.max(cy, 29.4 + 90) + 15 * mode.gap + 2;
   const billTop = y;
-  txt("Bill To:", M, y, 8.5, bold);
-  let by = y + 14;
-  txt(d.party.name, M, by, 10.5, bold);
-  by += 14;
-  if (d.party.company) (txt(d.party.company, M, by, 10, bold), (by += 13));
-  if (d.party.gstin) (txt(`GSTIN: ${d.party.gstin}`, M, by, 10, bold), (by += 13));
-  for (const l of d.party.addressLines.flatMap((a) => wrap(a, 9, 270))) (txt(l, M, by, 9), (by += 12));
-  if (d.party.phone) (txt(d.party.phone, M, by, 9), (by += 12));
-  let my = billTop + 2;
+  put("Bill To:", TX, y, 9, "b");
+  let by = y + 14.5;
+  put(d.party.name, TX, by, 9.9, "b");
+  by += 14.2;
+  if (d.party.company) {
+    put(d.party.company, TX, by, 9.9, "b");
+    by += 13.8;
+  }
+  if (d.party.gstin) {
+    put("GSTIN: " + d.party.gstin, TX, by, 9.9, "b");
+    by += 13.6;
+  }
+  for (const l of d.party.addressLines.flatMap((a) => wrap(a, 9, 300)).slice(0, 5)) {
+    put(l, TX, by, 9);
+    by += 12.5;
+  }
+  if (d.party.phone) {
+    put(d.party.phone, TX, by, 9);
+    by += 12.5;
+  }
+  let my = billTop + 1;
   for (const [k, v] of d.meta) {
-    right(`${k}:`, W - M - 118, my, 9.5, bold);
-    right(v, W - M, my, 9.5, bold);
-    my += 16;
+    right(`${k}:`, 413.3, my, 9.9, "b");
+    right(v, 561.9, my, 9.9, "b");
+    my += 15.7;
   }
-  y = Math.max(by, my) + 14;
+  y = Math.max(by, my) + g(8);
 
-  // ── Items table ──
-  const cols = [{ w: 24 }, { w: 0 }, { w: 62 }, { w: 74 }, { w: 54 }, { w: 82 }];
-  const total = W - 2 * M;
-  const widths = cols.map((c) => (c.w === 0 ? total - cols.reduce((a, b) => a + b.w, 0) : c.w));
-  const heads = ["#", "Item", "HSN/SAC", "Rate / Item", "Qty", "Amount"];
+  // ── Items table ────────────────────────────────────────────────────────────────────────────────────────
+  const colRight = { hsn: 313, rate: 398.8, qty: 461.8, amount: 566.5 };
   const tableHead = () => {
-    ensure(40);
-    page.drawRectangle({ x: M, y: H - y - 18, width: total, height: 18, color: BLACK });
-    let x = M;
-    heads.forEach((h, i) => {
-      if (i >= 2) right(h, x + widths[i]! - 6, y + 4.5, 8.5, bold, WHITE);
-      else txt(h, x + 5, y + 4.5, 8.5, bold, WHITE);
-      x += widths[i]!;
-    });
-    y += 18;
+    rect(L, y, R - L, 20.35, BLACK);
+    put("#", 28.6, y + 5.7, 9, "b", WHITE);
+    put("Item", 63.6, y + 5.7, 9, "b", WHITE);
+    right("HSN/SAC", colRight.hsn, y + 5.7, 9, "b", WHITE);
+    right("Rate / Item", colRight.rate, y + 5.7, 9, "b", WHITE);
+    right("Qty", colRight.qty, y + 5.7, 9, "b", WHITE);
+    right("Amount", colRight.amount, y + 5.7, 9, "b", WHITE);
+    y += 20.35;
   };
+  const bottomLimit = H - 44;
   tableHead();
-  for (const l of d.lines) {
-    const nameLines = wrap(l.name, 9.5, widths[1]! - 12, bold);
-    const h = Math.max(24, nameLines.length * 12 + 12);
-    if (y + h > H - M - 70) (newPage(), tableHead());
-    let x = M;
-    txt(String(l.n), x + 5, y + 8, 9);
-    x += widths[0]!;
-    nameLines.forEach((nl, j) => txt(nl, x + 5, y + 8 + j * 12, 9.5, bold));
-    x += widths[1]!;
-    right(l.hsn, x + widths[2]! - 6, y + 8, 9.5);
-    x += widths[2]!;
-    right(l.rate, x + widths[3]! - 6, y + 8, 9.5, bold);
-    x += widths[3]!;
-    right(l.qty, x + widths[4]! - 6, y + 8, 9.5);
-    x += widths[4]!;
-    right(l.amount, x + widths[5]! - 6, y + 8, 9.5);
-    y += h;
-    rule(y, 0.4, LIGHT);
-  }
-  y += 8;
-
-  // ── Totals ──
-  const tx = W - M - 230;
-  for (const t of d.totals) {
-    ensure(t.strong ? 30 : 16);
-    if (t.strong) {
-      rule(y, 0.6, INK, tx - 10, 240);
-      y += 6;
-      right(t.label, tx + 130, y + 1, 12, bold);
-      right(t.value, W - M, y - 1, 15, bold);
-      y += 24;
-    } else {
-      right(t.label, tx + 130, y, 8.5, bold);
-      right(t.value, W - M, y, 8.5, bold);
-      y += 14;
+  d.lines.forEach((l, i) => {
+    const parts = clean(l.name).split("\n");
+    const nameLines = wrap(parts[0] ?? "", 9.4, 195, "s");
+    const descLines = parts.slice(1).flatMap((p) => wrap(p, 8.2, 195));
+    const rowH = Math.max(mode.rowPitch, 4.6 + nameLines.length * 11.2 + descLines.length * 9.8 + 3);
+    if (y + rowH > bottomLimit - 150) {
+      newPage();
+      y = 30;
+      tableHead();
     }
-  }
-  ensure(60);
-  txt(d.itemCountLine, M, y + 3, 7.5, font, GRAY);
-  if (d.words) right(`Total amount (in words): ${d.words}`, W - M, y + 3, 7.5, font, GRAY);
-  y += 15;
-  rule(y, 1.4);
-  y += 4;
-  if (d.payable) right(`Amount Payable:   ${d.payable}`, W - M, y + 2, 9, bold, GRAY);
-  y += 22;
+    if (i % 2 === 1) rect(L, y, R - L, rowH, BAND);
+    const ty = y + (mode.rowPitch - 9.4) / 2 + 0.5;
+    put(String(l.n), TX, ty, 9.4);
+    nameLines.forEach((nl, j) => put(nl, 63.5, ty + j * 11.2, 9.4, "s"));
+    descLines.forEach((dl, j) => put(dl, 63.5, ty + nameLines.length * 11.2 + j * 9.8 + 0.5, 8.2, "r", GRAY));
+    right(l.hsn, colRight.hsn - 0.4, ty, 9.4);
+    right(l.rate, colRight.rate, ty, 9.4, "s");
+    if (l.unit) {
+      right(l.qty, 439.8, ty, 9.4);
+      put(l.unit, 443.9, ty, 9.4);
+    } else right(l.qty, 461.3, ty, 9.4);
+    right(l.amount, colRight.amount - 0.3, ty, 9.4);
+    y += rowH;
+    rect(L + 0.6, y - 0.3, R - L - 1.2, 0.4, HAIR);
+  });
+  y += g(4);
 
-  // ── HSN / tax summary ──
+  // ── Tax lines and total (kept together) ────────────────────────────────────────────────────────────────
+  const normal = d.totals.filter((t) => !t.strong);
+  const strong = d.totals.find((t) => t.strong);
+  const need = normal.length * 13 + 38 + 28 + (d.hsn ? 28 + (d.hsn.rows.length + 1) * mode.hsnPitch : 0) + 110 + 26;
+  if (y + need > bottomLimit) {
+    newPage();
+    y = 30;
+  }
+  normal.forEach((t, i) => {
+    const size = i === 0 ? 8.5 : 8.1;
+    right(t.label, 450.6, y, size, "b");
+    right(t.value, TR, y, size, "b");
+    y += 13;
+  });
+  if (strong) {
+    y += 3;
+    rect(417, y, R - 417, 1, BLACK);
+    y += 5.5;
+    right(strong.label, 451, y + 2.6, 12.4, "b");
+    right(strong.value, TR, y, 15, "b");
+    y += 24;
+  }
+  put(d.itemCountLine, TX, y + 1, 7.4, "r", GRAY);
+  if (d.words) right(`Total amount (in words): ${d.words}`, 566.4, y, 8, "r", INK);
+  y += 12.5;
+  rect(L, y, R - L, 1.6, BLACK);
+  y += 4.5;
+  if (d.payment) {
+    const p = d.payment;
+    const lines: string[] = [];
+    if (p.fullyPaid) lines.push("Amount Paid");
+    else {
+      if (p.balance) lines.push(`Amount Payable:   ${p.balance}`);
+      if (p.paid) lines.push(`Amount Paid:   ${p.paid}`);
+    }
+    lines.forEach((t, i) => {
+      right(t, TR, y + i * 12, 9, "b", i === 0 && !p.fullyPaid ? GRAY : INK);
+      if (p.fullyPaid) {
+        const cx = TR - width(t, 9, "b") - 9.5;
+        const cyy = H - y - 5.3;
+        page.drawCircle({ x: cx, y: cyy, size: 5, color: GREEN });
+        page.drawLine({ start: { x: cx - 2.4, y: cyy - 0.1 }, end: { x: cx - 0.7, y: cyy - 1.9 }, thickness: 1.2, color: WHITE });
+        page.drawLine({ start: { x: cx - 0.7, y: cyy - 1.9 }, end: { x: cx + 2.6, y: cyy + 1.9 }, thickness: 1.2, color: WHITE });
+      }
+    });
+    y += Math.max(1, lines.length) * 12 + g(6);
+  }
+
+  // ── HSN / SAC summary ──────────────────────────────────────────────────────────────────────────────────
   if (d.hsn) {
-    const hw = [78, 82, 58, 68, 58, 68, total - 412];
-    ensure(24 + (d.hsn.rows.length + 2) * 17);
-    const row = (cells: string[], f: PDFFont) => {
-      let x = M;
-      cells.forEach((c, i) => {
-        if (i === 0) txt(c, x + 4, y + 3, 8.5, f);
-        else right(c, x + hw[i]! - 6, y + 3, 8.5, f);
-        x += hw[i]!;
-      });
-      y += 17;
-    };
-    row([...d.hsn.head], bold);
-    rule(y - 3, 0.5, LIGHT);
-    for (const r of d.hsn.rows) row(r, bold);
-    rule(y - 3, 0.5, LIGHT);
-    row(d.hsn.total, bold);
-    rule(y - 1, 0.8);
-    y += 12;
+    const cx = [TX, 193.6, 264.9, 330.3, 396.2, 461.8];
+    const head = d.hsn.head;
+    put(head[0], TX, y, 8.1, "s");
+    [1, 2, 3, 4, 5].forEach((i) => center(head[i]!, cx[i]!, y, 8.1, "s"));
+    right(head[6], 566.6, y, 8.1, "s");
+    y += 10.5;
+    rect(L - 1, y, R - L + 2, 0.9, BLACK);
+    y += 5.2;
+    for (const r of d.hsn.rows) {
+      put(r[0]!, TX - 0.2, y, 8.1, "s");
+      [1, 2, 3, 4, 5].forEach((i) => center(r[i] ?? "", cx[i]!, y, 8.1, "s"));
+      right(r[6] ?? "", 566.4, y, 8.1, "s");
+      y += mode.hsnPitch;
+    }
+    y += 1;
+    rect(L - 1, y, R - L + 2, 0.9, BLACK);
+    y += 5;
+    put(d.hsn.total[0]!, TX - 0.2, y, 8.1, "b");
+    [1, 3, 5].forEach((i) => center(d.hsn!.total[i] ?? "", cx[i]!, y, 8.1, "b"));
+    right(d.hsn.total[6] ?? "", 566.4, y, 8.1, "b");
+    y += 10.8;
+    rect(L - 1, y, R - L + 2, 1.5, BLACK);
+    y += 8 + g(6);
   }
 
-  // ── Pay using UPI · Bank details · Signature ──
-  ensure(110);
+  // ── UPI QR, bank, signature ────────────────────────────────────────────────────────────────────────────
   const blockTop = y;
   if (d.upiLink) {
-    txt("Pay using UPI:", M, blockTop, 9, bold);
+    put("Pay using UPI:", 26.6, blockTop, 10, "b");
     const qr = encode(d.upiLink, { ecc: "M", border: 0 });
-    const grid = qr.data;
-    const cell = 84 / qr.size;
-    for (let r = 0; r < qr.size; r++) for (let c = 0; c < qr.size; c++) if (grid[r]![c]) page.drawRectangle({ x: M + c * cell, y: H - blockTop - 14 - (r + 1) * cell, width: cell + 0.15, height: cell + 0.15, color: BLACK });
+    const cell = 73 / qr.size;
+    for (let r = 0; r < qr.size; r++) {
+      for (let c = 0; c < qr.size; c++) {
+        if (qr.data[r]![c]) page.drawRectangle({ x: 28 + c * cell, y: H - (blockTop + 16) - (r + 1) * cell, width: cell + 0.12, height: cell + 0.12, color: BLACK });
+      }
+    }
   }
-  const bx = M + 140;
   if (d.bank) {
-    txt("Bank Details:", bx, blockTop, 9, bold);
-    const rows: Array<[string, string]> = [["Bank:", d.bank.bank], ["Account #:", d.bank.account], ["IFSC Code:", d.bank.ifsc], ["Branch:", d.bank.branch]];
+    put("Bank Details:", 126.7, blockTop, 10, "b");
+    const rows: Array<[string, string]> = [["Bank", d.bank.bank], ["Account #", d.bank.account], ["IFSC Code", d.bank.ifsc], ["Branch", d.bank.branch]];
     rows.forEach(([k, v], i) => {
-      txt(k, bx, blockTop + 16 + i * 14, 8.5);
-      txt(v, bx + 60, blockTop + 16 + i * 14, 8.5, bold);
+      const t = blockTop + 16.2 + i * 14.1;
+      put(k, 126.9, t, 8.8);
+      put(":", 126.9 + width(k, 8.8, "r") + 1.4, t, 8.8);
+      put(v, 199.9, t, 8.8, "s");
     });
-    txt(`Beneficiary Name: ${d.bank.beneficiary}   Account Type: ${d.bank.type}`, bx, blockTop + 16 + rows.length * 14 + 2, 7.5);
+    put(`Beneficiary Name: ${d.bank.beneficiary}`, 126.9, blockTop + 16.2 + 4 * 14.1 + 1.2, 8.4);
+    put(`Account Type: ${d.bank.type}`, 126.4, blockTop + 16.2 + 4 * 14.1 + 13.6, 8.4);
   }
-  const sx = W - M - 150;
-  txt(`For ${d.signature.forCompany}`, sx, blockTop + 2, 7.5, font, GRAY);
-  if (sig) {
-    const sw = Math.min(110, sig.width * (50 / sig.height));
-    page.drawImage(sig, { x: sx + 4, y: H - blockTop - 16 - 50, width: sw, height: sw * (sig.height / sig.width) > 50 ? 50 : sw * (sig.height / sig.width) });
-  }
+  const sx = 515;
+  center(`For ${d.signature.forCompany}`, sx, blockTop + 8.5, 7.2, "r", INK);
   if (stamp) {
-    const ss = 64;
-    page.drawImage(stamp, { x: sx - ss - 6, y: H - blockTop - 14 - ss, width: ss, height: ss });
+    const ss = 58;
+    page.drawImage(stamp, { x: sx - 48 - ss, y: H - (blockTop + 26) - ss, width: ss, height: ss });
   }
-  if (d.signature.name) right(d.signature.name, W - M, blockTop + 64, 8, bold, INK);
-  right("Authorized Signatory", W - M, blockTop + 76, 7.5, font, GRAY);
-  y = blockTop + 112;
+  if (sig) {
+    const k = Math.min(97 / sig.width, 54 / sig.height);
+    page.drawImage(sig, { x: sx - (sig.width * k) / 2, y: H - (blockTop + 24) - sig.height * k, width: sig.width * k, height: sig.height * k });
+  }
+  if (d.signature.name) center(d.signature.name, sx, blockTop + 82, 7.6, "s", INK);
+  center("Authorized Signatory", sx, blockTop + 82 + (d.signature.name ? 9.5 : 0), 7.2, "r", GRAY);
+  y = blockTop + (d.bank ? 16.2 + 4 * 14.1 + 28 : d.upiLink ? 100 : 96) + g(8);
 
-  // ── Notes and terms ──
-  if (d.notes) {
-    ensure(30);
-    txt("Notes:", M, y, 8.5, bold);
-    y += 12;
-    for (const l of wrap(d.notes, 8.5, total)) (ensure(12), txt(l, M, y, 8.5), (y += 11));
-    y += 6;
+  // ── Notes and terms ────────────────────────────────────────────────────────────────────────────────────
+  const room = (h: number) => {
+    if (y + h > bottomLimit) {
+      newPage();
+      y = 30;
+    }
+  };
+  if (d.notes?.trim()) {
+    room(24);
+    put("Notes:", 24.5, y, 8.5, "b");
+    y += 13;
+    for (const l of wrap(d.notes, mode.noteSize, 540)) {
+      room(11);
+      put(l, 24.7, y, mode.noteSize);
+      y += mode.noteSize + 3.2;
+    }
+    y += g(5);
   }
-  if (d.terms) {
-    ensure(30);
-    txt("Terms and Conditions:", M, y, 8.5, bold);
-    y += 12;
-    for (const l of wrap(d.terms, 7.5, total)) (ensure(10), txt(l, M, y, 7.5), (y += 9.5));
+  if (d.terms?.trim()) {
+    room(30);
+    put("Terms and Conditions:", 24.2, y, 8.5, "b");
+    y += 13.2;
+    let auto = 0;
+    for (const raw of d.terms.split("\n").map((x) => x.trim()).filter(Boolean)) {
+      const m = /^(\d+)[.)]\s*(.*)$/.exec(raw);
+      auto = m ? Number(m[1]) : auto + 1;
+      const body = m ? m[2]! : raw;
+      const lines = wrap(body, mode.termSize, 530);
+      room(lines.length * mode.termPitch + 2);
+      put(`${auto}.`, 24.4, y, mode.termSize);
+      lines.forEach((l, j) => put(l, 32.9, y + j * mode.termPitch, mode.termSize));
+      y += lines.length * mode.termPitch;
+    }
   }
 
+  // ── Footer on every page ───────────────────────────────────────────────────────────────────────────────
   pages.forEach((pg, i) => {
     page = pg;
-    txt(`Page ${i + 1} / ${pages.length}`, M, H - 40, 8, bold);
-    txt(`•  ${d.footer}`, M + 56, H - 40, 8, bold);
+    const label = `Page ${i + 1} / ${pages.length}`;
+    put(label, 24.5, 811, 8.1, "s");
+    let x = 24.5 + width(label, 8.1, "s") + 5;
+    for (const b of [i > 0 ? (d.meta[0]?.[1] ?? "") : "", d.footer].filter(Boolean)) {
+      put("•", x, 810.4, 8.1, "s");
+      x += width("•", 8.1, "s") + 5;
+      put(b, x, 811, 8.1, "s");
+      x += width(b, 8.1, "s") + 5;
+    }
   });
-  return doc.save();
+  return { pdf: await doc.save(), pages: pages.length };
+}
+
+export async function renderClassicInvoicePdf(d: ClassicDoc): Promise<Uint8Array> {
+  const first = await draw(d, NORMAL);
+  if (first.pages === 1) return first.pdf;
+  // Does the tighter layout keep it on one page (or fewer)? Use it; otherwise keep the roomier one.
+  const second = await draw(d, TIGHT);
+  return second.pages < first.pages ? second.pdf : first.pdf;
 }

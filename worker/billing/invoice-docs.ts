@@ -230,6 +230,30 @@ const plain = (paise: number) => ((paise ?? 0) / 100).toLocaleString("en-IN", { 
 const longDate = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "");
 const addrLines = (a?: string | null) => String(a ?? "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
 
+
+const inrs = (paise: number) => `₹${plain(paise)}`;
+
+const ONES = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+const TENS = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+const below100 = (n: number) => (n < 20 ? ONES[n]! : `${TENS[Math.floor(n / 10)]}${n % 10 ? `-${ONES[n % 10]}` : ""}`);
+const below1000 = (n: number) => (n >= 100 ? `${ONES[Math.floor(n / 100)]} Hundred${n % 100 ? ` And ${below100(n % 100)}` : ""}` : below100(n));
+/** Indian-style words, in the form the old invoices used: "Forty-Two Thousand, Five Hundred And Ninety-One Rupees Only." */
+export function inrWords(paise: number): string {
+  const rupees = Math.floor(Math.abs(paise) / 100);
+  const ps = Math.abs(paise) % 100;
+  const parts: string[] = [];
+  const crore = Math.floor(rupees / 10_000_000);
+  const lakh = Math.floor((rupees % 10_000_000) / 100_000);
+  const thousand = Math.floor((rupees % 100_000) / 1000);
+  const rest = rupees % 1000;
+  if (crore) parts.push(`${below100(crore)} Crore`);
+  if (lakh) parts.push(`${below100(lakh)} Lakh`);
+  if (thousand) parts.push(`${below100(thousand)} Thousand`);
+  if (rest) parts.push(below1000(rest));
+  const words = parts.length ? parts.join(", ") : "Zero";
+  return `${words} Rupees${ps ? ` And ${below100(ps)} Paise` : ""} Only.`;
+}
+
 export function buildClassicDoc(inv: L, kind: string, ctx: ClassicContext): ClassicDoc {
   const s = ctx.settings;
   const branch: L = inv.branch ?? {};
@@ -271,13 +295,13 @@ export function buildClassicDoc(inv: L, kind: string, ctx: ClassicContext): Clas
   const rates = [...new Set(calc.map((c) => c.rate))];
   const pctLabel = (half: boolean) => (rates.length === 1 ? ` ${(rates[0]! / 100 / (half ? 2 : 1)).toFixed(1)}%` : "");
 
-  const totals: ClassicDoc["totals"] = [{ label: "Taxable Amount", value: rs(sum("taxable")) }];
-  if (inv.discount_paise) totals.unshift({ label: "Discount", value: `- ${rs(inv.discount_paise)}` });
-  if (interstate) totals.push({ label: `IGST${pctLabel(false)}`, value: rs(sum("igst")) });
-  else totals.push({ label: `CGST${pctLabel(true)}`, value: rs(sum("cgst")) }, { label: `SGST${pctLabel(true)}`, value: rs(sum("sgst")) });
-  if (sum("cess")) totals.push({ label: "Cess", value: rs(sum("cess")) });
-  if (inv.round_off_paise) totals.push({ label: "Round Off", value: rs(inv.round_off_paise) });
-  totals.push({ label: "Total", value: rs(inv.total_paise), strong: true });
+  const totals: ClassicDoc["totals"] = [{ label: "Taxable Amount", value: inrs(sum("taxable")) }];
+  if (inv.discount_paise) totals.unshift({ label: "Discount", value: `- ${inrs(inv.discount_paise)}` });
+  if (interstate) totals.push({ label: `IGST${pctLabel(false)}`, value: inrs(sum("igst")) });
+  else totals.push({ label: `CGST${pctLabel(true)}`, value: inrs(sum("cgst")) }, { label: `SGST${pctLabel(true)}`, value: inrs(sum("sgst")) });
+  if (sum("cess")) totals.push({ label: "Cess", value: inrs(sum("cess")) });
+  if (inv.round_off_paise) totals.push({ label: "Round Off", value: inrs(inv.round_off_paise) });
+  totals.push({ label: "Total", value: inrs(inv.total_paise), strong: true });
 
   // HSN / SAC summary grouped by code and rate
   const groups = new Map<string, { hsn: string; rate: number; taxable: number; cgst: number; sgst: number; igst: number }>();
@@ -324,11 +348,11 @@ export function buildClassicDoc(inv: L, kind: string, ctx: ClassicContext): Clas
     company,
     party: { name: inv.party_name, company: ctx.party?.company ?? null, gstin: inv.party_gstin, addressLines: addrLines(inv.party_address ?? ctx.party?.billingAddress), phone: inv.party_phone },
     meta: [[numLabel, String(inv.invoice_no ?? inv.doc_no)], ["Invoice Date", longDate(inv.date)], ...dueMeta, ["Place of Supply", st ? `${st.code}-${st.name.toUpperCase()}` : String(inv.party_state_code ?? "")]],
-    lines: lines.map((l, i) => ({ n: i + 1, name: l.name, hsn: l.hsn_sac ?? "", rate: plain(l.unit_price_paise), qty: `${num((l.quantity_thousandths ?? 0) / 1000)} ${unitOf(l.unit_id)}`.trim(), amount: plain(calc[i]!.taxable) })),
+    lines: lines.map((l, i) => ({ n: i + 1, name: l.name, hsn: l.hsn_sac ?? "", rate: plain(l.unit_price_paise), qty: num((l.quantity_thousandths ?? 0) / 1000), unit: unitOf(l.unit_id), amount: plain(calc[i]!.taxable) })),
     totals,
     itemCountLine: `Total Items / Qty : ${lines.length} / ${num(qtyTotal)}`,
-    words: s.preferences.showAmountInWords && inv.amountInWords ? `INR ${String(inv.amountInWords).replace(/^Rupees\s+/i, "")}` : null,
-    payable: inv.status === "CANCELLED" || inv.balance_amount_paise === undefined ? null : rs(balance),
+    words: s.preferences.showAmountInWords ? `INR ${inrWords(inv.total_paise ?? 0)}` : null,
+    payment: inv.status === "CANCELLED" || inv.balance_amount_paise === undefined ? null : { fullyPaid: balance <= 0, balance: balance > 0 ? inrs(balance) : null, paid: balance > 0 && (inv.paid_amount_paise ?? 0) > 0 ? inrs(inv.paid_amount_paise) : null },
     hsn,
     upiLink: upi && s.preferences.showUpiOnInvoice && balance > 0 ? `upi://pay?pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent(company.name)}&am=${(balance / 100).toFixed(2)}&cu=INR&tn=${encodeURIComponent(String(inv.invoice_no ?? ""))}` : null,
     bank: s.preferences.showBankOnInvoice ? bank : null,

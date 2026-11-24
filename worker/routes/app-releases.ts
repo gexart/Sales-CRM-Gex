@@ -40,7 +40,7 @@ async function storeRelease(env: Env, r: { buf: ArrayBuffer; versionName: string
   if (r.buf.byteLength > APK_MAX_BYTES) throw new ApiError(400, "validation_error", "APK is larger than 80 MB");
   const id = newId();
   const version = r.versionName.replace(/[^\w.+-]/g, "").slice(0, 40) || "build";
-  const fileName = `GexartSales-${version}.apk`;
+  const fileName = `SalesGexart-${version}.apk`;
   const key = `apps/android/${id}/${fileName}`;
   await env.FILES.put(key, r.buf, { httpMetadata: { contentType: APK_MIME }, customMetadata: { release: id } });
   const t = now();
