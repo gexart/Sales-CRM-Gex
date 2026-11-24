@@ -115,3 +115,49 @@ export function SignatureLibrary({ edit }: { edit: boolean }) {
     </Card>
   );
 }
+
+/** Thermal receipt, barcode labels and the e-invoice status. */
+export function PrintSettings({ edit }: { edit: boolean }) {
+  const q = useSettingsQuery();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [t, setT] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [b, setB] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  if (q.data && !t) (setT(q.data.billing.thermal), setB(q.data.billing.barcode));
+  const save = useMutation({
+    mutationFn: () => bill.put("/settings/billing", { thermal: t, barcode: b }),
+    onSuccess: () => (toast("success", "Saved"), qc.invalidateQueries({ queryKey: ["billing-settings"] })),
+    onError: (e) => toast("error", errMsg(e)),
+  });
+  if (!t || !b) return <Card className="p-4 text-sm text-muted">Loading…</Card>;
+  const chk = (obj: any, set: (v: any) => void, k: string, label: string) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
+    <label key={k} className="flex min-h-9 items-center gap-2.5 text-[13px]"><input type="checkbox" className="size-4" disabled={!edit} checked={!!obj[k]} onChange={(e) => set({ ...obj, [k]: e.target.checked })} />{label}</label>
+  );
+  return (
+    <div className="space-y-3">
+      <Card>
+        <CardHeader title="Thermal receipt" subtitle="Open any invoice and press Receipt" />
+        <div className="space-y-2 p-4">
+          <Field label="Paper width"><select className="input" disabled={!edit} value={t.paperWidth} onChange={(e) => setT({ ...t, paperWidth: e.target.value })}><option value="58">58 mm</option><option value="80">80 mm</option></select></Field>
+          {chk(t, setT, "showGstin", "Show GSTIN")}{chk(t, setT, "showItemHsn", "Show HSN / SAC next to items")}
+          <Field label="Footer line"><input className="input" disabled={!edit} value={t.footerNote} onChange={(e) => setT({ ...t, footerNote: e.target.value })} /></Field>
+        </div>
+      </Card>
+      <Card>
+        <CardHeader title="Barcode labels" subtitle="Open Products and press Label on an item. The barcode uses the item's barcode, else its SKU." />
+        <div className="space-y-2 p-4">
+          <Field label="Label size (mm)"><select className="input" disabled={!edit} value={b.labelSize} onChange={(e) => setB({ ...b, labelSize: e.target.value })}>{["38x25", "50x25", "50x38", "100x50"].map((v) => <option key={v} value={v}>{v}</option>)}</select></Field>
+          {chk(b, setB, "showName", "Item name")}{chk(b, setB, "showPrice", "Selling price")}{chk(b, setB, "showMrp", "MRP")}{chk(b, setB, "showBusinessName", "Business name")}
+        </div>
+      </Card>
+      {edit && <div className="flex justify-end"><Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>Save</Button></div>}
+      <Card>
+        <CardHeader title="E-invoice and e-way bill" subtitle="Status" />
+        <div className="space-y-1.5 p-4 text-[13px]">
+          <div className="font-medium text-amber-700 dark:text-amber-300">Not connected</div>
+          <p className="text-muted">They are switched off on purpose. A real e-invoice needs an approved GST provider (GSP) account and sandbox testing, and the app will not create fake IRN or e-way bill numbers. When you have a provider, send me its name and sandbox credentials and I will connect it.</p>
+        </div>
+      </Card>
+    </div>
+  );
+}

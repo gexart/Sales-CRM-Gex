@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  BarChart3, Boxes, ClipboardCheck, ClipboardList, FileMinus2, FilePlus2, FileSignature, FileText, FileX2, Lock, MoreHorizontal, Package, PackageCheck, Receipt, Settings, ShieldCheck, ShoppingCart,
+  BarChart3, Boxes, FileUp, Repeat, ClipboardCheck, ClipboardList, FileMinus2, FilePlus2, FileSignature, FileText, FileX2, Lock, MoreHorizontal, Package, PackageCheck, Receipt, Settings, ShieldCheck, ShoppingCart,
   Truck, UserPlus, Users, WalletCards, type LucideIcon,
 } from "lucide-react";
 import { Dialog, EmptyState, Select, Skeleton } from "../../components/ui";
@@ -76,6 +76,8 @@ export function BillingHome() {
     { to: "/billing/invoices?tab=drafts", label: "Drafts", icon: FileText, show: any("invoice.create", "invoice.request") },
     { to: "/billing/settings?tab=format", label: "Invoice Templates", icon: FileSignature, show: any("settings.view", "settings.manage") },
     { to: "/billing/settings", label: "Document Settings", icon: Settings, show: any("settings.view", "settings.manage") },
+    { to: "/billing/subscriptions", label: "Subscriptions", icon: Repeat, show: can("invoice.create") },
+    { to: "/billing/import", label: "Import", icon: FileUp, show: any("parties.manage", "items.manage") },
     { to: "/billing/parties", label: "Parties", icon: Users, show: can("parties.view") },
     { to: "/billing/access", label: "Roles & Access", icon: ShieldCheck, show: any("roles.manage", "audit.view") },
   ];

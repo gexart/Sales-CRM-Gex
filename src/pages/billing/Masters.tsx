@@ -72,6 +72,8 @@ export function ItemsPage() {
   const [search, setSearch] = useState("");
   const dq = useDebounced(search, 300);
   const [sp] = useSearchParams();
+  const [labelItem, setLabelItem] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [copies, setCopies] = useState("1");
   const [add, setAdd] = useState(sp.get("new") === "1" && can("items.manage"));
   const stock = useQuery({ queryKey: ["billing-stock-qty"], queryFn: () => bill.get("/inventory/summary"), enabled: can("inventory.view"), staleTime: 60_000 });
   const qtyOf = (id: string) => (stock.data?.summary ?? []).filter((r: any) => r.itemId === id).reduce((a: number, r: any) => a + r.currentQtyThousandths, 0) / 1000; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -96,6 +98,7 @@ export function ItemsPage() {
               <div key={it.id} className="relative flex items-center gap-3 px-3.5 py-3.5">
                 {it.type !== "SERVICE" && stock.data && <span className={`absolute top-1.5 right-2 rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold ${qtyOf(it.id) < 0 ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>Qty: {qtyOf(it.id)}</span>}
                 <div className="min-w-0 flex-1"><div className="truncate font-medium">{it.name}</div><div className="text-xs text-muted">{it.type === "SERVICE" ? "Service" : "Goods"}{it.hsnSac ? ` · HSN/SAC ${it.hsnSac}` : ""} · GST {taxOf(it.taxRateId)}%</div></div>
+                <button type="button" className="text-xs font-medium text-brand-700 underline" onClick={() => setLabelItem(it)}>Label</button>
                 <div className="text-right"><div className="font-semibold tabular-nums">{inr(it.salePricePaise)}</div>{it.purchasePricePaise !== undefined && <div className="text-xs text-muted tabular-nums">cost {inr(it.purchasePricePaise)}</div>}</div>
               </div>
             ))}
@@ -103,6 +106,9 @@ export function ItemsPage() {
         )}
       </div>
       {can("items.manage") && <Fab onClick={() => setAdd(true)} label="Add item" />}
+      <Dialog open={!!labelItem} onClose={() => setLabelItem(null)} title={`Print labels: ${labelItem?.name ?? ""}`} footer={<><Button onClick={() => setLabelItem(null)}>Cancel</Button><Button variant="primary" onClick={() => (window.open(`/api/v1/billing/masters/items/labels?ids=${labelItem.id}&copies=${Math.max(1, Number(copies) || 1)}&inline=1`, "_blank", "noopener"), setLabelItem(null))}>Open labels</Button></>}>
+        <Field label="How many labels" help="Size and what prints are set in Billing settings, Print"><input className="input" inputMode="numeric" value={copies} onChange={(e) => setCopies(e.target.value)} /></Field>
+      </Dialog>
       <Dialog open={add} onClose={() => setAdd(false)} title="New item or service" footer={<><Button onClick={() => setAdd(false)}>Cancel</Button><Button variant="primary" loading={save.isPending} disabled={!f.name || !f.sale} onClick={() => save.mutate()}>Save</Button></>}>
         <div className="space-y-3">
           <Field label="Name" required><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>

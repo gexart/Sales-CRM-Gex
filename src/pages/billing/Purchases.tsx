@@ -7,6 +7,7 @@ import { Badge, Button, Card, Dialog, EmptyState, ErrorState, Field, Select, Ske
 import { date as fmtDate } from "../../lib/format";
 import { addDays, bill, errMsg, inr, today, useBillingAccess } from "../../lib/billing";
 import { BillsTabs, Fab } from "./ui";
+import { TdsDialog } from "./tds";
 import { LineEditor, PartyPicker, blankLine, rupeesToPaise, totalsOf, type Line, type Party } from "./parts";
 
 const TONE: Record<string, "green" | "amber" | "red" | "gray"> = { PAID: "green", UNPAID: "amber", PARTIALLY_PAID: "amber", CANCELLED: "gray" };
@@ -14,9 +15,11 @@ const billLines = (lines: Line[]) => lines.map((l) => ({ itemId: l.itemId, quant
 
 export function PurchasesPage() {
   const { can } = useBillingAccess();
+  const qc2 = useQueryClient();
   const [sp] = useSearchParams();
   const [make, setMake] = useState(sp.get("new") === "1" && can("purchases.create"));
   const [pay, setPay] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [tdsBill, setTdsBill] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const q = useQuery({ queryKey: ["billing-bills"], queryFn: () => bill.get("/purchases/bills?limit=100") });
   const rows: any[] = q.data?.bills ?? []; // eslint-disable-line @typescript-eslint/no-explicit-any
   const parties = useQuery({ queryKey: ["billing-vendors-all"], queryFn: () => bill.get("/masters/parties?type=VENDOR&limit=200"), staleTime: 60_000 });
@@ -32,6 +35,7 @@ export function PurchasesPage() {
               <div key={b.id} className="flex items-center gap-3 px-3.5 py-3">
                 <div className="min-w-0 flex-1"><div className="truncate font-medium">{b.party_name ?? nameOf(b.party_id)}</div><div className="text-xs text-muted">{b.bill_no}{b.vendor_bill_no ? ` · vendor bill ${b.vendor_bill_no}` : ""} · {fmtDate(b.date)}</div></div>
                 <div className="text-right"><div className="font-semibold tabular-nums">{inr(b.total_paise)}</div><Badge tone={TONE[b.status] ?? "gray"}>{b.status}</Badge></div>
+                {can("payment.pay") && b.status !== "PAID" && b.status !== "CANCELLED" && <Button size="sm" onClick={() => setTdsBill(b)}>TDS</Button>}
                 {can("payment.pay") && b.status !== "PAID" && b.status !== "CANCELLED" && <Button size="sm" icon={Wallet} onClick={() => setPay(b)}>Pay</Button>}
               </div>
             ))}
@@ -41,6 +45,7 @@ export function PurchasesPage() {
       {can("purchases.create") && <Fab onClick={() => setMake(true)} label="New purchase" />}
       <NewBill open={make} onClose={() => setMake(false)} />
       <PayBill bill={pay} onClose={() => setPay(null)} />
+      {tdsBill && <TdsDialog open onClose={() => setTdsBill(null)} kind="purchase" path={`/purchases/bills/${tdsBill.id}/tds`} taxablePaise={(tdsBill.subtotal_paise ?? 0) - (tdsBill.discount_paise ?? 0)} duePaise={(tdsBill.total_paise ?? 0) - (tdsBill.paid_amount_paise ?? 0)} onDone={() => qc2.invalidateQueries({ queryKey: ["billing-bills"] })} />}
     </div>
   );
 }

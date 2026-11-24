@@ -12,6 +12,8 @@ import { INVOICE_STATUS_TONE, access, bill, errMsg, fileUrl, inr, today, useBill
 import { rupeesToPaise } from "./parts";
 import { Attachments } from "./Attachments";
 import { BillsTabs, Fab } from "./ui";
+import { RepeatFields } from "./Subscriptions";
+import { TdsDialog } from "./tds";
 
 type Tab = "ALL" | "PENDING" | "OVERDUE" | "PAID" | "DRAFTS";
 
@@ -74,6 +76,11 @@ export function InvoiceDetailPage() {
   const [reason, setReason] = useState("");
   const [cn, setCn] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
+  const [rep, setRep] = useState(false);
+  const [tds, setTds] = useState(false);
+  const [repFreq, setRepFreq] = useState("monthly");
+  const [repFirst, setRepFirst] = useState("");
+  const [repEnd, setRepEnd] = useState("");
   const [mailTo, setMailTo] = useState("");
   const [cnReason, setCnReason] = useState("");
   const [cnAmt, setCnAmt] = useState("");
@@ -100,6 +107,11 @@ export function InvoiceDetailPage() {
     onSuccess: (r) => (toast("success", `Email sent${r.provider ? ` via ${r.provider}` : ""}`), setMailOpen(false)),
     onError: (e) => toast("error", errMsg(e)),
   });
+  const repM = useMutation({
+    mutationFn: () => access.post("/recurring", { invoiceId: id, frequency: repFreq, firstRun: repFirst, endDate: repEnd || undefined }),
+    onSuccess: () => (toast("success", "Scheduled. See Subscriptions."), setRep(false)),
+    onError: (e) => toast("error", errMsg(e)),
+  });
   const crmM = useMutation({
     mutationFn: () => bill.post(`/sales/invoices/${id}/crm`, {}),
     onSuccess: (r) => toast("success", r.message || "Sent to the CRM"),
@@ -116,8 +128,11 @@ export function InvoiceDetailPage() {
           {hasDigits(inv.party_phone ?? "") && inv.status !== "CANCELLED" && <Button icon={MessageCircle} onClick={() => openWhatsApp(inv.party_phone, inv.balance_amount_paise > 0 && inv.paid_amount_paise === 0 && new Date(inv.due_date) < new Date() ? reminderMessage({ party: inv.party_name, outstandingPaise: inv.balance_amount_paise }) : invoiceMessage({ party: inv.party_name, invoiceNo: inv.invoice_no, totalPaise: inv.total_paise, balancePaise: inv.balance_amount_paise, dueDate: inv.due_date, token: inv.shareToken }))}>WhatsApp</Button>}
           <Button icon={Printer} onClick={() => window.open(fileUrl(`/sales/invoices/${inv.id}`, "pdf", true), "_blank", "noopener")}>PDF</Button>
           <a href={fileUrl(`/sales/invoices/${inv.id}`, "docx")}><Button icon={Download}>Word</Button></a>
+          <Button onClick={() => window.open(`/api/v1/billing/sales/invoices/${inv.id}/thermal?inline=1`, "_blank", "noopener")}>Receipt</Button>
+          {can("payment.receive") && open && <Button onClick={() => setTds(true)}>TDS</Button>}
           {inv.status !== "CANCELLED" && <Button icon={Mail} onClick={() => (setMailTo(inv.party_email ?? ""), setMailOpen(true))}>Email</Button>}
           {can("invoice.approve") && inv.status !== "CANCELLED" && <Button icon={Send} loading={crmM.isPending} onClick={() => crmM.mutate()}>Send to CRM</Button>}
+          {can("invoice.create") && inv.status !== "CANCELLED" && <Button onClick={() => (setRepFirst(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)), setRep(true))}>Repeat</Button>}
           {can("invoice.credit_note") && inv.status !== "CANCELLED" && <Button onClick={() => setCn(true)}>Credit note</Button>}
           {can("payment.receive") && open && <Button variant="primary" icon={Wallet} onClick={() => (setAmt(String(inv.balance_amount_paise / 100)), setPay(true))}>Record payment</Button>}
           {can("invoice.cancel") && inv.status !== "CANCELLED" && <Button icon={Ban} onClick={() => setCancel(true)}>Cancel</Button>}
@@ -154,6 +169,10 @@ export function InvoiceDetailPage() {
           <Field label="Amount (₹)"><input className="input" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} /></Field>
           <Field label="Mode"><Select value={pmode} onChange={(e) => setPmode(e.target.value)} options={["UPI", "CASH", "BANK", "CARD", "NET_BANKING", "CHEQUE"].map((v) => ({ value: v, label: v.replace("_", " ") }))} /></Field>
         </div>
+      </Dialog>
+      <TdsDialog open={tds} onClose={() => setTds(false)} kind="sale" path={`/sales/invoices/${inv.id}/tds`} taxablePaise={inv.subtotal_paise - inv.discount_paise} duePaise={inv.balance_amount_paise} onDone={refresh} />
+      <Dialog open={rep} onClose={() => setRep(false)} title="Repeat this invoice" footer={<><Button onClick={() => setRep(false)}>Cancel</Button><Button variant="primary" loading={repM.isPending} disabled={!repFirst} onClick={() => repM.mutate()}>Start schedule</Button></>}>
+        <RepeatFields frequency={repFreq} setFrequency={setRepFreq} firstRun={repFirst} setFirstRun={setRepFirst} endDate={repEnd} setEndDate={setRepEnd} />
       </Dialog>
       <Dialog open={mailOpen} onClose={() => setMailOpen(false)} title="Email this invoice" footer={<><Button onClick={() => setMailOpen(false)}>Cancel</Button><Button variant="primary" loading={mailM.isPending} disabled={!/^\S+@\S+\.\S+$/.test(mailTo)} onClick={() => mailM.mutate()}>Send email</Button></>}>
         <Field label="Send to" help="The client gets a link to view and pay the invoice"><input className="input" type="email" inputMode="email" autoFocus value={mailTo} onChange={(e) => setMailTo(e.target.value)} placeholder="client@company.com" /></Field>

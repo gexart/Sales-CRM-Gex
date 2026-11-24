@@ -8,7 +8,7 @@ import { bill, inr, useBillingAccess } from "../../lib/billing";
 import { PhoneActions } from "../../components/contact-actions";
 import { reminderMessage } from "../../lib/invoice-share";
 
-type Tab = "collections" | "aging" | "pl" | "tb";
+type Tab = "collections" | "aging" | "pl" | "tb" | "tds";
 
 /** Money in, who owes what, profit and loss, and the trial balance. Each tab appears only if the role allows it. */
 export function ReportsBillingPage() {
@@ -18,6 +18,7 @@ export function ReportsBillingPage() {
     can("reports.view") && { value: "aging", label: "Who owes" },
     can("reports.view") && { value: "pl", label: "Profit & loss" },
     can("accounting.view") && { value: "tb", label: "Trial balance" },
+    can("accounting.view") && { value: "tds", label: "TDS" },
   ].filter(Boolean)) as { value: Tab; label: string }[];
   const [tab, setTab] = useState<Tab>("collections");
   if (!tabs.length) return <div className="p-6"><EmptyState icon={Lock} title="No reports for your role" body="Ask an administrator if you need these." /></div>;
@@ -27,7 +28,7 @@ export function ReportsBillingPage() {
       <PageHeader title="Money & reports" icon={BarChart3} />
       <div className="px-4 sm:px-6">
         <Tabs<Tab> tabs={tabs} value={cur} onChange={setTab} />
-        <div className="mt-3">{cur === "collections" ? <Collections /> : cur === "aging" ? <Aging /> : cur === "pl" ? <PL /> : <TB />}</div>
+        <div className="mt-3">{cur === "collections" ? <Collections /> : cur === "aging" ? <Aging /> : cur === "pl" ? <PL /> : cur === "tds" ? <Tds /> : <TB />}</div>
       </div>
     </div>
   );
@@ -102,5 +103,28 @@ function TB() {
         <div className="grid grid-cols-[3rem_1fr_6rem_6rem] gap-2 px-3.5 py-2 font-semibold"><span /><span>Total</span><span className="text-right tabular-nums">{inr(t.totalDebitPaise)}</span><span className="text-right tabular-nums">{inr(t.totalCreditPaise)}</span></div>
       </div>
     </Card>
+  );
+}
+
+function Tds() {
+  const acc = useQ("tds-acc", "/accounting/accounts");
+  const rep = useQ("tds-rep", "/accounting/tds/report");
+  if (acc.isError) return <ErrorState error={acc.error} />;
+  if (acc.isLoading) return <Skeleton className="h-24" />;
+  const bal = (code: string) => (acc.data.accounts ?? []).find((a: any) => a.code === code)?.balance_paise ?? 0; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const sections: any[] = rep.data?.report?.sections ?? []; // eslint-disable-line @typescript-eslint/no-explicit-any
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <Card className="p-3"><div className="text-[11px] text-muted">TDS receivable (customers deducted)</div><div className="text-lg font-semibold tabular-nums">{inr(bal("1350"))}</div></Card>
+        <Card className="p-3"><div className="text-[11px] text-muted">TDS payable (to deposit)</div><div className="text-lg font-semibold tabular-nums">{inr(bal("2240"))}</div></Card>
+      </div>
+      <Card className="divide-y divide-line">
+        <div className="px-3.5 py-2 text-xs font-medium text-muted">TDS on purchases, by section</div>
+        {sections.length === 0 ? <div className="px-3.5 py-3 text-xs text-muted">Nothing recorded yet. Use the TDS button on a purchase or an invoice.</div> : sections.map((s) => (
+          <div key={s.section} className="flex items-center justify-between px-3.5 py-2.5 text-[13px]"><span className="font-medium">{s.section}</span><span className="text-muted">{s.count} · taxable {inr(s.totalTaxablePaise)}</span><span className="font-semibold tabular-nums">{inr(s.totalTdsPaise)}</span></div>
+        ))}
+      </Card>
+    </div>
   );
 }

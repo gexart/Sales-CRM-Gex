@@ -61,6 +61,16 @@ export function ExpensesPage() {
 }
 
 export function InventoryPage() {
+  const { can } = useBillingAccess();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [adj, setAdj] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [af, setAf] = useState({ type: "INCREASE", qty: "", reason: "PHYSICAL_COUNT", rate: "" });
+  const adjust = useMutation({
+    mutationFn: () => bill.post("/inventory/adjustments", { warehouseId: adj.warehouseId, reason: af.reason, date: new Date().toISOString().slice(0, 10), lines: [{ itemId: adj.itemId, adjustmentType: af.type, quantityThousandths: Math.round(Number(af.qty) * 1000), ratePaise: af.type === "INCREASE" && af.rate ? rupeesToPaise(af.rate) : undefined }] }),
+    onSuccess: () => (toast("success", "Stock updated"), setAdj(null), setAf({ type: "INCREASE", qty: "", reason: "PHYSICAL_COUNT", rate: "" }), qc.invalidateQueries({ queryKey: ["billing-stock"] }), qc.invalidateQueries({ queryKey: ["billing-stock-qty"] })),
+    onError: (e) => toast("error", errMsg(e)),
+  });
   const [search, setSearch] = useState("");
   const dq = useDebounced(search, 300);
   const [low, setLow] = useState(false);
@@ -79,10 +89,22 @@ export function InventoryPage() {
               <div className="min-w-0 flex-1"><div className="truncate font-medium">{r.itemName}</div><div className="text-xs text-muted">{r.warehouseName}{r.category ? ` · ${r.category}` : ""}</div></div>
               <div className="text-right"><div className="font-semibold tabular-nums">{r.currentQtyThousandths / 1000} {r.unit}</div><div className="text-xs text-muted tabular-nums">{inr(r.valuationPaise)}</div></div>
               {r.isLowStock && <Badge tone="red">Low</Badge>}
+              {can("inventory.manage") && <Button size="sm" onClick={() => setAdj(r)}>Adjust</Button>}
             </div>
           ))}</Card>
         )}
       </div>
+      <Dialog open={!!adj} onClose={() => setAdj(null)} title={`Adjust stock: ${adj?.itemName ?? ""}`} footer={<><Button onClick={() => setAdj(null)}>Cancel</Button><Button variant="primary" loading={adjust.isPending} disabled={!(Number(af.qty) > 0)} onClick={() => adjust.mutate()}>Save</Button></>}>
+        <div className="space-y-3">
+          <p className="text-xs text-muted">Now {adj ? adj.currentQtyThousandths / 1000 : 0} {adj?.unit} in {adj?.warehouseName}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Change"><Select value={af.type} onChange={(e) => setAf({ ...af, type: e.target.value })} options={[{ value: "INCREASE", label: "Add stock" }, { value: "DECREASE", label: "Remove stock" }]} /></Field>
+            <Field label="Quantity" required><input className="input" inputMode="decimal" value={af.qty} onChange={(e) => setAf({ ...af, qty: e.target.value })} /></Field>
+          </div>
+          <Field label="Reason"><Select value={af.reason} onChange={(e) => setAf({ ...af, reason: e.target.value })} options={[["PHYSICAL_COUNT", "Physical count"], ["DAMAGE", "Damaged"], ["THEFT", "Lost or stolen"], ["EXPIRY", "Expired"], ["CORRECTION", "Correction"]].map(([value, label]) => ({ value: value!, label: label! }))} /></Field>
+          {af.type === "INCREASE" && <Field label="Cost per unit (₹)" help="Optional"><input className="input" inputMode="decimal" value={af.rate} onChange={(e) => setAf({ ...af, rate: e.target.value })} /></Field>}
+        </div>
+      </Dialog>
     </div>
   );
 }

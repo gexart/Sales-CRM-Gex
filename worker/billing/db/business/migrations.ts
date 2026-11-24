@@ -1795,6 +1795,8 @@ const LATER_SYSTEM_ACCOUNTS: [string, string, string, string][] = [
   ['2210', 'Salaries Payable', 'LIABILITY', 'CURRENT_LIABILITY'],
   ['2220', 'PF & ESI Payable', 'LIABILITY', 'CURRENT_LIABILITY'],
   ['2230', 'Professional Tax Payable', 'LIABILITY', 'CURRENT_LIABILITY'],
+  ['1350', 'TDS Receivable (deducted by customers)', 'ASSET', 'TAX_INPUT'],
+  ['2240', 'TDS Payable (deducted from vendors)', 'LIABILITY', 'CURRENT_LIABILITY'],
 ];
 
 export function ensureSystemAccounts(sql: SqlLike): void {

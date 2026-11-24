@@ -65,6 +65,12 @@ billingRoutes.use("*", async (c, next) => {
     hints.target = body?.target;
   }
 
+  // E-invoice and e-way bill: no real GST provider is connected yet. The built-in test provider would produce FAKE numbers,
+  // so every e-invoice call is refused until a provider is configured (GSP_BASE_URL). Nobody, administrators included, can bypass this.
+  if (path.startsWith("/einvoice") && !(c.env as unknown as Record<string, string | undefined>).GSP_BASE_URL) {
+    throw new ApiError(400, "not_connected", "E-invoice and e-way bill are not connected to a GST provider yet, so no real numbers can be generated.");
+  }
+
   const rule = ruleFor(method, path, hints);
   let divert = false;
   if (!access.isAdmin) {

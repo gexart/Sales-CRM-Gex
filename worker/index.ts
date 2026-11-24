@@ -28,6 +28,7 @@ import { billingRoutes } from "./billing";
 import { billingAccessRoutes } from "./billing/access-routes";
 import { draftRoutes } from "./billing/drafts";
 import { attachmentRoutes } from "./billing/attachments";
+import { recurringRoutes, runDueRecurring } from "./billing/recurring";
 import { publicBillingRoutes } from "./billing/public";
 import { appReleaseRoutes, publicDownloadRoutes } from "./routes/app-releases";
 
@@ -89,6 +90,7 @@ api.route("/assets", assetRoutes);
 api.route("/billing", billingRoutes);
 api.route("/billing-access/drafts", draftRoutes);
 api.route("/billing-access/attachments", attachmentRoutes);
+api.route("/billing-access/recurring", recurringRoutes);
 api.route("/billing-access", billingAccessRoutes);
 api.route("/", crmRoutes);
 api.route("/", dashboardRoutes);
@@ -110,5 +112,5 @@ export { BillingDO } from "./billing";
 export default {
   fetch: async (req: Request, env: Env, ctx: ExecutionContext) => app.fetch(req, await withSettings(env), ctx),
   queue: async (batch: MessageBatch<Job>, env: Env) => handleQueue(batch, await withSettings(env)),
-  scheduled: (_event: ScheduledController, env: Env, ctx: ExecutionContext) => ctx.waitUntil(withSettings(env).then(scheduled)),
+  scheduled: (_event: ScheduledController, env: Env, ctx: ExecutionContext) => ctx.waitUntil(withSettings(env).then(async (e) => { await scheduled(e); await runDueRecurring(e); })),
 } satisfies ExportedHandler<Env, Job>;

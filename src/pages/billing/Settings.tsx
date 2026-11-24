@@ -5,24 +5,24 @@ import { Building2, Landmark, Plus, Settings as Cog, Trash2 } from "lucide-react
 import { PageHeader } from "../../components/layout";
 import { Badge, Button, Card, CardHeader, ConfirmDialog, Dialog, EmptyState, ErrorState, Field, Select, Skeleton, Tabs, useToast } from "../../components/ui";
 import { bill, errMsg, inr, useBillingAccess } from "../../lib/billing";
-import { SignatureLibrary, TextLibrary } from "./settings-extra";
+import { PrintSettings, SignatureLibrary, TextLibrary } from "./settings-extra";
 
-type Tab = "company" | "banks" | "notes" | "format" | "numbering" | "reminders";
+type Tab = "company" | "banks" | "notes" | "format" | "print" | "numbering" | "reminders";
 const DOCS: [string, string][] = [["INVOICE", "Sales invoice"], ["QUOTATION", "Quotation"], ["PROFORMA", "Proforma invoice"], ["SALES_ORDER", "Sales order"], ["DELIVERY_CHALLAN", "Delivery challan"], ["PURCHASE_ORDER", "Purchase order"], ["CREDIT_NOTE", "Credit note"]];
 
 /** Billing settings in the same order as Swipe: company, banks, notes & terms, invoice format, numbering, reminders. */
 export function BillingSettingsPage() {
   const { can } = useBillingAccess();
   const [sp] = useSearchParams();
-  const [tab, setTab] = useState<Tab>((["company", "banks", "notes", "format", "numbering", "reminders"] as Tab[]).find((t) => t === sp.get("tab")) ?? "company");
+  const [tab, setTab] = useState<Tab>((["company", "banks", "notes", "format", "print", "numbering", "reminders"] as Tab[]).find((t) => t === sp.get("tab")) ?? "company");
   const edit = can("settings.manage");
   return (
     <div className="pb-10">
       <PageHeader title="Billing settings" icon={Cog} subtitle={edit ? "How your invoices look and are numbered" : "You can view these but not change them"} />
       <div className="px-4 sm:px-6">
-        <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ value: "company", label: "Company" }, { value: "banks", label: "Banks & UPI" }, { value: "notes", label: "Notes & terms" }, { value: "format", label: "Invoice format" }, { value: "numbering", label: "Numbering" }, { value: "reminders", label: "Reminders" }]} />
+        <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ value: "company", label: "Company" }, { value: "banks", label: "Banks & UPI" }, { value: "notes", label: "Notes & terms" }, { value: "format", label: "Invoice format" }, { value: "print", label: "Print & labels" }, { value: "numbering", label: "Numbering" }, { value: "reminders", label: "Reminders" }]} />
         <div className="mt-3 max-w-3xl">
-          {tab === "company" ? <Company edit={edit} /> : tab === "banks" ? <Banks edit={edit} /> : tab === "notes" ? <Notes edit={edit} /> : tab === "format" ? <Format edit={edit} /> : tab === "numbering" ? <Numbering edit={edit} /> : <Reminders edit={edit} />}
+          {tab === "company" ? <Company edit={edit} /> : tab === "banks" ? <Banks edit={edit} /> : tab === "notes" ? <Notes edit={edit} /> : tab === "format" ? <Format edit={edit} /> : tab === "print" ? <PrintSettings edit={edit} /> : tab === "numbering" ? <Numbering edit={edit} /> : <Reminders edit={edit} />}
         </div>
       </div>
     </div>

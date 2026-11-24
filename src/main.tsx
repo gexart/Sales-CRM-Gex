@@ -47,6 +47,8 @@ const NewInvoicePage = lazy(() => import("./pages/billing/InvoiceForm").then((m)
 const PurchasesPage = lazy(() => import("./pages/billing/Purchases").then((m) => ({ default: m.PurchasesPage })));
 const CreditNotesPage = lazy(() => import("./pages/billing/Purchases").then((m) => ({ default: m.CreditNotesPage })));
 const DebitNotesPage = lazy(() => import("./pages/billing/Purchases").then((m) => ({ default: m.DebitNotesPage })));
+const ImportPage2 = lazy(() => import("./pages/billing/Import").then((m) => ({ default: m.ImportPage })));
+const SubscriptionsPage = lazy(() => import("./pages/billing/Subscriptions").then((m) => ({ default: m.SubscriptionsPage })));
 const ExpensesPage = lazy(() => import("./pages/billing/Stock").then((m) => ({ default: m.ExpensesPage })));
 const InventoryPage = lazy(() => import("./pages/billing/Stock").then((m) => ({ default: m.InventoryPage })));
 const BillingSettingsPage = lazy(() => import("./pages/billing/Settings").then((m) => ({ default: m.BillingSettingsPage })));
@@ -141,6 +143,8 @@ function Gate() {
         <Route path="billing/debit-notes" element={<DebitNotesPage />} />
         <Route path="billing/settings" element={<BillingSettingsPage />} />
         <Route path="billing/expenses" element={<ExpensesPage />} />
+        <Route path="billing/import" element={<ImportPage2 />} />
+        <Route path="billing/subscriptions" element={<SubscriptionsPage />} />
         <Route path="billing/stock" element={<InventoryPage />} />
         <Route path="billing/parties" element={<PartiesPage />} />
         <Route path="billing/items" element={<ItemsPage />} />

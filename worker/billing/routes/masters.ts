@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { validateNumberTemplate } from '@billing/shared';
+import { validateNumberTemplate, normalizeBillingSettings } from '@billing/shared';
+import { renderBarcodeLabels } from '../print-docs';
 import { lookupGstin } from '../services/gstin-lookup';
 import type { Env } from '../types';
 import type { BusinessVariables } from '../middleware/tenant';
@@ -136,6 +137,22 @@ mastersRoutes.get('/items', async (c) => {
   return c.json(result);
 });
 
+mastersRoutes.get('/items/labels', async (c) => {
+  const stub = c.get('businessStub');
+  const ids = String(c.req.query('ids') || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 100);
+  const copies = Math.min(Math.max(parseInt(c.req.query('copies') || '1', 10) || 1, 1), 100);
+  if (!ids.length) return c.json({ error: 'Choose at least one item' }, 400);
+  const items: any[] = [];
+  for (const id of ids) {
+    const it = await stub.getItem(id);
+    if (it) items.push(it);
+  }
+  if (!items.length) return c.json({ error: 'Items not found' }, 404);
+  const s = normalizeBillingSettings((await stub.getAllSettings())?.billing_settings);
+  const pdf = await renderBarcodeLabels(items, s, s.company.legalName || 'Gexart', copies);
+  return new Response(pdf as unknown as BodyInit, { headers: { 'content-type': 'application/pdf', 'content-disposition': `${c.req.query('inline') === '1' ? 'inline' : 'attachment'}; filename="labels.pdf"`, 'cache-control': 'no-store' } });
+});
+
 mastersRoutes.get('/items/search', async (c) => {
   const stub = c.get('businessStub');
   const q = c.req.query('q') || c.req.query('search') || '';
@@ -198,7 +215,27 @@ mastersRoutes.post('/items/bulk', async (c) => {
   }
 
   try {
-    const result = await stub.bulkInsertItems(items);
+    // Imported rows carry a unit name and a GST rate; the engine wants the matching ids.
+    const [units, taxes]: [any[], any[]] = [await stub.listUnits(), await stub.listTaxRates()];
+    const unitOf = (name?: string) => {
+      const n = String(name || '').trim().toLowerCase();
+      return units.find((u) => [u.code, u.symbol, u.name].some((x) => String(x || '').toLowerCase() === n)) ?? units.find((u) => u.is_default) ?? units[0];
+    };
+    const taxOf = (bp: number) => taxes.find((t) => t.rate_basis_points === bp) ?? taxes.find((t) => t.rate_basis_points === 1800) ?? taxes[0];
+    const prepared = items
+      .filter((it: any) => it && String(it.name || '').trim())
+      .map((it: any) => {
+        const { unit, taxRateBasisPoints, ...rest } = it;
+        return {
+          ...rest,
+          name: String(it.name).trim(),
+          type: it.type ?? (String(it.hsnSac || '').startsWith('99') ? 'SERVICE' : 'GOODS'),
+          unitId: it.unitId ?? unitOf(unit)?.id,
+          taxRateId: it.taxRateId ?? taxOf(Number(taxRateBasisPoints ?? 1800))?.id,
+        };
+      });
+    if (!prepared.length) return c.json({ error: 'No valid rows to import' }, 400);
+    const result = await stub.bulkInsertItems(prepared);
     return c.json({ success: true, insertedCount: result.insertedCount });
   } catch (err: any) {
     return c.json({ error: err.message || 'Bulk insert failed' }, 400);

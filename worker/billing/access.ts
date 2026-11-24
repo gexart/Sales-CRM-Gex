@@ -69,7 +69,9 @@ export function ruleFor(method: string, path: string, hints: { docType?: string;
 
   // Sales
   if (is(/^\/sales\/invoices$/)) return read ? all("invoice.view") : m === "POST" ? { special: "invoice_create" } : null;
-  if (is(/^\/sales\/invoices\/[^/]+(\/(pdf|docx))?$/) && read) return all("invoice.view");
+  if (is(/^\/sales\/invoices\/[^/]+(\/(pdf|docx|thermal))?$/) && read) return all("invoice.view");
+  if (is(/^\/sales\/invoices\/[^/]+\/tds$/) && m === "POST") return all("payment.receive");
+  if (is(/^\/purchases\/bills\/[^/]+\/tds$/) && m === "POST") return all("payment.pay");
   if (is(/^\/sales\/invoices\/[^/]+\/payments$/) && m === "POST") return all("payment.receive");
   if (is(/^\/sales\/invoices\/[^/]+\/credit-note$/) && m === "POST") return all("invoice.credit_note");
   if (is(/^\/sales\/credit-notes$/) && read) return all("invoice.view");

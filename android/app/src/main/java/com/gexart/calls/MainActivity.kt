@@ -17,6 +17,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 /**
  * The one Gexart app: the full CRM and billing (the same mobile-first web app) with the call recorder built in.
@@ -25,6 +26,7 @@ import android.widget.Toast
 class MainActivity : Activity() {
     private lateinit var prefs: Prefs
     private lateinit var web: WebView
+    private lateinit var swipe: SwipeRefreshLayout
     private var home: String = ""
     private var chooser: ValueCallback<Array<Uri>>? = null
     private val pickFile = 51
@@ -56,6 +58,10 @@ class MainActivity : Activity() {
         web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = route(request.url)
 
+            override fun onPageFinished(view: WebView, url: String?) {
+                swipe.isRefreshing = false
+            }
+
             // No signal: show a clear page with a retry link instead of the browser's error screen.
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 if (!request.isForMainFrame) return
@@ -84,7 +90,15 @@ class MainActivity : Activity() {
         // PDFs and Word files the CRM generates: hand them to the phone's viewer.
         web.setDownloadListener { url, _, _, _, _ -> openExternal(Uri.parse(url)) }
 
-        setContentView(web)
+        // Pull down at the top of a page to reload it.
+        swipe = SwipeRefreshLayout(this).apply {
+            addView(web)
+            setColorSchemeColors(Color.parseColor("#F47A20"))
+            setProgressBackgroundColorSchemeColor(Color.parseColor("#1E2A3F"))
+            setOnChildScrollUpCallback { _, _ -> web.scrollY > 0 }
+            setOnRefreshListener { web.reload() }
+        }
+        setContentView(swipe)
         if (savedInstanceState != null) web.restoreState(savedInstanceState) else web.loadUrl(deepLink() ?: home)
         if (prefs.configured) {
             CallSyncWorker.schedulePeriodic(this)

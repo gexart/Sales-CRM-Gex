@@ -371,6 +371,20 @@ export class InventoryService {
     const adjustmentId = newId();
     const adjustmentNo = this.nextDocNumber(input.branchId, 'ADJUSTMENT', 'ADJ');
 
+    this.run(
+      `INSERT INTO stock_adjustments (id, adjustment_no, branch_id, warehouse_id, date, reason, total_difference_paise, notes, created_by_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+      adjustmentId,
+      adjustmentNo,
+      input.branchId,
+      input.warehouseId,
+      date,
+      input.reason,
+      input.notes || null,
+      input.createdById || 'SYSTEM',
+      now,
+    );
+
     let totalDifferencePaise = 0;
 
     for (const line of input.lines) {
@@ -456,20 +470,11 @@ export class InventoryService {
       );
     }
 
-    // Insert adjustment header
+    // The header must exist before its lines (foreign key); the total is filled in once the lines are known.
     this.run(
-      `INSERT INTO stock_adjustments (id, adjustment_no, branch_id, warehouse_id, date, reason, total_difference_paise, notes, created_by_id, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      adjustmentId,
-      adjustmentNo,
-      input.branchId,
-      input.warehouseId,
-      date,
-      input.reason,
+      `UPDATE stock_adjustments SET total_difference_paise = ? WHERE id = ?`,
       totalDifferencePaise,
-      input.notes || null,
-      input.createdById || 'SYSTEM',
-      now,
+      adjustmentId,
     );
 
     // Double-entry accounting posting if postingService is provided

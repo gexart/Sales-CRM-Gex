@@ -6,6 +6,17 @@ import type { Env } from '../types';
 import type { BusinessVariables } from '../middleware/tenant';
 import { renderDocumentFile } from '../invoice-docs';
 import { emailInvoiceEvent, pushInvoiceToCrm } from '../notify';
+import { renderThermalReceipt } from '../print-docs';
+import { normalizeBillingSettings } from '@billing/shared';
+
+const TDS_RATES: Record<string, number> = { '194C': 2, '194J': 10, '194I': 10, '194H': 5, '194Q': 0.1, '194A': 10, '194O': 1 };
+const tdsSchema = z.object({
+  section: z.string().min(2).max(10),
+  ratePercent: z.number().min(0).max(100).optional(),
+  amountPaise: z.number().int().min(1).optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
 
 const FILE_TYPES: Record<string, string> = {
   pdf: 'application/pdf',
@@ -176,6 +187,43 @@ salesRoutes.post('/invoices', async (c) => {
   } catch (err: any) {
     return c.json({ error: err.message || 'Failed to create sales invoice' }, 400);
   }
+});
+
+// 3d. TDS DEDUCTED BY THE CUSTOMER: the customer pays the invoice net of TDS. The TDS part settles the invoice against
+// "TDS Receivable" (an asset you claim back from the tax department), so the books and the invoice balance both stay right.
+salesRoutes.post('/invoices/:id/tds', async (c) => {
+  const stub = c.get('businessStub');
+  const parsed = tdsSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: 'Choose the TDS section and the rate or amount', details: parsed.error.flatten() }, 400);
+  const inv = await stub.getSalesInvoice(c.req.param('id'));
+  const ownOnly = c.get('ownOnlyUserId' as never) as string | undefined;
+  if (!inv || (ownOnly && inv.created_by_id !== ownOnly)) return c.json({ error: 'Invoice not found' }, 404);
+  if (inv.status === 'CANCELLED') return c.json({ error: 'This invoice is cancelled' }, 400);
+  const taxable = (inv.subtotal_paise ?? 0) - (inv.discount_paise ?? 0);
+  const rate = parsed.data.ratePercent ?? TDS_RATES[parsed.data.section] ?? 0;
+  const amount = parsed.data.amountPaise ?? Math.round((taxable * rate) / 100);
+  if (!(amount > 0)) return c.json({ error: 'TDS amount must be above zero' }, 400);
+  if (amount > inv.balance_amount_paise) return c.json({ error: 'TDS is more than the balance still due on this invoice' }, 400);
+  try {
+    const result = await stub.recordSalesPayment({
+      invoiceId: inv.id, amountPaise: amount, paymentMode: 'BANK', paymentAccountId: 'acc_sys_1350', branchId: inv.branch_id,
+      date: parsed.data.date ?? new Date().toISOString().slice(0, 10), notes: `TDS deducted by customer (${parsed.data.section}, ${rate}%)`, createdById: String(c.get('userId') ?? 'system'),
+    });
+    return c.json({ ok: true, tdsPaise: amount, ratePercent: rate, ...result });
+  } catch (err: any) {
+    return c.json({ error: err.message || 'Could not record TDS' }, 400);
+  }
+});
+
+// 3e. THERMAL RECEIPT (58 or 80 mm, set in Billing settings)
+salesRoutes.get('/invoices/:id/thermal', async (c) => {
+  const stub = c.get('businessStub');
+  const inv = await stub.getSalesInvoice(c.req.param('id'));
+  const ownOnly = c.get('ownOnlyUserId' as never) as string | undefined;
+  if (!inv || (ownOnly && inv.created_by_id !== ownOnly)) return c.json({ error: 'Invoice not found' }, 404);
+  const s = normalizeBillingSettings((await stub.getAllSettings())?.billing_settings);
+  const pdf = await renderThermalReceipt(inv, s, s.company.legalName || inv.branch?.name || 'Gexart');
+  return asFile(pdf, 'pdf', `${inv.invoice_no}-receipt`, c.req.query('inline') === '1');
 });
 
 // 3c. EMAIL THE CLIENT / SEND TO THE AGENCY CRM (buttons on the invoice screen)

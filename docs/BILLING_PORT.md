@@ -71,6 +71,15 @@ roles & access (roles, team assignment, audit log). Menu items appear only for p
 - Agency CRM (crm.gexart.com): invoices, payments and cancellations are pushed to its `/api/hook/invoice/<key>` webhook (client matched by email, name or
   phone; the client must already exist there). "Send to CRM" button on the invoice. Creating new clients/projects in that system needs a receiving endpoint on its side.
 
+## Final pass
+- Bulk import (CSV) of customers and products with column matching; stock adjustments; recurring invoices (Subscriptions, runs on the 15-minute cron,
+  emails the client and pushes to the CRM); thermal receipt (58/80 mm) and Code128 barcode labels; Print & labels settings.
+- TDS: sales (customer deducts) settles the invoice against "TDS Receivable" (1350); purchases (you deduct) against "TDS Payable" (2240), with a TDS
+  report. TCS is not implemented.
+- E-invoice and e-way bill are blocked until a real GST provider is configured (GSP_BASE_URL); the built-in test provider would create fake numbers.
+- Engine fixes: stock adjustments saved their lines before their header (foreign key error); import now maps unit and GST rate to ids.
+- Android: pull-to-refresh added.
+
 ## Not done yet
 - TDS/TCS toggles, reverse charge and e-invoice / e-way bill switches on the invoice form (the engine has the APIs; needs GSP credentials).
 - Barcode and thermal print screens; subscriptions (recurring invoices) screen; stock adjustments and transfers screens.

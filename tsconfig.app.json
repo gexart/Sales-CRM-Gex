@@ -11,6 +11,7 @@
     "skipLibCheck": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "paths": { "@billing/shared": ["./shared/billing/index.ts"] },
     "types": ["vite/client"]
   },
   "include": ["src", "shared"]

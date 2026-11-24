@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3, Bell, Briefcase, Building2, CheckSquare, ChevronRight, FolderOpen, LayoutDashboard, LogOut, Megaphone, Menu as MenuIcon, Moon, Rocket, Sun,
-  Package, Plus, Search, Send, Settings, Users, X, Telescope, Boxes, ClipboardCheck, ClipboardList, FileMinus2, FileSignature, FileText, FileX2, Landmark, PackageCheck, Receipt, ShieldCheck, ShoppingCart, Truck, WalletCards, type LucideIcon,
+  Package, Plus, Search, Send, Settings, Users, X, Telescope, Boxes, FileUp, Repeat, ClipboardCheck, ClipboardList, FileMinus2, FileSignature, FileText, FileX2, Landmark, PackageCheck, Receipt, ShieldCheck, ShoppingCart, Truck, WalletCards, type LucideIcon,
 } from "lucide-react";
 import { api, qs, type Page, type Row } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -53,6 +53,7 @@ const NAV: { group?: string; items: NavItem[] }[] = [
     items: [
       { to: "/billing/invoices", label: "Invoices", icon: Receipt, perm: ["invoice.view"] },
       { to: "/billing/credit-notes", label: "Credit notes", icon: FileMinus2, perm: ["invoice.view"] },
+      { to: "/billing/subscriptions", label: "Subscriptions", icon: Repeat, perm: ["invoice.create"] },
       { to: "/billing/approvals", label: "Approvals", icon: ClipboardCheck, perm: ["invoice.approve", "invoice.request"], badge: "approvals" },
     ],
   },
@@ -81,6 +82,7 @@ const NAV: { group?: string; items: NavItem[] }[] = [
     items: [
       { to: "/billing", label: "Billing home", icon: Landmark, perm: ["billing.access"] },
       { to: "/billing/parties", label: "Parties", icon: Users, perm: ["parties.view"] },
+      { to: "/billing/import", label: "Import", icon: FileUp, perm: ["parties.manage", "items.manage"] },
       { to: "/billing/items", label: "Items & services", icon: Package, perm: ["items.view"] },
       { to: "/billing/reports", label: "Money & reports", icon: WalletCards, perm: ["collections.view", "reports.view", "accounting.view"] },
       { to: "/billing/settings", label: "Billing settings", icon: Settings, perm: ["settings.view", "settings.manage"] },
