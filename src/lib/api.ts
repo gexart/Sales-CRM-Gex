@@ -21,16 +21,16 @@ export interface Page<T> {
 
 export type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, extra?: Record<string, string>): Promise<T> {
   const res = await fetch(`/api/v1${path}`, {
     method,
     credentials: "same-origin",
-    headers: { "content-type": "application/json", "x-requested-with": "gexart-crm" },
+    headers: { "content-type": "application/json", "x-requested-with": "gexart-crm", ...extra },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const json = await res.json().catch(() => null);
   if (!res.ok) {
-    const e = json?.error ?? {};
+    const e = typeof json?.error === "string" ? { message: json.error } : (json?.error ?? {});
     if (res.status === 401 && !path.startsWith("/auth/")) window.dispatchEvent(new Event("gexart:unauthenticated"));
     throw new ApiError(res.status, e.code ?? "error", e.message ?? `Request failed (${res.status})`, e.details);
   }
@@ -51,7 +51,7 @@ export const api = {
   upload: <T = { data: Row }>(path: string, form: FormData) => upload<T>(path, form),
   del: <T = { data: Row }>(path: string) => request<T>("DELETE", path),
   get: <T = { data: Row }>(path: string) => request<T>("GET", path),
-  post: <T = { data: Row }>(path: string, body?: unknown) => request<T>("POST", path, body ?? {}),
+  post: <T = { data: Row }>(path: string, body?: unknown, headers?: Record<string, string>) => request<T>("POST", path, body ?? {}, headers),
   patch: <T = { data: Row }>(path: string, body: unknown) => request<T>("PATCH", path, body),
   put: <T = { data: Row }>(path: string, body: unknown) => request<T>("PUT", path, body),
 };

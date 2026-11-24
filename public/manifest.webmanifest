@@ -1,11 +1,11 @@
 {
-  "name": "Sales CRM",
-  "short_name": "Sales CRM",
-  "description": "Gexart sales workspace: accounts, audits, proposals and calls.",
+  "name": "Gexart Sales & Billing",
+  "short_name": "Gexart",
+  "description": "Gexart sales workspace: accounts, billing, approvals, proposals and calls.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "any",
+  "orientation": "portrait-primary",
   "background_color": "#141e2e",
   "theme_color": "#141e2e",
   "icons": [
@@ -24,6 +24,47 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "id": "/",
+  "categories": [
+    "business",
+    "finance",
+    "productivity"
+  ],
+  "shortcuts": [
+    {
+      "name": "Approvals",
+      "short_name": "Approvals",
+      "url": "/billing/approvals",
+      "icons": [
+        {
+          "src": "/icon-v2-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "New invoice",
+      "short_name": "Invoice",
+      "url": "/billing/invoices/new",
+      "icons": [
+        {
+          "src": "/icon-v2-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Calls",
+      "short_name": "Calls",
+      "url": "/outreach/calls",
+      "icons": [
+        {
+          "src": "/icon-v2-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

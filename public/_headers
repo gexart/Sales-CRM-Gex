@@ -9,3 +9,7 @@
   Cache-Control: public, max-age=604800
 /apple-touch-icon.png
   Cache-Control: public, max-age=604800
+
+# The service worker must always be re-checked so new releases reach installed phones.
+/sw.js
+  Cache-Control: no-cache

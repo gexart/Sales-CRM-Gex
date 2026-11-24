@@ -11,7 +11,7 @@ import { CopyButton, OutreachNav } from "../components/outreach";
 import { CONFIGS } from "../lib/entities";
 import { AndroidAppCard } from "../components/app-download";
 import { invalidateRecord } from "../components/records";
-import { Badge, Button, Card, CardHeader, Dialog, EmptyState, ErrorState, Field, Select, SlideOver, Skeleton, StatusBadge, cn, useToast } from "../components/ui";
+import { Badge, Button, Card, CardHeader, Dialog, EmptyState, ErrorState, Field, Select, SlideOver, Skeleton, StatusBadge, Tabs, cn, useToast } from "../components/ui";
 
 const dur = (s: number | null) => (s === null || s === undefined ? "—" : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`);
 const STATUS_TONE: Record<string, string> = { uploaded: "queued", transcribing: "running", transcribed: "completed", summarized: "completed", failed: "failed", no_audio: "inactive" };
@@ -158,19 +158,55 @@ function UploadCallDialog({ open, onClose }: { open: boolean; onClose: () => voi
   );
 }
 
+type AppBridge = { isApp(): boolean; recorderConfigured(): boolean; configure(url: string, token: string): boolean; openRecorderSettings(): void };
+const appBridge = (): AppBridge | null => (typeof window !== "undefined" ? ((window as unknown as { GexartApp?: AppBridge }).GexartApp ?? null) : null);
+
+/** Only inside the Gexart Android app: one tap connects this phone's call recorder. */
+function PhoneRecorderCard() {
+  const toast = useToast();
+  const bridge = appBridge();
+  const [ok, setOk] = useState(() => bridge?.recorderConfigured() ?? false);
+  const pair = useMutation({
+    mutationFn: () => api.post<{ data: Row }>("/devices", { name: `Gexart app · ${new Date().toLocaleDateString("en-IN")}` }),
+    onSuccess: (r) => {
+      const done = bridge?.configure(window.location.origin, String(r.data.token));
+      if (done) (setOk(true), toast("success", "This phone's recorder is connected"), bridge?.openRecorderSettings());
+      else toast("error", "Could not connect the recorder on this phone");
+    },
+    onError: (e) => toast("error", (e as Error).message),
+  });
+  if (!bridge) return null;
+  return (
+    <Card className="mb-3 p-3.5">
+      <div className="flex flex-wrap items-center gap-3">
+        <Smartphone className="size-5 text-brand-600" />
+        <div className="min-w-0 flex-1 basis-56">
+          <div className="font-medium">{ok ? "Call recorder is connected" : "Connect this phone's call recorder"}</div>
+          <div className="text-xs text-muted">{ok ? "Calls sync automatically after they end. Choose the recordings folder and permissions in the recorder settings." : "One tap. Then choose the folder your dialer saves recordings to."}</div>
+        </div>
+        {ok ? <Button onClick={() => bridge.openRecorderSettings()}>Recorder settings</Button> : <Button variant="primary" loading={pair.isPending} onClick={() => pair.mutate()}>Connect</Button>}
+      </div>
+    </Card>
+  );
+}
+
+type CallView = "all" | "mapped" | "unmapped";
+
 export function CallsPage() {
-  const [unmatched, setUnmatched] = useState(false);
+  const [view, setView] = useState<CallView>("all");
   const [uploading, setUploading] = useState(false);
   return (
     <div className="pb-10">
       <PageHeader title="Calls" icon={Phone} subtitle="Recordings from the Gexart Android app, transcribed and summarised" actions={<><OutreachNav /><Button icon={Upload} onClick={() => setUploading(true)}>Upload recording</Button></>} />
       <div className="px-4 sm:px-6">
+        <PhoneRecorderCard />
         <Card>
-          <div className="flex items-center gap-2 border-b border-line p-2.5">
-            <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" className="accent-brand-600" checked={unmatched} onChange={(e) => setUnmatched(e.target.checked)} /> Unmatched only</label>
-            <Link to="/settings?tab=devices" className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-ink"><Smartphone className="size-3.5" /> Pair the Android app</Link>
+          <div className="flex flex-wrap items-center gap-2 border-b border-line px-2.5 pt-1">
+            <Tabs<CallView> value={view} onChange={setView} tabs={[{ value: "all", label: "All" }, { value: "mapped", label: "Mapped to a contact" }, { value: "unmapped", label: "Unmapped" }]} />
+            <Link to="/settings?tab=devices" className="ml-auto inline-flex items-center gap-1 pb-1 text-xs font-medium text-ink"><Smartphone className="size-3.5" /> Pair the Android app</Link>
           </div>
-          <CallsList filter={unmatched ? { unmatched: "1" } : {}} />
+          {view === "unmapped" && <p className="border-b border-line bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">These recordings do not match anyone yet. Open one and map it to a contact, or leave it if it is a personal call.</p>}
+          <CallsList filter={view === "unmapped" ? { unmatched: "1" } : view === "mapped" ? { matched: "1" } : {}} />
         </Card>
       </div>
       <UploadCallDialog open={uploading} onClose={() => setUploading(false)} key={uploading ? "u" : "x"} />

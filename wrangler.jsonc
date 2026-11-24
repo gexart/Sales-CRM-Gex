@@ -20,6 +20,9 @@
       "migrations_dir": "migrations"
     }
   ],
+  // Books of account: one SQLite Durable Object per billing company.
+  "durable_objects": { "bindings": [{ "name": "BILLING_DO", "class_name": "BillingDO" }] },
+  "migrations": [{ "tag": "billing-v1", "new_sqlite_classes": ["BillingDO"] }],
   "r2_buckets": [{ "binding": "FILES", "bucket_name": "gexart-crm-files" }],
   // Background jobs (audits, call transcription). Without the binding the Worker falls back to waitUntil.
   "queues": {

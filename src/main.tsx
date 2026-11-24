@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "./lib/auth";
 import { CONFIGS } from "./lib/entities";
 import { AppShell } from "./components/layout";
 import { Spinner, ToastProvider } from "./components/ui";
+import { OfflineSync } from "./components/offline-sync";
 
 // Pages load on demand so the first screen is small and fast on a phone connection.
 const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
@@ -37,6 +38,19 @@ const SequenceDetailPage = lazy(() => import("./pages/Outreach").then((m) => ({ 
 const SequencesPage = lazy(() => import("./pages/Outreach").then((m) => ({ default: m.SequencesPage })));
 const TemplatesPage = lazy(() => import("./pages/Outreach").then((m) => ({ default: m.TemplatesPage })));
 
+const BillingHome = lazy(() => import("./pages/billing/Home").then((m) => ({ default: m.BillingHome })));
+const ApprovalsPage = lazy(() => import("./pages/billing/Approvals").then((m) => ({ default: m.ApprovalsPage })));
+const AccessPage = lazy(() => import("./pages/billing/Access").then((m) => ({ default: m.AccessPage })));
+const InvoicesPage = lazy(() => import("./pages/billing/Invoices").then((m) => ({ default: m.InvoicesPage })));
+const NewInvoicePage = lazy(() => import("./pages/billing/Invoices").then((m) => ({ default: m.NewInvoicePage })));
+const InvoiceDetailPage = lazy(() => import("./pages/billing/Invoices").then((m) => ({ default: m.InvoiceDetailPage })));
+const PartiesPage = lazy(() => import("./pages/billing/Masters").then((m) => ({ default: m.PartiesPage })));
+const ItemsPage = lazy(() => import("./pages/billing/Masters").then((m) => ({ default: m.ItemsPage })));
+const DocumentsPage = lazy(() => import("./pages/billing/Documents").then((m) => ({ default: m.DocumentsPage })));
+const ReportsBillingPage = lazy(() => import("./pages/billing/Reports").then((m) => ({ default: m.ReportsBillingPage })));
+
+const PublicInvoicePage = lazy(() => import("./pages/PublicInvoice").then((m) => ({ default: m.PublicInvoicePage })));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -52,6 +66,8 @@ function Gate() {
   const { pathname } = useLocation();
   // The emailed link works whether or not someone is signed in on this browser.
   if (pathname === "/reset-password") return <ResetPasswordPage />;
+  const pub = /^\/i\/([A-Za-z0-9]{20,64})$/.exec(pathname);
+  if (pub) return <PublicInvoicePage token={pub[1]!} />;
   if (loading)
     return (
       <div className="flex h-dvh items-center justify-center">
@@ -64,6 +80,8 @@ function Gate() {
   }
   const C = CONFIGS;
   return (
+    <>
+    <OfflineSync />
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<Dashboard />} />
@@ -98,9 +116,20 @@ function Gate() {
         <Route path="reports" element={<ReportsPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="autopilot" element={<AutopilotPage />} />
+        <Route path="billing" element={<BillingHome />} />
+        <Route path="billing/approvals" element={<ApprovalsPage />} />
+        <Route path="billing/invoices" element={<InvoicesPage />} />
+        <Route path="billing/invoices/new" element={<NewInvoicePage />} />
+        <Route path="billing/invoices/:id" element={<InvoiceDetailPage />} />
+        <Route path="billing/documents" element={<DocumentsPage />} />
+        <Route path="billing/parties" element={<PartiesPage />} />
+        <Route path="billing/items" element={<ItemsPage />} />
+        <Route path="billing/reports" element={<ReportsBillingPage />} />
+        <Route path="billing/access" element={<AccessPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+    </>
   );
 }
 
@@ -117,6 +146,15 @@ window.addEventListener("vite:preloadError", (event) => {
   }
   window.location.reload();
 });
+
+// Installed app: keep the shell on the phone so it opens instantly and shows something with no signal.
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      /* unsupported or blocked: the site simply works online as before */
+    });
+  });
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

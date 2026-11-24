@@ -17,15 +17,23 @@
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="false">
 
+        <!-- The whole app: CRM and billing in one mobile-first screen. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|screenLayout|smallestScreenSize"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Call recorder setup: CRM address, token, recordings folder, permissions, activity. Opened from the app. -->
+        <activity
+            android:name=".RecorderActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- Schedules a sync shortly after each call ends. The 15-minute periodic sync is the fallback. -->
         <receiver

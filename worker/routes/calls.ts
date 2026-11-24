@@ -204,6 +204,7 @@ callRoutes.get("/", async (c) => {
   const params = [...s.params];
   for (const k of ["contact_id", "account_id", "prospect_id"]) if (q[k]) (where.push(`r.${k} = ?`), params.push(q[k]));
   if (q.unmatched === "1") where.push("r.contact_id IS NULL AND r.prospect_id IS NULL");
+  if (q.matched === "1") where.push("(r.contact_id IS NOT NULL OR r.prospect_id IS NOT NULL)");
   const pageSize = Math.min(Number(q.pageSize ?? 50) || 50, 100);
   const page = Math.max(Number(q.page ?? 1) || 1, 1);
   const [rows, count] = await c.env.DB.batch<Row>([

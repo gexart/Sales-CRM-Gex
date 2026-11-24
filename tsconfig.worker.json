@@ -10,6 +10,7 @@
     "skipLibCheck": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "paths": { "@billing/shared": ["./shared/billing/index.ts"] },
     "types": ["@cloudflare/workers-types"]
   },
   "include": ["worker", "shared", "test"]

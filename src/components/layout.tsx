@@ -3,10 +3,11 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3, Bell, Briefcase, Building2, CheckSquare, ChevronRight, FolderOpen, LayoutDashboard, LogOut, Megaphone, Menu as MenuIcon, Moon, Rocket, Sun,
-  Package, Plus, Search, Send, Settings, Users, X, Telescope, type LucideIcon,
+  Package, Plus, Search, Send, Settings, Users, X, Telescope, ClipboardCheck, FileSignature, Landmark, Receipt, ShieldCheck, WalletCards, type LucideIcon,
 } from "lucide-react";
 import { api, qs, type Page, type Row } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { useBillingAccess } from "../lib/billing";
 import { CONFIGS, type EntityConfig } from "../lib/entities";
 import { dateTime, isOverdue, relative } from "../lib/format";
 import { ROLES, labelOf } from "../../shared/enums";
@@ -15,7 +16,7 @@ import { useTheme } from "../lib/theme";
 import { Avatar, Button, Menu, MenuItem, Spinner, cn } from "./ui";
 import { EntityForm, useDebounced } from "./forms";
 
-type NavItem = { to: string; label: string; icon: LucideIcon };
+type NavItem = { to: string; label: string; icon: LucideIcon; perm?: string[]; badge?: "approvals" };
 const TABS: NavItem[] = [
   { to: "/", label: "Home", icon: LayoutDashboard },
   { to: "/accounts", label: "Accounts", icon: Building2 },
@@ -37,6 +38,19 @@ const NAV: { group?: string; items: NavItem[] }[] = [
       { to: "/outreach", label: "Outreach", icon: Send },
       { to: "/tasks", label: "Tasks", icon: CheckSquare },
       { to: "/opportunities", label: "Opportunities", icon: Briefcase },
+    ],
+  },
+  {
+    group: "Billing",
+    items: [
+      { to: "/billing", label: "Billing home", icon: Landmark, perm: ["billing.access"] },
+      { to: "/billing/approvals", label: "Approvals", icon: ClipboardCheck, perm: ["invoice.approve", "invoice.request"], badge: "approvals" },
+      { to: "/billing/invoices", label: "Sales invoices", icon: Receipt, perm: ["invoice.view"] },
+      { to: "/billing/documents", label: "Quotes & proforma", icon: FileSignature, perm: ["documents.view", "quotation.create", "proforma.create"] },
+      { to: "/billing/parties", label: "Parties", icon: Users, perm: ["parties.view"] },
+      { to: "/billing/items", label: "Items & services", icon: Package, perm: ["items.view"] },
+      { to: "/billing/reports", label: "Money & reports", icon: WalletCards, perm: ["collections.view", "reports.view", "accounting.view"] },
+      { to: "/billing/access", label: "Roles & access", icon: ShieldCheck, perm: ["roles.manage", "audit.view"] },
     ],
   },
   { group: "Insights", items: [{ to: "/reports", label: "Reports", icon: BarChart3 }] },
@@ -81,6 +95,9 @@ function ThemeToggle() {
 }
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+  const { any } = useBillingAccess();
+  const pending = useQuery({ queryKey: ["billing-pending"], queryFn: () => api.get<{ pending: number }>("/billing-access/approvals?status=pending"), enabled: any("invoice.approve"), refetchInterval: 30_000 });
+  const groups = NAV.map((g) => ({ ...g, items: g.items.filter((it) => !it.perm || any(...it.perm)) })).filter((g) => g.items.length);
   return (
     <nav aria-label="Main" className="flex h-full flex-col bg-night text-snow">
       <div className="flex h-16 items-center px-4">
@@ -89,7 +106,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         </Link>
       </div>
       <div className="flex-1 overflow-y-auto px-2.5 pb-4">
-        {NAV.map((g, i) => (
+        {groups.map((g, i) => (
           <div key={i} className={g.group ? "mt-4" : "mt-1"}>
             {g.group && <div className="mb-1.5 px-2 text-[10px] font-semibold tracking-[0.16em] text-snow/35 uppercase">{g.group}</div>}
             {g.items.map((it) => (
@@ -110,6 +127,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     {isActive && <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-brand-500" />}
                     <it.icon className={cn("size-4", isActive ? "text-brand-400" : "text-snow/40 group-hover:text-snow/70")} />
                     {it.label}
+                    {it.badge === "approvals" && !!pending.data?.pending && <span className="ml-auto rounded-full bg-brand-500 px-1.5 text-[10px] font-semibold text-snow">{pending.data.pending}</span>}
                   </>
                 )}
               </NavLink>

@@ -24,6 +24,9 @@ import { withSettings } from "./lib/settings";
 import { configRoutes } from "./routes/config";
 import { autopilotRoutes } from "./routes/autopilot";
 import { harveyRoutes } from "./routes/harvey";
+import { billingRoutes } from "./billing";
+import { billingAccessRoutes } from "./billing/access-routes";
+import { publicBillingRoutes } from "./billing/public";
 import { appReleaseRoutes, publicDownloadRoutes } from "./routes/app-releases";
 
 const app = new Hono<AppEnv>();
@@ -62,11 +65,13 @@ api.route("/device", deviceRoutes);
 api.route("/device/harvey", harveyRoutes);
 // Signed, short-lived app download links (scanned from a QR code on a phone).
 api.route("/dl", publicDownloadRoutes);
+// Customers open their invoice from a WhatsApp link without signing in (long random token).
+api.route("/public", publicBillingRoutes);
 
 // Everything below requires a signed-in user.
 api.use("*", async (c, next) => {
   const p = c.req.path;
-  if (p.startsWith("/api/v1/auth/") || p === "/api/v1/health" || p.startsWith("/api/v1/webhooks/") || p.startsWith("/api/v1/device/") || p.startsWith("/api/v1/dl/")) return next();
+  if (p.startsWith("/api/v1/auth/") || p === "/api/v1/health" || p.startsWith("/api/v1/webhooks/") || p.startsWith("/api/v1/device/") || p.startsWith("/api/v1/dl/") || p.startsWith("/api/v1/public/")) return next();
   return requireAuth(c, next);
 });
 api.use("*", rateLimit);
@@ -79,6 +84,8 @@ api.route("/devices", deviceAdminRoutes);
 api.route("/calls", callRoutes);
 api.route("/imports", importRoutes);
 api.route("/assets", assetRoutes);
+api.route("/billing", billingRoutes);
+api.route("/billing-access", billingAccessRoutes);
 api.route("/", crmRoutes);
 api.route("/", dashboardRoutes);
 api.route("/", auditRoutes);
@@ -92,6 +99,8 @@ for (const def of Object.values(ENTITIES)) api.route(`/${def.route}`, entityRout
 app.route("/api/v1", api);
 app.all("/api/*", (c) => c.json({ error: { code: "not_found", message: "Unknown API route" } }, 404));
 app.onError(errorResponse);
+
+export { BillingDO } from "./billing";
 
 // Settings saved in the CRM (API keys, sender, quotas) are layered over the Worker env everywhere.
 export default {

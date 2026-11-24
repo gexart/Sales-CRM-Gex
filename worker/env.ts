@@ -8,6 +8,8 @@ export type Job =
 export interface Env {
   DB: D1Database;
   FILES: R2Bucket;
+  /** One Durable Object (SQLite) per billing company: the books of account. */
+  BILLING_DO: DurableObjectNamespace<import("./billing/billing-do").BillingDO>;
   ASSETS: Fetcher;
   JOBS?: Queue<Job>;
   AI?: Ai;
