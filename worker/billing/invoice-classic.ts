@@ -86,13 +86,14 @@ export async function renderClassicInvoicePdf(d: ClassicDoc): Promise<Uint8Array
   newPage();
 
   // ── Header: logo, company, document title ──
-  const logoSize = 56;
-  if (logo) page.drawImage(logo, { x: M, y: H - y - logoSize, width: logoSize, height: logoSize });
+  const logoSize = logo ? 64 : 56;
+  const logoW = logo ? Math.min(150, (logoSize * logo.width) / logo.height) : logoSize;
+  if (logo) page.drawImage(logo, { x: M, y: H - y - logoSize, width: logoW, height: logoSize });
   else {
     page.drawRectangle({ x: M, y: H - y - logoSize, width: logoSize, height: logoSize, color: BLACK });
     txt("GX", M + 12, y + 17, 22, bold, WHITE);
   }
-  const cx = M + logoSize + 16;
+  const cx = M + logoW + 16;
   let cy = y;
   txt(d.company.name.toUpperCase(), cx, cy, 15, bold);
   cy += 19;

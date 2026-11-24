@@ -5,6 +5,7 @@ import { Building2, Landmark, Plus, Settings as Cog, Trash2 } from "lucide-react
 import { PageHeader } from "../../components/layout";
 import { Badge, Button, Card, CardHeader, ConfirmDialog, Dialog, EmptyState, ErrorState, Field, Select, Skeleton, Tabs, useToast } from "../../components/ui";
 import { bill, errMsg, inr, useBillingAccess } from "../../lib/billing";
+import { fitImage } from "../../lib/image";
 import { PrintSettings, SignatureLibrary, TextLibrary } from "./settings-extra";
 
 type Tab = "company" | "banks" | "notes" | "format" | "print" | "numbering" | "reminders";
@@ -42,10 +43,7 @@ function useSettings() {
 }
 
 const readImage = (f: File, done: (dataUrl: string) => void, toast: (t: "error", m: string) => void) => {
-  if (f.size > 200_000) return toast("error", "Use an image under 200 KB");
-  const r = new FileReader();
-  r.onload = () => done(String(r.result));
-  r.readAsDataURL(f);
+  fitImage(f).then(done).catch((e) => toast("error", e instanceof Error ? e.message : "Could not use this picture"));
 };
 
 function Company({ edit }: { edit: boolean }) {
@@ -87,8 +85,8 @@ function Company({ edit }: { edit: boolean }) {
           <Field label="Website"><input className="input" disabled={!edit} value={f.website} onChange={set("website")} /></Field>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <ImageField label="Logo" help="Square PNG or JPG, under 200 KB" value={f.logo} onChange={(v) => setF({ ...f, logo: v })} edit={edit} />
-          <ImageField label="Signature" help="Photo or scan of the signature, under 200 KB" value={f.signature} onChange={(v) => setF({ ...f, signature: v })} edit={edit} />
+          <ImageField label="Logo" help="Any PNG, JPG or WEBP. Big pictures are shrunk automatically." value={f.logo} onChange={(v) => setF({ ...f, logo: v })} edit={edit} />
+          <ImageField label="Signature" help="Photo or scan of the signature. Big pictures are shrunk automatically." value={f.signature} onChange={(v) => setF({ ...f, signature: v })} edit={edit} />
         </div>
         <Field label="Authorised signatory name"><input className="input" disabled={!edit} value={f.signatory} onChange={set("signatory")} /></Field>
         {edit && <div className="flex justify-end"><Button variant="primary" loading={run.isPending} onClick={() => run.mutate()}>Save company details</Button></div>}

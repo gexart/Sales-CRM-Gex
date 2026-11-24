@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookText, PenLine, Plus, Trash2 } from "lucide-react";
 import { Button, Card, CardHeader, Dialog, EmptyState, Field, useToast } from "../../components/ui";
 import { bill, errMsg } from "../../lib/billing";
+import { fitImage } from "../../lib/image";
 
 type Text = { id: string; name: string; text: string };
 type Sig = { id: string; name: string; signature: string; stamp: string };
@@ -53,16 +54,13 @@ export function TextLibrary({ kind, edit }: { kind: "notes" | "terms"; edit: boo
 }
 
 const readImage = (f: File, done: (d: string) => void, fail: (m: string) => void) => {
-  if (f.size > 200_000) return fail("Use an image under 200 KB");
-  const r = new FileReader();
-  r.onload = () => done(String(r.result));
-  r.readAsDataURL(f);
+  fitImage(f).then(done).catch((e) => fail(e instanceof Error ? e.message : "Could not use this picture"));
 };
 
 function Pick({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   const toast = useToast();
   return (
-    <Field label={label} help="PNG or JPG under 200 KB. A transparent PNG looks best.">
+    <Field label={label} help="Any PNG, JPG or WEBP. Big pictures are shrunk automatically. A transparent PNG looks best.">
       <div className="flex items-center gap-3">
         <div className="flex size-20 items-center justify-center overflow-hidden rounded-md border border-line bg-white">{value ? <img src={value} alt="" className="max-h-full max-w-full" /> : <span className="text-[10px] text-muted">None</span>}</div>
         <div className="flex flex-col gap-1">
