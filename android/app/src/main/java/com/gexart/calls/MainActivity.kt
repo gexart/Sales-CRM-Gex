@@ -77,6 +77,11 @@ class MainActivity : Activity() {
             }
         }
         web.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
+                if (m.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR) lastJsError = "${m.message()} (${m.sourceId().substringAfterLast('/')}:${m.lineNumber()})"
+                return true
+            }
+
             override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
                 chooser?.onReceiveValue(null)
                 chooser = callback
@@ -121,6 +126,34 @@ class MainActivity : Activity() {
             NotifyWorker.schedule(this)
         }
         askNotificationPermission()
+        watchForBlank()
+    }
+
+    private var lastJsError = ""
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    /** If the web app has drawn nothing a few seconds after loading, clear its saved files once and reload; if still empty, say why. */
+    private fun watchForBlank(attempt: Int = 0) {
+        handler.postDelayed({
+            if (isFinishing) return@postDelayed
+            web.evaluateJavascript("(function(){var r=document.getElementById('root');return r?r.children.length:-1})()") { v ->
+                val empty = (v ?: "0").trim().let { it == "0" || it == "-1" || it == "null" }
+                if (!empty) return@evaluateJavascript
+                if (attempt == 0) {
+                    web.clearCache(true)
+                    android.webkit.WebStorage.getInstance().deleteAllData()
+                    web.loadUrl(home)
+                    watchForBlank(1)
+                } else {
+                    val why = android.text.Html.escapeHtml(lastJsError.ifBlank { "the page did not respond" })
+                    web.loadDataWithBaseURL(null,
+                        "<html><body style='font-family:sans-serif;background:#141E2E;color:#fff;padding:48px 24px'>" +
+                            "<h2>The app could not start</h2><p style='opacity:.7'>Please update Android System WebView and Google Chrome from the Play Store, then reopen.</p>" +
+                            "<p style='font-size:12px;opacity:.5'>$why</p><p><a href='$home' style='color:#F47A20;font-size:18px'>Try again</a></p></body></html>",
+                        "text/html", "UTF-8", null)
+                }
+            }
+        }, 9000)
     }
 
     /** Opened from an app shortcut or a link to this CRM: go straight there. */
