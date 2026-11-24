@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus, Search, Trash2 } from "lucide-react";
 import { Button, Field, Select, Skeleton, cn } from "../../components/ui";
 import { useDebounced } from "../../components/forms";
-import { bill, inr } from "../../lib/billing";
+import { bill, inr, useBillingAccess } from "../../lib/billing";
+import { QuickItem, QuickParty } from "./quick";
 
 export interface Party { id: string; name: string; phone?: string; stateCode?: string; gstin?: string | null; type?: string }
 
@@ -12,6 +13,8 @@ export function PartyPicker({ value, onPick, type = "CUSTOMER", label = "Custome
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const dq = useDebounced(q, 250);
+  const [creating, setCreating] = useState(false);
+  const { can } = useBillingAccess();
   const list = useQuery({ queryKey: ["billing-party-search", type, dq], queryFn: () => bill.get(`/masters/parties?type=${type === "ANY" ? "" : type}&search=${encodeURIComponent(dq)}&limit=15`), enabled: open });
   if (value)
     return (
@@ -34,10 +37,12 @@ export function PartyPicker({ value, onPick, type = "CUSTOMER", label = "Custome
               <button key={p.id} type="button" className="block min-h-11 w-full px-3 py-1.5 text-left hover:bg-slate-50 dark:hover:bg-white/5" onClick={() => (onPick(p), setOpen(false))}>
                 <div className="truncate text-[13px] font-medium">{p.name}</div><div className="text-xs text-muted">{p.phone}</div>
               </button>
-            )) : <div className="p-3 text-xs text-muted">No match. Add the customer under Billing → Parties first.</div>}
+            )) : <div className="p-3 text-xs text-muted">No match{q ? ` for "${q}"` : ""}.</div>}
+            {can("parties.manage") && <button type="button" className="flex min-h-11 w-full items-center justify-center gap-1.5 border-t border-line px-3 text-[13px] font-medium text-brand-700 hover:bg-slate-50 dark:hover:bg-white/5" onMouseDown={(e) => (e.preventDefault(), setCreating(true), setOpen(false))}><Plus className="size-4" />Create {type === "VENDOR" ? "vendor" : "customer"}{q ? ` "${q}"` : ""}</button>}
           </div>
         )}
       </div>
+      <QuickParty open={creating} name={q} type={type === "ANY" ? "CUSTOMER" : type} onClose={() => setCreating(false)} onCreated={(p) => onPick(p)} />
     </Field>
   );
 }
@@ -102,6 +107,8 @@ function ItemSearch({ value, onPick, pct }: { value: string; onPick: (it: any) =
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const dq = useDebounced(q, 250);
+  const [creating, setCreating] = useState(false);
+  const { can } = useBillingAccess();
   const list = useQuery({ queryKey: ["billing-item-search", dq], queryFn: () => bill.get(`/masters/items?search=${encodeURIComponent(dq)}&limit=15`), enabled: open });
   const rows = list.data?.items ?? [];
   return (
@@ -114,9 +121,11 @@ function ItemSearch({ value, onPick, pct }: { value: string; onPick: (it: any) =
             <button key={it.id} type="button" className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-slate-50 dark:hover:bg-white/5" onMouseDown={(e) => (e.preventDefault(), onPick(it), setOpen(false))}>
               <span className="min-w-0"><span className="block truncate text-[13px] font-medium">{it.name}</span><span className="text-[11px] text-muted">{it.hsnSac ? `HSN/SAC ${it.hsnSac}` : it.type === "SERVICE" ? "Service" : "Goods"}</span></span><span className="shrink-0 text-right"><span className="block text-[13px] font-medium tabular-nums">{inr(it.salePricePaise)}</span><span className="text-[11px] text-muted">{it.priceIncludesTax ? "incl." : "+"} tax {pct(it.taxRateId)}%</span></span>
             </button>
-          )) : <div className="p-3 text-xs text-muted">{list.isLoading ? "Searching…" : "No items. Add them under Billing → Items."}</div>}
+          )) : <div className="p-3 text-xs text-muted">{list.isLoading ? "Searching…" : `No items${q ? ` for "${q}"` : ""}.`}</div>}
+          {can("items.manage") && <button type="button" className="flex min-h-11 w-full items-center justify-center gap-1.5 border-t border-line px-3 text-[13px] font-medium text-brand-700 hover:bg-slate-50 dark:hover:bg-white/5" onMouseDown={(e) => (e.preventDefault(), setCreating(true), setOpen(false))}><Plus className="size-4" />Add new product or service{q ? ` "${q}"` : ""}</button>}
         </div>
       )}
+      <QuickItem open={creating} name={q} onClose={() => setCreating(false)} onCreated={(it) => onPick(it)} />
     </div>
   );
 }

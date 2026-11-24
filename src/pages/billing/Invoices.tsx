@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, Download, FileText, MessageCircle, Phone, Plus, Printer, Search, Wallet } from "lucide-react";
+import { Ban, Download, FileText, Mail, MessageCircle, Phone, Plus, Printer, Search, Send, Wallet } from "lucide-react";
 import { PageHeader } from "../../components/layout";
 import { useDebounced } from "../../components/forms";
 import { Badge, Button, Card, Dialog, EmptyState, ErrorState, Field, Select, Skeleton, Tabs, useToast } from "../../components/ui";
@@ -11,12 +11,14 @@ import { invoiceMessage, openWhatsApp, reminderMessage } from "../../lib/invoice
 import { INVOICE_STATUS_TONE, access, bill, errMsg, fileUrl, inr, today, useBillingAccess } from "../../lib/billing";
 import { rupeesToPaise } from "./parts";
 import { Attachments } from "./Attachments";
+import { BillsTabs, Fab } from "./ui";
 
 type Tab = "ALL" | "PENDING" | "OVERDUE" | "PAID" | "DRAFTS";
 
 export function InvoicesPage() {
   const { can } = useBillingAccess();
-  const [tab, setTab] = useState<Tab>("ALL");
+  const [sp] = useSearchParams();
+  const [tab, setTab] = useState<Tab>(sp.get("tab") === "drafts" ? "DRAFTS" : "ALL");
   const [search, setSearch] = useState("");
   const dq = useDebounced(search, 300);
   const q = useQuery({ queryKey: ["billing-invoices", tab, dq], queryFn: () => bill.get(`/sales/invoices?status=${tab === "DRAFTS" ? "ALL" : tab}&search=${encodeURIComponent(dq)}&limit=100`), enabled: tab !== "DRAFTS" });
@@ -29,6 +31,7 @@ export function InvoicesPage() {
     <div className="pb-8">
       <PageHeader title="Sales invoices" icon={FileText} actions={(direct || can("invoice.request")) && <Link to="/billing/invoices/new"><Button variant="primary" icon={Plus}>{direct ? "New invoice" : "Request invoice"}</Button></Link>} />
       <div className="px-4 sm:px-6">
+        <BillsTabs />
         {totals && (
           <div className="mb-3 grid grid-cols-3 gap-2">
             {[["Billed", totals.totalSalesPaise], ["Received", totals.totalPaidPaise], ["Pending", totals.totalPendingPaise]].map(([l, v]) => (
@@ -43,7 +46,7 @@ export function InvoicesPage() {
         ) : (
           <Card className="divide-y divide-line">
             {rows.map((r) => (
-              <Link key={r.id} to={`/billing/invoices/${r.id}`} className="flex items-center gap-3 px-3.5 py-3 hover:bg-slate-50 dark:hover:bg-white/5">
+              <Link key={r.id} to={`/billing/invoices/${r.id}`} className="flex items-center gap-3 px-3.5 py-3.5 hover:bg-slate-50 active:bg-slate-100 dark:hover:bg-white/5">
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{r.party_name}</div>
                   <div className="text-xs text-muted">{r.invoice_no} · {fmtDate(r.date)}{r.status !== "PAID" && r.status !== "CANCELLED" && r.balance_amount_paise > 0 && r.due_date ? ` · due ${fmtDate(r.due_date)}` : ""}</div>
@@ -54,6 +57,7 @@ export function InvoicesPage() {
           </Card>
         )}
       </div>
+      {(direct || can("invoice.request")) && <Fab to="/billing/invoices/new" label="New invoice" />}
     </div>
   );
 }
@@ -69,6 +73,8 @@ export function InvoiceDetailPage() {
   const [pmode, setPmode] = useState("UPI");
   const [reason, setReason] = useState("");
   const [cn, setCn] = useState(false);
+  const [mailOpen, setMailOpen] = useState(false);
+  const [mailTo, setMailTo] = useState("");
   const [cnReason, setCnReason] = useState("");
   const [cnAmt, setCnAmt] = useState("");
   const q = useQuery({ queryKey: ["billing-invoice", id], queryFn: () => bill.get(`/sales/invoices/${id}`) });
@@ -89,6 +95,16 @@ export function InvoiceDetailPage() {
     onSuccess: () => (toast("success", "Credit note created"), setCn(false), setCnReason(""), setCnAmt(""), refresh(), qc.invalidateQueries({ queryKey: ["billing-credit-notes"] })),
     onError: (e) => toast("error", errMsg(e)),
   });
+  const mailM = useMutation({
+    mutationFn: () => bill.post(`/sales/invoices/${id}/email`, { to: mailTo || undefined }),
+    onSuccess: (r) => (toast("success", `Email sent${r.provider ? ` via ${r.provider}` : ""}`), setMailOpen(false)),
+    onError: (e) => toast("error", errMsg(e)),
+  });
+  const crmM = useMutation({
+    mutationFn: () => bill.post(`/sales/invoices/${id}/crm`, {}),
+    onSuccess: (r) => toast("success", r.message || "Sent to the CRM"),
+    onError: (e) => toast("error", errMsg(e)),
+  });
   if (q.isError) return <div className="p-4"><ErrorState error={q.error} /></div>;
   if (q.isLoading || !inv) return <div className="p-4"><Skeleton className="h-48" /></div>;
   const open = inv.status !== "CANCELLED" && inv.balance_amount_paise > 0;
@@ -100,6 +116,8 @@ export function InvoiceDetailPage() {
           {hasDigits(inv.party_phone ?? "") && inv.status !== "CANCELLED" && <Button icon={MessageCircle} onClick={() => openWhatsApp(inv.party_phone, inv.balance_amount_paise > 0 && inv.paid_amount_paise === 0 && new Date(inv.due_date) < new Date() ? reminderMessage({ party: inv.party_name, outstandingPaise: inv.balance_amount_paise }) : invoiceMessage({ party: inv.party_name, invoiceNo: inv.invoice_no, totalPaise: inv.total_paise, balancePaise: inv.balance_amount_paise, dueDate: inv.due_date, token: inv.shareToken }))}>WhatsApp</Button>}
           <Button icon={Printer} onClick={() => window.open(fileUrl(`/sales/invoices/${inv.id}`, "pdf", true), "_blank", "noopener")}>PDF</Button>
           <a href={fileUrl(`/sales/invoices/${inv.id}`, "docx")}><Button icon={Download}>Word</Button></a>
+          {inv.status !== "CANCELLED" && <Button icon={Mail} onClick={() => (setMailTo(inv.party_email ?? ""), setMailOpen(true))}>Email</Button>}
+          {can("invoice.approve") && inv.status !== "CANCELLED" && <Button icon={Send} loading={crmM.isPending} onClick={() => crmM.mutate()}>Send to CRM</Button>}
           {can("invoice.credit_note") && inv.status !== "CANCELLED" && <Button onClick={() => setCn(true)}>Credit note</Button>}
           {can("payment.receive") && open && <Button variant="primary" icon={Wallet} onClick={() => (setAmt(String(inv.balance_amount_paise / 100)), setPay(true))}>Record payment</Button>}
           {can("invoice.cancel") && inv.status !== "CANCELLED" && <Button icon={Ban} onClick={() => setCancel(true)}>Cancel</Button>}
@@ -136,6 +154,9 @@ export function InvoiceDetailPage() {
           <Field label="Amount (₹)"><input className="input" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} /></Field>
           <Field label="Mode"><Select value={pmode} onChange={(e) => setPmode(e.target.value)} options={["UPI", "CASH", "BANK", "CARD", "NET_BANKING", "CHEQUE"].map((v) => ({ value: v, label: v.replace("_", " ") }))} /></Field>
         </div>
+      </Dialog>
+      <Dialog open={mailOpen} onClose={() => setMailOpen(false)} title="Email this invoice" footer={<><Button onClick={() => setMailOpen(false)}>Cancel</Button><Button variant="primary" loading={mailM.isPending} disabled={!/^\S+@\S+\.\S+$/.test(mailTo)} onClick={() => mailM.mutate()}>Send email</Button></>}>
+        <Field label="Send to" help="The client gets a link to view and pay the invoice"><input className="input" type="email" inputMode="email" autoFocus value={mailTo} onChange={(e) => setMailTo(e.target.value)} placeholder="client@company.com" /></Field>
       </Dialog>
       <Dialog open={cn} onClose={() => setCn(false)} title="Credit note" footer={<><Button onClick={() => setCn(false)}>Cancel</Button><Button variant="primary" loading={cnM.isPending} disabled={cnReason.trim().length < 3} onClick={() => cnM.mutate()}>Create</Button></>}>
         <div className="space-y-3">

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Building2, Landmark, Plus, Settings as Cog, Trash2 } from "lucide-react";
 import { PageHeader } from "../../components/layout";
 import { Badge, Button, Card, CardHeader, ConfirmDialog, Dialog, EmptyState, ErrorState, Field, Select, Skeleton, Tabs, useToast } from "../../components/ui";
 import { bill, errMsg, inr, useBillingAccess } from "../../lib/billing";
+import { SignatureLibrary, TextLibrary } from "./settings-extra";
 
 type Tab = "company" | "banks" | "notes" | "format" | "numbering" | "reminders";
 const DOCS: [string, string][] = [["INVOICE", "Sales invoice"], ["QUOTATION", "Quotation"], ["PROFORMA", "Proforma invoice"], ["SALES_ORDER", "Sales order"], ["DELIVERY_CHALLAN", "Delivery challan"], ["PURCHASE_ORDER", "Purchase order"], ["CREDIT_NOTE", "Credit note"]];
@@ -11,7 +13,8 @@ const DOCS: [string, string][] = [["INVOICE", "Sales invoice"], ["QUOTATION", "Q
 /** Billing settings in the same order as Swipe: company, banks, notes & terms, invoice format, numbering, reminders. */
 export function BillingSettingsPage() {
   const { can } = useBillingAccess();
-  const [tab, setTab] = useState<Tab>("company");
+  const [sp] = useSearchParams();
+  const [tab, setTab] = useState<Tab>((["company", "banks", "notes", "format", "numbering", "reminders"] as Tab[]).find((t) => t === sp.get("tab")) ?? "company");
   const edit = can("settings.manage");
   return (
     <div className="pb-10">
@@ -68,6 +71,7 @@ function Company({ edit }: { edit: boolean }) {
   if (q.isError) return <ErrorState error={q.error} />;
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
   return (
+    <>
     <Card>
       <CardHeader title="Company details" icon={Building2} subtitle="Printed at the top of every invoice" />
       <div className="space-y-3 p-4">
@@ -90,6 +94,8 @@ function Company({ edit }: { edit: boolean }) {
         {edit && <div className="flex justify-end"><Button variant="primary" loading={run.isPending} onClick={() => run.mutate()}>Save company details</Button></div>}
       </div>
     </Card>
+    <SignatureLibrary edit={edit} />
+    </>
   );
 }
 
@@ -165,8 +171,9 @@ function Notes({ edit }: { edit: boolean }) {
   useEffect(() => { if (s) setF({ notes: s.notesTerms?.[doc]?.notes ?? "", terms: s.notesTerms?.[doc]?.terms ?? "" }); }, [s, doc]);
   if (q.isLoading) return <Skeleton className="h-40" />;
   return (
+    <>
     <Card>
-      <CardHeader title="Notes & terms" subtitle="Filled in automatically on new documents of each type" />
+      <CardHeader title="Default notes & terms" subtitle="Filled in automatically on new documents of each type. Saved texts below can be picked on any document." />
       <div className="space-y-3 p-4">
         <Field label="Document"><Select value={doc} onChange={(e) => setDoc(e.target.value)} options={DOCS.map(([v, l]) => ({ value: v, label: l }))} /></Field>
         <Field label="Notes"><textarea className="input min-h-20" disabled={!edit} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></Field>
@@ -174,6 +181,8 @@ function Notes({ edit }: { edit: boolean }) {
         {edit && <div className="flex justify-end"><Button variant="primary" loading={save.isPending} onClick={() => save.mutate({ notesTerms: { [doc]: f } })}>Save</Button></div>}
       </div>
     </Card>
+    <div className="mt-3 space-y-3"><TextLibrary kind="notes" edit={edit} /><TextLibrary kind="terms" edit={edit} /></div>
+    </>
   );
 }
 

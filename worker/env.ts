@@ -16,6 +16,13 @@ export interface Env {
   APP_NAME: string;
   DEMO_MODE: string;
   BREVO_SENDER_EMAIL?: string;
+  BILLING_EMAIL_PROVIDER?: string;
+  BILLING_EMAIL_AUTO?: string;
+  RESEND_API_KEY?: string;
+  RESEND_SENDER_EMAIL?: string;
+  RESEND_SENDER_NAME?: string;
+  AGENCY_CRM_HOOK_URL?: string;
+  AGENCY_CRM_PUSH?: string;
   BREVO_SENDER_NAME?: string;
   QUOTA_GOOGLE_PLACES?: string;
   QUOTA_ENRICHMENT?: string;

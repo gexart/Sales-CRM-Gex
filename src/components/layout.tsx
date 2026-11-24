@@ -16,7 +16,15 @@ import { useTheme } from "../lib/theme";
 import { Avatar, Button, Menu, MenuItem, Spinner, cn } from "./ui";
 import { EntityForm, useDebounced } from "./forms";
 
-type NavItem = { to: string; label: string; icon: LucideIcon; perm?: string[]; badge?: "approvals" };
+type NavItem = { to: string; label: string; icon: LucideIcon; perm?: string[]; badge?: "approvals"; /** pages that count as this tab being open */ match?: RegExp };
+/** Bottom bar inside billing, like a billing app: Home, Bills, Products, Parties. */
+const BILLING_TABS: NavItem[] = [
+  { to: "/billing", label: "Home", icon: Landmark, perm: ["billing.access"], match: /^\/billing\/?$/ },
+  { to: "/billing/invoices", label: "Bills", icon: Receipt, perm: ["invoice.view", "documents.view", "quotation.create", "purchases.view"], match: /^\/billing\/(invoices|purchases|quotations|sales-orders|proforma|challans|packing-lists|purchase-orders|credit-notes|debit-notes|documents|approvals)/ },
+  { to: "/billing/items", label: "Products", icon: Package, perm: ["items.view"], match: /^\/billing\/(items|stock)/ },
+  { to: "/billing/parties", label: "Parties", icon: Users, perm: ["parties.view"], match: /^\/billing\/parties/ },
+];
+
 const TABS: NavItem[] = [
   { to: "/", label: "Home", icon: LayoutDashboard },
   { to: "/accounts", label: "Accounts", icon: Building2 },
@@ -408,6 +416,13 @@ export function AppShell() {
   }, []);
   useEffect(() => setMobileNav(false), [loc.pathname]);
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+  const { any, hasBilling, can } = useBillingAccess();
+  const inBilling = hasBilling && loc.pathname.startsWith("/billing");
+  const tabs: NavItem[] = inBilling
+    ? BILLING_TABS.filter((t) => !t.perm || any(...t.perm)).map((t) => (t.label === "Bills" && !can("invoice.view") ? { ...t, to: can("documents.view") || can("quotation.create") ? "/billing/quotations" : "/billing/purchases" } : t))
+    : hasBilling
+      ? [TABS[0]!, TABS[1]!, { to: "/billing", label: "Billing", icon: Landmark }, TABS[2]!]
+      : TABS;
   return (
     <div className="flex h-dvh overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <aside className="hidden w-[220px] shrink-0 border-r border-line/0 bg-night lg:block dark:border-line">
@@ -461,22 +476,16 @@ export function AppShell() {
         </main>
         {/* Phones and small tablets: thumb-reach tab bar for the screens used all day. */}
         <nav aria-label="Quick navigation" className="flex shrink-0 border-t border-line bg-white lg:hidden">
-          {TABS.map((t) => (
-            <NavLink
-              key={t.to}
-              to={t.to}
-              end={t.to === "/"}
-              className={({ isActive }) => cn("relative flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium", isActive ? "text-ink" : "text-slate-500")}
-            >
-              {({ isActive }) => (
-                <>
-                  {isActive && <span className="absolute top-0 h-0.5 w-8 rounded-full bg-brand-500" />}
-                  <t.icon className={cn("size-5", isActive && "text-brand-600")} />
-                  {t.label}
-                </>
-              )}
-            </NavLink>
-          ))}
+          {tabs.map((t) => {
+            const active = t.match ? t.match.test(loc.pathname) : t.to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(t.to);
+            return (
+              <NavLink key={t.to} to={t.to} aria-current={active ? "page" : undefined} className={cn("relative flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium", active ? "text-ink" : "text-slate-500")}>
+                {active && <span className="absolute top-0 h-0.5 w-8 rounded-full bg-brand-500" />}
+                <t.icon className={cn("size-5", active && "text-brand-600")} />
+                {t.label}
+              </NavLink>
+            );
+          })}
           <button onClick={() => setMobileNav(true)} className="flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-slate-500">
             <MenuIcon className="size-5" />
             More

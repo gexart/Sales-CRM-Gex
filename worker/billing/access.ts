@@ -73,6 +73,8 @@ export function ruleFor(method: string, path: string, hints: { docType?: string;
   if (is(/^\/sales\/invoices\/[^/]+\/payments$/) && m === "POST") return all("payment.receive");
   if (is(/^\/sales\/invoices\/[^/]+\/credit-note$/) && m === "POST") return all("invoice.credit_note");
   if (is(/^\/sales\/credit-notes$/) && read) return all("invoice.view");
+  if (is(/^\/sales\/invoices\/[^/]+\/email$/) && m === "POST") return all("invoice.view");
+  if (is(/^\/sales\/invoices\/[^/]+\/crm$/) && m === "POST") return all("invoice.approve");
   if (is(/^\/sales\/invoices\/[^/]+\/cancel$/) && m === "POST") return all("invoice.cancel");
 
   // Quotation / proforma / order / challan / purchase order

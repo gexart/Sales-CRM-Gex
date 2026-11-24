@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { Env } from '../types';
 import type { BusinessVariables } from '../middleware/tenant';
 import { renderDocumentFile } from '../invoice-docs';
+import { emailInvoiceEvent, pushInvoiceToCrm } from '../notify';
 
 const FILE_TYPES: Record<string, string> = {
   pdf: 'application/pdf',
@@ -163,10 +164,34 @@ salesRoutes.post('/invoices', async (c) => {
       warehouseId: loc.warehouseId ?? undefined,
       createdById: userId,
     });
+    const env = c.env as any;
+    const origin = env.APP_URL || new URL(c.req.url).origin;
+    const invId = result?.invoice?.id;
+    if (invId) {
+      const exec = (c as any).executionCtx;
+      if (String(env.BILLING_EMAIL_AUTO || 'on').toLowerCase() !== 'off') exec.waitUntil(emailInvoiceEvent(env, stub, invId, 'invoice', origin));
+      if (String(env.AGENCY_CRM_PUSH || 'on').toLowerCase() !== 'off' && env.AGENCY_CRM_HOOK_URL) exec.waitUntil(pushInvoiceToCrm(env, stub, invId, origin, 'invoice.created'));
+    }
     return c.json({ ok: true, ...result }, 201);
   } catch (err: any) {
     return c.json({ error: err.message || 'Failed to create sales invoice' }, 400);
   }
+});
+
+// 3c. EMAIL THE CLIENT / SEND TO THE AGENCY CRM (buttons on the invoice screen)
+salesRoutes.post('/invoices/:id/email', async (c) => {
+  const stub = c.get('businessStub');
+  const body: any = await c.req.json().catch(() => ({}));
+  const env = c.env as any;
+  const r = await emailInvoiceEvent(env, stub, c.req.param('id'), body.kind === 'reminder' ? 'reminder' : 'invoice', env.APP_URL || new URL(c.req.url).origin, { to: body.to });
+  return c.json({ ok: r.sent, ...r }, r.sent ? 200 : 502);
+});
+
+salesRoutes.post('/invoices/:id/crm', async (c) => {
+  const stub = c.get('businessStub');
+  const env = c.env as any;
+  const r = await pushInvoiceToCrm(env, stub, c.req.param('id'), env.APP_URL || new URL(c.req.url).origin, 'manual');
+  return c.json(r, r.ok ? 200 : 502);
 });
 
 // 3a. CREDIT NOTES (list)
@@ -214,6 +239,11 @@ salesRoutes.post('/invoices/:id/payments', async (c) => {
       ...parsed.data,
       createdById: userId,
     });
+    const env = c.env as any;
+    const origin = env.APP_URL || new URL(c.req.url).origin;
+    const exec = (c as any).executionCtx;
+    if (String(env.BILLING_EMAIL_AUTO || 'on').toLowerCase() !== 'off') exec.waitUntil(emailInvoiceEvent(env, stub, invoiceId, 'payment', origin, { paidPaise: parsed.data.amountPaise }));
+    if (String(env.AGENCY_CRM_PUSH || 'on').toLowerCase() !== 'off' && env.AGENCY_CRM_HOOK_URL) exec.waitUntil(pushInvoiceToCrm(env, stub, invoiceId, origin, 'payment.received', undefined, { amountPaise: parsed.data.amountPaise, mode: parsed.data.paymentMode, date: parsed.data.date }));
     return c.json({ ok: true, ...result });
   } catch (err: any) {
     return c.json({ error: err.message || 'Failed to record payment' }, 400);

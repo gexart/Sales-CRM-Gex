@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileMinus2, FileX2, Plus, ShoppingCart, Wallet } from "lucide-react";
 import { PageHeader } from "../../components/layout";
 import { Badge, Button, Card, Dialog, EmptyState, ErrorState, Field, Select, Skeleton, SlideOver, Tabs, useToast } from "../../components/ui";
 import { date as fmtDate } from "../../lib/format";
 import { addDays, bill, errMsg, inr, today, useBillingAccess } from "../../lib/billing";
+import { BillsTabs, Fab } from "./ui";
 import { LineEditor, PartyPicker, blankLine, rupeesToPaise, totalsOf, type Line, type Party } from "./parts";
 
 const TONE: Record<string, "green" | "amber" | "red" | "gray"> = { PAID: "green", UNPAID: "amber", PARTIALLY_PAID: "amber", CANCELLED: "gray" };
@@ -13,7 +14,8 @@ const billLines = (lines: Line[]) => lines.map((l) => ({ itemId: l.itemId, quant
 
 export function PurchasesPage() {
   const { can } = useBillingAccess();
-  const [make, setMake] = useState(false);
+  const [sp] = useSearchParams();
+  const [make, setMake] = useState(sp.get("new") === "1" && can("purchases.create"));
   const [pay, setPay] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const q = useQuery({ queryKey: ["billing-bills"], queryFn: () => bill.get("/purchases/bills?limit=100") });
   const rows: any[] = q.data?.bills ?? []; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -23,6 +25,7 @@ export function PurchasesPage() {
     <div className="pb-8">
       <PageHeader title="Purchases" icon={ShoppingCart} actions={can("purchases.create") && <Button variant="primary" icon={Plus} onClick={() => setMake(true)}>New purchase</Button>} />
       <div className="px-4 sm:px-6">
+        <BillsTabs />
         {q.isError ? <ErrorState error={q.error} /> : q.isLoading ? <Skeleton className="h-24" /> : rows.length === 0 ? <Card><EmptyState icon={ShoppingCart} title="No purchases yet" /></Card> : (
           <Card className="divide-y divide-line">
             {rows.map((b) => (
@@ -35,6 +38,7 @@ export function PurchasesPage() {
           </Card>
         )}
       </div>
+      {can("purchases.create") && <Fab onClick={() => setMake(true)} label="New purchase" />}
       <NewBill open={make} onClose={() => setMake(false)} />
       <PayBill bill={pay} onClose={() => setPay(null)} />
     </div>

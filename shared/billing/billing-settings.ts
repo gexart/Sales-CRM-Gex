@@ -63,9 +63,21 @@ export const billingSettingsSchema = z.object({
       logo: imageDataUrl.or(z.literal('')).default(''),
       signature: imageDataUrl.or(z.literal('')).default(''),
       signatoryName: z.string().max(80).default(''),
+      /** Named signatures with an optional company stamp; one is chosen on each invoice. */
+      signatures: z
+        .array(z.object({ id: z.string().max(40), name: z.string().max(80), signature: imageDataUrl.or(z.literal('')).default(''), stamp: imageDataUrl.or(z.literal('')).default('') }))
+        .max(10)
+        .default([]),
     })
     .prefault({}),
   notesTerms: z.partialRecord(z.enum(NOTE_DOC_TYPES), notesTerms).prefault({}),
+  /** Any number of saved notes and terms to pick from on a document. */
+  textTemplates: z
+    .object({
+      notes: z.array(z.object({ id: z.string().max(40), name: z.string().max(80), text: z.string().max(2000) })).max(50).default([]),
+      terms: z.array(z.object({ id: z.string().max(40), name: z.string().max(80), text: z.string().max(6000) })).max(50).default([]),
+    })
+    .prefault({}),
   reminders: z
     .object({
       enabled: z.boolean().default(true),

@@ -10,6 +10,7 @@ import { hasDigits } from "../../lib/contact-links";
 import { getAutoWhatsApp, invoiceMessage, openWhatsApp, setAutoWhatsApp } from "../../lib/invoice-share";
 import { newRef, queueInvoiceRequest } from "../../lib/offline-queue";
 import { LineEditor, PartyPicker, blankLine, rupeesToPaise, totalsOf, type Line, type Party } from "./parts";
+import { SavedText } from "./saved-text";
 
 /** New sales invoice, laid out like Swipe: customer, items, notes and terms on the left; totals, bank and payment on the right. */
 export function NewInvoicePage() {
@@ -52,7 +53,7 @@ export function NewInvoicePage() {
     setNotes(S.notesTerms?.INVOICE?.notes ?? "");
     setTerms(S.notesTerms?.INVOICE?.terms ?? "");
     setBank(S.preferences.defaultBankAccountId || "");
-    setSignatory(S.branding.signatoryName || "");
+    setSignatory(S.branding.signatures?.[0]?.name || S.branding.signatoryName || "");
   }, [S, loadedDefaults, sp]);
 
   const draft = useQuery({ queryKey: ["billing-draft", sp.get("draft")], queryFn: () => access.get(`/drafts/${sp.get("draft")}`), enabled: !!sp.get("draft") });
@@ -132,8 +133,8 @@ export function NewInvoicePage() {
           </Card>
           <LineEditor lines={lines} onChange={setLines} />
           <Card className="p-3.5">
-            <details open className="group"><summary className="flex cursor-pointer items-center gap-1 font-medium"><ChevronDown className="size-4 transition-transform group-open:rotate-0 -rotate-90" />Notes</summary><textarea className="input mt-2 min-h-20" value={notes} onChange={(e) => setNotes(e.target.value)} /></details>
-            <details className="group mt-3 border-t border-line pt-3"><summary className="flex cursor-pointer items-center gap-1 font-medium"><ChevronDown className="size-4 transition-transform group-open:rotate-0 -rotate-90" />Terms &amp; conditions</summary><textarea className="input mt-2 min-h-40" value={terms} onChange={(e) => setTerms(e.target.value)} /></details>
+            <details open className="group"><summary className="flex cursor-pointer items-center gap-1 font-medium"><ChevronDown className="size-4 transition-transform group-open:rotate-0 -rotate-90" />Notes</summary><div className="mt-2"><SavedText kind="notes" value={notes} onChange={setNotes} /></div></details>
+            <details className="group mt-3 border-t border-line pt-3"><summary className="flex cursor-pointer items-center gap-1 font-medium"><ChevronDown className="size-4 transition-transform group-open:rotate-0 -rotate-90" />Terms &amp; conditions</summary><div className="mt-2"><SavedText kind="terms" value={terms} onChange={setTerms} tall /></div></details>
           </Card>
         </div>
         <div className="space-y-4">
@@ -170,7 +171,11 @@ export function NewInvoicePage() {
                 {paidPaise > 0 && <p className="text-xs text-muted">Balance due {inr(Math.max(0, total - paidPaise))}</p>}
               </div>
             )}
-            <Field label="Signature"><input className="input" value={signatory} onChange={(e) => setSignatory(e.target.value)} placeholder="Authorised signatory name" /></Field>
+            <Field label="Signature & stamp">
+              {(S?.branding.signatures?.length ?? 0) > 0
+                ? <Select value={signatory} placeholder="Default" onChange={(e) => setSignatory(e.target.value)} options={S.branding.signatures.map((x: any) => ({ value: x.name, label: x.name }))} /> // eslint-disable-line @typescript-eslint/no-explicit-any
+                : <input className="input" value={signatory} onChange={(e) => setSignatory(e.target.value)} placeholder="Authorised signatory name" />}
+            </Field>
             {direct && <label className="flex min-h-9 cursor-pointer items-center gap-2.5 text-[13px]"><input type="checkbox" className="size-4" checked={autoWa} onChange={(e) => (setAutoWa(e.target.checked), setAutoWhatsApp(e.target.checked))} />Open WhatsApp with the invoice after saving</label>}
             {!direct && <p className="text-xs text-muted">Your role can only request invoices.</p>}
           </Card>

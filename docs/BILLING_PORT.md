@@ -61,6 +61,16 @@ roles & access (roles, team assignment, audit log). Menu items appear only for p
   shows a retry page with no signal, keeps the call recorder.
 - Attachments (up to 5 files, 5 MB each, private in R2), split payments, expenses and stock screens.
 
+## Mobile-first pass, quick-add, emails and CRM link
+- Phone layout like a billing app: inside billing the bottom bar is Home / Bills / Products / Parties; Home has Create and Quick Access grids; Bills has
+  Sales / Purchases / Quotations tabs; + button on lists; product cards show quantity.
+- Quick-add a customer or a product/service from the invoice (picker -> "+ Create"); default price per product, editable on every invoice.
+- Many saved notes and terms (Settings -> Notes & terms), picked on any document; signature and company stamp library, chosen per invoice.
+- Client emails: provider gmail (connected mailbox, e.g. tech.gexart@gmail.com) / brevo / resend, set in Settings -> Configuration -> "Billing emails and CRM
+  link". Automatic on invoice generated and payment received; manual "Email" button; failures never block an invoice.
+- Agency CRM (crm.gexart.com): invoices, payments and cancellations are pushed to its `/api/hook/invoice/<key>` webhook (client matched by email, name or
+  phone; the client must already exist there). "Send to CRM" button on the invoice. Creating new clients/projects in that system needs a receiving endpoint on its side.
+
 ## Not done yet
 - TDS/TCS toggles, reverse charge and e-invoice / e-way bill switches on the invoice form (the engine has the APIs; needs GSP credentials).
 - Barcode and thermal print screens; subscriptions (recurring invoices) screen; stock adjustments and transfers screens.

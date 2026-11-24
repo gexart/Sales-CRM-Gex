@@ -310,6 +310,7 @@ export function buildClassicDoc(inv: L, kind: string, ctx: ClassicContext): Clas
     : null;
   const upi = ctx.bank?.upiId ?? ctx.bank?.upi_id;
   const balance = inv.balance_amount_paise ?? 0;
+  const pickedSig = s.branding.signatures.find((x) => x.name === inv.signatory_name) ?? s.branding.signatures[0];
   const dueMeta: Array<[string, string]> = s.preferences.showDueDate && (inv.due_date || inv.valid_until) ? [[inv.due_date ? "Due Date" : "Valid Until", longDate(inv.due_date ?? inv.valid_until)]] : [];
   const numLabel = kind.toUpperCase().includes("QUOTATION") ? "Quotation #" : kind.toUpperCase().includes("PROFORMA") ? "Proforma #" : "Invoice #";
   return {
@@ -326,7 +327,7 @@ export function buildClassicDoc(inv: L, kind: string, ctx: ClassicContext): Clas
     hsn,
     upiLink: upi && s.preferences.showUpiOnInvoice && balance > 0 ? `upi://pay?pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent(company.name)}&am=${(balance / 100).toFixed(2)}&cu=INR&tn=${encodeURIComponent(String(inv.invoice_no ?? ""))}` : null,
     bank: s.preferences.showBankOnInvoice ? bank : null,
-    signature: { forCompany: company.name.toUpperCase(), dataUrl: s.branding.signature || null },
+    signature: { forCompany: company.name.toUpperCase(), dataUrl: pickedSig?.signature || s.branding.signature || null, stampDataUrl: pickedSig?.stamp || null, name: pickedSig?.name || inv.signatory_name || s.branding.signatoryName || null },
     notes: inv.notes || s.notesTerms.INVOICE?.notes || null,
     terms: inv.terms || s.notesTerms.INVOICE?.terms || null,
     footer: s.preferences.footerText || "This is a digitally signed document.",

@@ -23,6 +23,20 @@ export interface ConfigSection {
 
 export const CONFIG_SECTIONS: ConfigSection[] = [
   {
+    id: "billing_mail",
+    title: "Billing emails and CRM link",
+    description: "Emails to clients when an invoice is generated or paid, and the push of invoices to crm.gexart.com.",
+    fields: [
+      { key: "BILLING_EMAIL_PROVIDER", label: "Email provider", kind: "text", placeholder: "gmail", help: "gmail (a connected mailbox such as tech.gexart@gmail.com), brevo, resend, or off. Leave empty to try gmail, then brevo, then resend." },
+      { key: "BILLING_EMAIL_AUTO", label: "Email clients automatically", kind: "text", placeholder: "on", help: "on = email the client when an invoice is generated and when a payment is recorded. off = only when you press Email client." },
+      { key: "RESEND_API_KEY", label: "Resend API key", kind: "secret", placeholder: "re_…", help: "Only if you use Resend. resend.com → API keys.", link: "https://resend.com/api-keys" },
+      { key: "RESEND_SENDER_EMAIL", label: "Resend sender email", kind: "email", placeholder: "billing@yourdomain.com", help: "An address on a domain you verified in Resend." },
+      { key: "RESEND_SENDER_NAME", label: "Resend sender name", kind: "text", placeholder: "Gexart", help: "Shown as the From name." },
+      { key: "AGENCY_CRM_HOOK_URL", label: "CRM invoice webhook address", kind: "secret", placeholder: "https://crm.gexart.com/api/hook/invoice/…", help: "From crm.gexart.com → Settings → Invoice sync. The client must already exist there (matched by email, name or phone)." },
+      { key: "AGENCY_CRM_PUSH", label: "Push invoices to the CRM automatically", kind: "text", placeholder: "on", help: "on = send every new invoice, payment and cancellation. off = only when you press Send to CRM." },
+    ],
+  },
+  {
     id: "ai",
     title: "Claude AI",
     description: "Pitches, deck outlines and call summaries. Without a key the CRM uses fixed templates.",

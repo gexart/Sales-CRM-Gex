@@ -18,7 +18,7 @@ export interface ClassicDoc {
   hsn: { head: [string, string, string, string, string, string, string]; rows: string[][]; total: string[] } | null;
   upiLink?: string | null;
   bank?: { bank: string; account: string; ifsc: string; branch: string; beneficiary: string; type: string } | null;
-  signature: { forCompany: string; dataUrl?: string | null };
+  signature: { forCompany: string; dataUrl?: string | null; stampDataUrl?: string | null; name?: string | null };
   notes?: string | null;
   terms?: string | null;
   footer: string;
@@ -53,6 +53,7 @@ export async function renderClassicInvoicePdf(d: ClassicDoc): Promise<Uint8Array
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const logo = await embedDataUrl(doc, d.company.logoDataUrl);
   const sig = await embedDataUrl(doc, d.signature.dataUrl);
+  const stamp = await embedDataUrl(doc, d.signature.stampDataUrl);
 
   const pages: PDFPage[] = [];
   let page!: PDFPage;
@@ -241,7 +242,12 @@ export async function renderClassicInvoicePdf(d: ClassicDoc): Promise<Uint8Array
     const sw = Math.min(110, sig.width * (50 / sig.height));
     page.drawImage(sig, { x: sx + 4, y: H - blockTop - 16 - 50, width: sw, height: sw * (sig.height / sig.width) > 50 ? 50 : sw * (sig.height / sig.width) });
   }
-  right("Authorized Signatory", W - M, blockTop + 74, 7.5, font, GRAY);
+  if (stamp) {
+    const ss = 64;
+    page.drawImage(stamp, { x: sx - ss - 6, y: H - blockTop - 14 - ss, width: ss, height: ss });
+  }
+  if (d.signature.name) right(d.signature.name, W - M, blockTop + 64, 8, bold, INK);
+  right("Authorized Signatory", W - M, blockTop + 76, 7.5, font, GRAY);
   y = blockTop + 112;
 
   // ── Notes and terms ──

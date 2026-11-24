@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Boxes, Plus, Receipt, Search } from "lucide-react";
 import { PageHeader } from "../../components/layout";
@@ -7,12 +8,14 @@ import { Badge, Button, Card, Dialog, EmptyState, ErrorState, Field, Select, Ske
 import { date as fmtDate } from "../../lib/format";
 import { bill, errMsg, inr, useBillingAccess } from "../../lib/billing";
 import { rupeesToPaise } from "./parts";
+import { Fab } from "./ui";
 
 export function ExpensesPage() {
   const { can } = useBillingAccess();
   const qc = useQueryClient();
   const toast = useToast();
-  const [add, setAdd] = useState(false);
+  const [sp] = useSearchParams();
+  const [add, setAdd] = useState(sp.get("new") === "1" && can("expenses.create"));
   const [f, setF] = useState({ category: "", payFrom: "", amount: "", payee: "", mode: "CASH", notes: "", gst: "0" });
   const list = useQuery({ queryKey: ["billing-expenses"], queryFn: () => bill.get("/expenses") });
   const sum = useQuery({ queryKey: ["billing-expense-summary"], queryFn: () => bill.get("/expenses/summary") });
@@ -39,6 +42,7 @@ export function ExpensesPage() {
           ))}</Card>
         )}
       </div>
+      {can("expenses.create") && <Fab onClick={() => setAdd(true)} label="Add expense" />}
       <Dialog open={add} onClose={() => setAdd(false)} title="Add expense" footer={<><Button onClick={() => setAdd(false)}>Cancel</Button><Button variant="primary" loading={save.isPending} disabled={!f.category || !f.amount} onClick={() => save.mutate()}>Save</Button></>}>
         <div className="space-y-3">
           <Field label="Category" required><Select value={f.category} placeholder="Choose" onChange={(e) => setF({ ...f, category: e.target.value })} options={cats.map((a) => ({ value: a.id, label: a.name }))} /></Field>

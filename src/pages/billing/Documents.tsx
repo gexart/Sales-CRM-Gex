@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileSignature, Plus, Printer } from "lucide-react";
 import { PageHeader } from "../../components/layout";
 import { Badge, Button, Card, EmptyState, ErrorState, Field, Skeleton, SlideOver, Tabs, useToast } from "../../components/ui";
 import { date as fmtDate } from "../../lib/format";
 import { addDays, bill, errMsg, fileUrl, inr, today, useBillingAccess } from "../../lib/billing";
+import { BillsTabs, Fab } from "./ui";
 import { LineEditor, PartyPicker, blankLine, rupeesToPaise, totalsOf, type Line, type Party } from "./parts";
 
 const TYPES = [
@@ -23,7 +25,8 @@ export function DocumentsPage({ fixed }: { fixed?: DT }) {
   const visible = TYPES.filter((t) => ["QUOTATION", "PROFORMA", "SALES_ORDER", "DELIVERY_CHALLAN"].includes(t.value) && (can(t.perm) || can("documents.view")));
   const [typeState, setType] = useState<DT>("QUOTATION");
   const type = fixed ?? typeState;
-  const [make, setMake] = useState(false);
+  const [sp] = useSearchParams();
+  const [make, setMake] = useState(sp.get("new") === "1");
   const [open, setOpen] = useState<string | null>(null);
   const cur = TYPES.find((t) => t.value === type)!;
   const q = useQuery({ queryKey: ["billing-docs", type], queryFn: () => bill.get(`/documents?type=${type}&limit=100`) });
@@ -32,6 +35,7 @@ export function DocumentsPage({ fixed }: { fixed?: DT }) {
     <div className="pb-8">
       <PageHeader title={fixed ? cur.label : "Quotes & proforma"} icon={FileSignature} actions={can(cur.perm) && <Button variant="primary" icon={Plus} onClick={() => setMake(true)}>New {cur.one.toLowerCase()}</Button>} />
       <div className="px-4 sm:px-6">
+        <BillsTabs />
         {!fixed && <Tabs<DT> value={type} onChange={setType} tabs={visible.map((t) => ({ value: t.value, label: t.label }))} />}
         <div className="mt-3">
           {q.isError ? <ErrorState error={q.error} /> : q.isLoading ? <Skeleton className="h-24" /> : rows.length === 0 ? <Card><EmptyState icon={FileSignature} title={`No ${cur.label.toLowerCase()} yet`} /></Card> : (
@@ -46,6 +50,7 @@ export function DocumentsPage({ fixed }: { fixed?: DT }) {
           )}
         </div>
       </div>
+      {can(cur.perm) && <Fab onClick={() => setMake(true)} label={`New ${cur.one.toLowerCase()}`} />}
       <NewDoc open={make} type={type} label={cur.one} onClose={() => setMake(false)} />
       <DocView id={open} onClose={() => setOpen(null)} />
     </div>

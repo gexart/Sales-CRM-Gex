@@ -6,6 +6,7 @@ import { newId, now } from "../lib/util";
 import { PERMISSIONS, SYSTEM_ROLES, hasPermission, isPermission, type EffectiveAccess } from "../../shared/access";
 import { ensureSystemRoles, loadAccess, recordAudit } from "./access";
 import { createInvoiceSchema } from "./routes/sales";
+import { emailInvoiceEvent, pushInvoiceToCrm } from "./notify";
 
 /**
  * /api/v1/billing-access/* — who may do what in billing: roles, assignments, invoice approvals, audit log.
@@ -213,6 +214,12 @@ billingAccessRoutes.post("/approvals/:id/approve", async (c) => {
     // The invoice belongs to the person who asked for it; the approval record shows who released it.
     const result: any = await stub.createSalesInvoice({ ...data, branchId: loc.branchId, warehouseId: loc.warehouseId ?? undefined, createdById: String(row.requested_by) } as never);
     const inv = result?.invoice ?? result;
+    // Same follow-ups as a directly created invoice: email the client and tell the agency CRM.
+    if (inv?.id) {
+      const origin = c.env.APP_URL || new URL(c.req.url).origin;
+      if (String(c.env.BILLING_EMAIL_AUTO || "on").toLowerCase() !== "off") c.executionCtx.waitUntil(emailInvoiceEvent(c.env, stub, inv.id, "invoice", origin));
+      if (String(c.env.AGENCY_CRM_PUSH || "on").toLowerCase() !== "off" && c.env.AGENCY_CRM_HOOK_URL) c.executionCtx.waitUntil(pushInvoiceToCrm(c.env, stub, inv.id, origin, "invoice.created"));
+    }
     await c.env.DB.batch([
       c.env.DB.prepare("UPDATE billing_approvals SET result_id=?, result_no=? WHERE id=?").bind(inv?.id ?? null, inv?.invoiceNo ?? null, id),
       notify(c, String(row.requested_by), "Invoice approved", `${row.party_name}: invoice ${inv?.invoiceNo ?? ""} is ready`, id),

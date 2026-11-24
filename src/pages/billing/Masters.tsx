@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Package, Plus, Search, Users } from "lucide-react";
 import { PageHeader } from "../../components/layout";
@@ -7,6 +8,7 @@ import { Badge, Button, Card, Dialog, EmptyState, ErrorState, Field, Select, Ske
 import { bill, errMsg, inr, useBillingAccess } from "../../lib/billing";
 import { PhoneActions } from "../../components/contact-actions";
 import { rupeesToPaise, useBillingMasters } from "./parts";
+import { Fab } from "./ui";
 
 type PT = "CUSTOMER" | "VENDOR";
 
@@ -17,7 +19,8 @@ export function PartiesPage() {
   const [type, setType] = useState<PT>("CUSTOMER");
   const [search, setSearch] = useState("");
   const dq = useDebounced(search, 300);
-  const [add, setAdd] = useState(false);
+  const [sp] = useSearchParams();
+  const [add, setAdd] = useState(sp.get("new") === "1" && can("parties.manage"));
   const [f, setF] = useState({ name: "", phone: "", gstin: "", email: "", billingAddress: "", stateCode: "19", creditDays: "0" });
   const q = useQuery({ queryKey: ["billing-parties", type, dq], queryFn: () => bill.get(`/masters/parties?type=${type}&search=${encodeURIComponent(dq)}&limit=100`) });
   const rows: any[] = q.data?.parties ?? []; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -43,6 +46,7 @@ export function PartiesPage() {
           </Card>
         )}
       </div>
+      {can("parties.manage") && <Fab onClick={() => setAdd(true)} label="Add party" />}
       <Dialog open={add} onClose={() => setAdd(false)} title={type === "CUSTOMER" ? "New customer" : "New vendor"} footer={<><Button onClick={() => setAdd(false)}>Cancel</Button><Button variant="primary" loading={save.isPending} disabled={!f.name || f.phone.replace(/\D/g, "").length < 10} onClick={() => save.mutate()}>Save</Button></>}>
         <div className="space-y-3">
           <Field label="Name" required><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
@@ -67,7 +71,10 @@ export function ItemsPage() {
   const { taxes, units, defaultUnit } = useBillingMasters();
   const [search, setSearch] = useState("");
   const dq = useDebounced(search, 300);
-  const [add, setAdd] = useState(false);
+  const [sp] = useSearchParams();
+  const [add, setAdd] = useState(sp.get("new") === "1" && can("items.manage"));
+  const stock = useQuery({ queryKey: ["billing-stock-qty"], queryFn: () => bill.get("/inventory/summary"), enabled: can("inventory.view"), staleTime: 60_000 });
+  const qtyOf = (id: string) => (stock.data?.summary ?? []).filter((r: any) => r.itemId === id).reduce((a: number, r: any) => a + r.currentQtyThousandths, 0) / 1000; // eslint-disable-line @typescript-eslint/no-explicit-any
   const [f, setF] = useState({ name: "", type: "SERVICE", hsnSac: "", unitId: "", sale: "", purchase: "", taxRateId: "" });
   const q = useQuery({ queryKey: ["billing-items", dq], queryFn: () => bill.get(`/masters/items?search=${encodeURIComponent(dq)}&limit=100`) });
   const rows: any[] = q.data?.items ?? []; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -86,7 +93,8 @@ export function ItemsPage() {
         {q.isError ? <ErrorState error={q.error} /> : q.isLoading ? <Skeleton className="h-24" /> : rows.length === 0 ? <Card><EmptyState icon={Package} title="No items yet" /></Card> : (
           <Card className="divide-y divide-line">
             {rows.map((it) => (
-              <div key={it.id} className="flex items-center gap-3 px-3.5 py-2.5">
+              <div key={it.id} className="relative flex items-center gap-3 px-3.5 py-3.5">
+                {it.type !== "SERVICE" && stock.data && <span className={`absolute top-1.5 right-2 rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold ${qtyOf(it.id) < 0 ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>Qty: {qtyOf(it.id)}</span>}
                 <div className="min-w-0 flex-1"><div className="truncate font-medium">{it.name}</div><div className="text-xs text-muted">{it.type === "SERVICE" ? "Service" : "Goods"}{it.hsnSac ? ` · HSN/SAC ${it.hsnSac}` : ""} · GST {taxOf(it.taxRateId)}%</div></div>
                 <div className="text-right"><div className="font-semibold tabular-nums">{inr(it.salePricePaise)}</div>{it.purchasePricePaise !== undefined && <div className="text-xs text-muted tabular-nums">cost {inr(it.purchasePricePaise)}</div>}</div>
               </div>
@@ -94,6 +102,7 @@ export function ItemsPage() {
           </Card>
         )}
       </div>
+      {can("items.manage") && <Fab onClick={() => setAdd(true)} label="Add item" />}
       <Dialog open={add} onClose={() => setAdd(false)} title="New item or service" footer={<><Button onClick={() => setAdd(false)}>Cancel</Button><Button variant="primary" loading={save.isPending} disabled={!f.name || !f.sale} onClick={() => save.mutate()}>Save</Button></>}>
         <div className="space-y-3">
           <Field label="Name" required><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
