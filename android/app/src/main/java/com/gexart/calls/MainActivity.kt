@@ -28,7 +28,6 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 /**
  * The one Gexart app: the full CRM and billing (the same mobile-first web app) with the call recorder built in.
@@ -37,7 +36,6 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 class MainActivity : Activity() {
     private lateinit var prefs: Prefs
     private lateinit var web: WebView
-    private lateinit var swipe: SwipeRefreshLayout
     private var home: String = ""
     private var chooser: ValueCallback<Array<Uri>>? = null
     private val pickFile = 51
@@ -74,7 +72,6 @@ class MainActivity : Activity() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = route(request.url)
 
             override fun onPageFinished(view: WebView, url: String?) {
-                swipe.isRefreshing = false
                 // Files the page builds itself (zip, CSV) arrive without a name; remember the one the page's link asked for.
                 view.evaluateJavascript("if(!window.__gxHook){window.__gxHook=1;document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[download]'):null;if(a)window.__gxName=a.getAttribute('download')||''},true)}", null)
             }
@@ -148,21 +145,12 @@ class MainActivity : Activity() {
         web.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ -> download(url, userAgent, contentDisposition, mimeType) }
         registerDownloadDone()
 
-        // Pull down at the top of a page to reload it.
-        swipe = SwipeRefreshLayout(this).apply {
-            // Must fill the container: with the default wrap-content size the web view reports 0 for every vh/dvh unit, and the whole app collapses to nothing.
-            addView(web, android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT))
-            setColorSchemeColors(Color.parseColor("#F47A20"))
-            setProgressBackgroundColorSchemeColor(Color.parseColor("#1E2A3F"))
-            // Pull-down refresh is off: the page scrolls inside its own container, which this layout cannot see, so it fired while scrolling.
-            // The app has a Refresh button (round arrow) in its top bar instead.
-            isEnabled = false
-        }
-        // Keep the page clear of the status bar, the gesture bar and the keyboard. The padding goes on a plain wrapper, never on the
-        // pull-to-refresh layout or the WebView, which can stop the page repainting.
+        // Keep the page clear of the status bar, the gesture bar and the keyboard. The padding goes on a plain wrapper, never on the WebView, which can stop the page repainting.
         val frame = android.widget.FrameLayout(this).apply {
             setBackgroundColor(Color.parseColor("#141E2E"))
-            addView(swipe, android.widget.FrameLayout.LayoutParams(-1, -1))
+            // The web view must fill the screen: with a wrap-content size every vh/dvh unit reads 0 and the app goes blank.
+            // There is no pull-to-refresh (it fired while scrolling); the app's top bar has a Refresh button.
+            addView(web, android.widget.FrameLayout.LayoutParams(-1, -1))
             setOnApplyWindowInsetsListener { v, insets ->
                 val top = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(android.view.WindowInsets.Type.systemBars()).top else insets.systemWindowInsetTop
                 val sysBottom = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(android.view.WindowInsets.Type.systemBars()).bottom else insets.systemWindowInsetBottom

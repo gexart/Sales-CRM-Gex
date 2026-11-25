@@ -242,7 +242,12 @@ export class InvoiceService {
       const ser = this.sql.exec("SELECT id FROM document_series WHERE doc_type = 'INVOICE' AND branch_id = ? ORDER BY is_default DESC, financial_year DESC LIMIT 1", input.branchId).toArray()[0] as { id: string } | undefined;
       seriesId = ser ? String(ser.id) : this.nextDocNumber('INVOICE', input.branchId, { date: input.date, partyId: input.partyId }).seriesId;
     } else {
-      const alloc = this.nextDocNumber('INVOICE', input.branchId, { date: input.date, partyId: input.partyId });
+      // Numbers can already be taken (imported old invoices, a freed number typed by hand): move the counter past them
+      // instead of failing. Runs inside the invoice's transaction, so the counter and the invoice are saved together.
+      let alloc = this.nextDocNumber('INVOICE', input.branchId, { date: input.date, partyId: input.partyId });
+      for (let tries = 0; tries < 1000 && this.sql.exec('SELECT 1 FROM invoices WHERE invoice_no = ? LIMIT 1', alloc.docNumber).toArray().length > 0; tries++) {
+        alloc = this.nextDocNumber('INVOICE', input.branchId, { date: input.date, partyId: input.partyId });
+      }
       invoiceNo = alloc.docNumber;
       seriesId = alloc.seriesId;
     }

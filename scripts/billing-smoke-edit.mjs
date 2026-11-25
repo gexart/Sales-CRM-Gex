@@ -163,5 +163,14 @@ const left = (await admin.get(`/billing/masters/items?search=${encodeURIComponen
 check("gone from the list", left.length === 0, left.length);
 check("the invoice already made keeps it", (await get(svi.id)).lines[0].name === `Temp Service ${run}`);
 
+console.log("Automatic numbers skip numbers already taken");
+const n1 = (await admin.post("/billing/sales/invoices", body(A))).body.invoice.invoiceNo;
+const num = (x) => Number(x.split("/")[1]);
+const taken = [1, 2, 3].map((k) => n1.replace(`/${num(n1)}/`, `/${num(n1) + k}/`));
+for (const t of taken) check(`number ${t} taken by hand`, (await admin.post("/billing/sales/invoices", body(A, 1000, 100000, { invoiceNo: t }))).status === 201);
+const n2 = await admin.post("/billing/sales/invoices", body(A));
+check("next automatic invoice is created", n2.status === 201, n2.body);
+check("and it gets the first free number", n2.body.invoice?.invoiceNo && num(n2.body.invoice.invoiceNo) === num(n1) + 4, [n1, n2.body.invoice?.invoiceNo]);
+
 console.log(failures === 0 ? "All edit and delete checks passed" : failures + " check(s) failed");
 process.exit(failures ? 1 : 0);
