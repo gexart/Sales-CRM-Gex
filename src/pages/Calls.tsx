@@ -228,7 +228,7 @@ export function DevicesSettings() {
     <div className="grid gap-4 lg:grid-cols-2">
       <AndroidAppCard />
       <Card>
-        <CardHeader title="Connect call recording on the Gexart Sales app" icon={Smartphone} />
+        <CardHeader title="Connect call recording on the Sales Gexart app" icon={Smartphone} />
         <div className="space-y-3 p-4 text-[13px]">
           <ol className="list-decimal space-y-1 pl-5 text-slate-700">
             <li>Install the app from the download above.</li>

@@ -27,7 +27,7 @@ export const bill = {
   get: <T = any>(path: string) => api.get<T>(`/billing${path}`), // eslint-disable-line @typescript-eslint/no-explicit-any
   post: <T = any>(path: string, body?: unknown, headers?: Record<string, string>) => api.post<T>(`/billing${path}`, body, headers), // eslint-disable-line @typescript-eslint/no-explicit-any
   put: <T = any>(path: string, body: unknown) => api.put<T>(`/billing${path}`, body), // eslint-disable-line @typescript-eslint/no-explicit-any
-  del: <T = any>(path: string) => api.del<T>(`/billing${path}`), // eslint-disable-line @typescript-eslint/no-explicit-any
+  del: <T = any>(path: string, body?: unknown) => api.del<T>(`/billing${path}`, body), // eslint-disable-line @typescript-eslint/no-explicit-any
 };
 export const access = {
   get: <T = any>(path: string) => api.get<T>(`/billing-access${path}`), // eslint-disable-line @typescript-eslint/no-explicit-any

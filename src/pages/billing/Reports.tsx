@@ -7,8 +7,9 @@ import { date as fmtDate } from "../../lib/format";
 import { bill, inr, useBillingAccess } from "../../lib/billing";
 import { PhoneActions } from "../../components/contact-actions";
 import { reminderMessage } from "../../lib/invoice-share";
+import { GstTab, TallyTab } from "./gst-reports";
 
-type Tab = "collections" | "aging" | "pl" | "tb" | "tds";
+type Tab = "collections" | "aging" | "pl" | "tb" | "tds" | "gst" | "tally";
 
 /** Money in, who owes what, profit and loss, and the trial balance. Each tab appears only if the role allows it. */
 export function ReportsBillingPage() {
@@ -19,6 +20,8 @@ export function ReportsBillingPage() {
     can("reports.view") && { value: "pl", label: "Profit & loss" },
     can("accounting.view") && { value: "tb", label: "Trial balance" },
     can("accounting.view") && { value: "tds", label: "TDS" },
+    can("reports.view") && { value: "gst", label: "GST" },
+    can("accounting.export") && { value: "tally", label: "Tally" },
   ].filter(Boolean)) as { value: Tab; label: string }[];
   const [tab, setTab] = useState<Tab>("collections");
   if (!tabs.length) return <div className="p-6"><EmptyState icon={Lock} title="No reports for your role" body="Ask an administrator if you need these." /></div>;
@@ -28,7 +31,7 @@ export function ReportsBillingPage() {
       <PageHeader title="Money & reports" icon={BarChart3} />
       <div className="px-4 sm:px-6">
         <Tabs<Tab> tabs={tabs} value={cur} onChange={setTab} />
-        <div className="mt-3">{cur === "collections" ? <Collections /> : cur === "aging" ? <Aging /> : cur === "pl" ? <PL /> : cur === "tds" ? <Tds /> : <TB />}</div>
+        <div className="mt-3">{cur === "collections" ? <Collections /> : cur === "aging" ? <Aging /> : cur === "pl" ? <PL /> : cur === "tds" ? <Tds /> : cur === "gst" ? <GstTab /> : cur === "tally" ? <TallyTab /> : <TB />}</div>
       </div>
     </div>
   );

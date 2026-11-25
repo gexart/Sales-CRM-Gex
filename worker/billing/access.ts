@@ -78,6 +78,10 @@ export function ruleFor(method: string, path: string, hints: { docType?: string;
   if (is(/^\/sales\/invoices\/[^/]+\/email$/) && m === "POST") return all("invoice.view");
   if (is(/^\/sales\/invoices\/[^/]+\/crm$/) && m === "POST") return all("invoice.approve");
   if (is(/^\/sales\/invoices\/[^/]+\/cancel$/) && m === "POST") return all("invoice.cancel");
+  if (is(/^\/sales\/invoices\/free-numbers$/) && read) return all("invoice.view");
+  if (is(/^\/sales\/invoices\/[^/]+$/) && m === "PUT") return all("invoice.edit");
+  if (is(/^\/sales\/invoices\/[^/]+$/) && m === "DELETE") return all("invoice.delete");
+  if (is(/^\/sales\/payments\/[^/]+$/) && m === "DELETE") return all("payment.remove");
 
   // Quotation / proforma / order / challan / purchase order
   if (is(/^\/documents$/)) {

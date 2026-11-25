@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, Download, FileText, Mail, MessageCircle, Phone, Plus, Printer, Search, Send, Wallet } from "lucide-react";
+import { Ban, CheckSquare, Download, FileText, Pencil, Square, Trash2, Mail, MessageCircle, Phone, Plus, Printer, Search, Send, Wallet } from "lucide-react";
 import { PageHeader } from "../../components/layout";
 import { useDebounced } from "../../components/forms";
 import { Badge, Button, Card, Dialog, EmptyState, ErrorState, Field, Select, Skeleton, Tabs, useToast } from "../../components/ui";
@@ -14,6 +14,17 @@ import { Attachments } from "./Attachments";
 import { BillsTabs, Fab } from "./ui";
 import { RepeatFields } from "./Subscriptions";
 import { TdsDialog } from "./tds";
+
+/** Names typed or imported in capitals read better as normal words. */
+const niceName = (n: string) => (n && n === n.toUpperCase() && /[A-Z]{3}/.test(n) ? n.toLowerCase().replace(/(^|[\s(&/-])([a-z])/g, (_m, a, b) => a + b.toUpperCase()) : n);
+/** Short rupees for narrow cards: 12.07 L, 1.2 Cr. */
+const inrShort = (paise: number) => {
+  const r = Math.abs(paise) / 100;
+  const sign = paise < 0 ? "-" : "";
+  if (r >= 1e7) return `${sign}₹${(r / 1e7).toFixed(2).replace(/\.?0+$/, "")} Cr`;
+  if (r >= 1e5) return `${sign}₹${(r / 1e5).toFixed(2).replace(/\.?0+$/, "")} L`;
+  return inr(paise);
+};
 
 type Tab = "ALL" | "PENDING" | "OVERDUE" | "PAID" | "DRAFTS";
 
@@ -29,15 +40,50 @@ export function InvoicesPage() {
   const counts = q.data?.counts;
   const totals = q.data?.totals;
   const direct = can("invoice.create");
+  const toast = useToast();
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState<string | null>(null);
+  const toggle = (rid: string) => setPicked((p) => { const n = new Set(p); if (n.has(rid)) n.delete(rid); else n.add(rid); return n; });
+  /** The PDFs are fetched one by one and zipped on this device, so there is no limit on the server. */
+  const downloadZip = async () => {
+    const chosen = rows.filter((r) => picked.has(r.id));
+    if (!chosen.length) return;
+    try {
+      const { default: JSZip } = await import("jszip");
+      const zip = new JSZip();
+      let done = 0;
+      setBusy(`0 of ${chosen.length}`);
+      for (const r of chosen) {
+        const res = await fetch(fileUrl(`/sales/invoices/${r.id}`, "pdf"), { credentials: "same-origin" });
+        if (!res.ok) throw new Error(`${r.invoice_no} could not be downloaded`);
+        zip.file(`${String(r.invoice_no).replace(/[\\/:*?"<>|]/g, "-")} ${String(r.party_name).replace(/[\\/:*?"<>|]/g, "").slice(0, 30)}.pdf`, await res.arrayBuffer());
+        setBusy(`${++done} of ${chosen.length}`);
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `invoices-${today()}.zip`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast("success", `${chosen.length} invoices downloaded`);
+      setSelecting(false);
+      setPicked(new Set());
+    } catch (e) {
+      toast("error", errMsg(e));
+    } finally {
+      setBusy(null);
+    }
+  };
   return (
     <div className="pb-8">
-      <PageHeader title="Sales invoices" icon={FileText} actions={(direct || can("invoice.request")) && <Link to="/billing/invoices/new"><Button variant="primary" icon={Plus}>{direct ? "New invoice" : "Request invoice"}</Button></Link>} />
+      <PageHeader title="Sales invoices" icon={FileText} actions={<>{can("invoice.view") && tab !== "DRAFTS" && rows.length > 0 && <Button icon={selecting ? CheckSquare : Square} onClick={() => (setSelecting(!selecting), setPicked(new Set()))}>{selecting ? "Done" : "Select"}</Button>}{(direct || can("invoice.request")) && <Link to="/billing/invoices/new"><Button variant="primary" icon={Plus}>{direct ? "New invoice" : "Request invoice"}</Button></Link>}</>} />
       <div className="px-4 sm:px-6">
         <BillsTabs />
         {totals && (
           <div className="mb-3 grid grid-cols-3 gap-2">
             {[["Billed", totals.totalSalesPaise], ["Received", totals.totalPaidPaise], ["Pending", totals.totalPendingPaise]].map(([l, v]) => (
-              <Card key={l as string} className="p-2.5"><div className="text-[11px] text-muted">{l}</div><div className="text-[15px] font-semibold tabular-nums sm:text-lg">{inr(v as number)}</div></Card>
+              <Card key={l as string} className="p-3"><div className="text-[11px] font-medium tracking-wide text-muted uppercase">{l}</div><div className="mt-0.5 text-[17px] font-semibold tabular-nums sm:text-lg"><span className="sm:hidden">{inrShort(v as number)}</span><span className="hidden sm:inline">{inr(v as number)}</span></div></Card>
             ))}
           </div>
         )}
@@ -48,9 +94,10 @@ export function InvoicesPage() {
         ) : (
           <Card className="divide-y divide-line">
             {rows.map((r) => (
-              <Link key={r.id} to={`/billing/invoices/${r.id}`} className="flex items-center gap-3 px-3.5 py-3.5 hover:bg-slate-50 active:bg-slate-100 dark:hover:bg-white/5">
+              <Link key={r.id} to={`/billing/invoices/${r.id}`} onClick={selecting ? (e) => (e.preventDefault(), toggle(r.id)) : undefined} className={`flex items-center gap-3 px-3.5 py-3.5 hover:bg-slate-50 active:bg-slate-100 dark:hover:bg-white/5 ${selecting && picked.has(r.id) ? "bg-brand-50 dark:bg-white/5" : ""}`}>
+                {selecting && <input type="checkbox" readOnly checked={picked.has(r.id)} className="size-5 shrink-0 accent-brand-600" aria-label={`Select ${r.invoice_no}`} />}
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{r.party_name}</div>
+                  <div className="line-clamp-2 font-medium leading-snug">{niceName(r.party_name)}</div>
                   <div className="text-xs text-muted">{r.invoice_no} · {fmtDate(r.date)}{r.status !== "PAID" && r.status !== "CANCELLED" && r.balance_amount_paise > 0 && r.due_date ? ` · due ${fmtDate(r.due_date)}` : ""}</div>
                 </div>
                 <div className="text-right"><div className="font-semibold tabular-nums">{inr(r.total_paise)}</div><Badge tone={INVOICE_STATUS_TONE[r.status] ?? "gray"}>{r.status}</Badge></div>
@@ -59,7 +106,16 @@ export function InvoicesPage() {
           </Card>
         )}
       </div>
-      {(direct || can("invoice.request")) && <Fab to="/billing/invoices/new" label="New invoice" />}
+      {selecting && (
+        <div className="fixed inset-x-0 bottom-14 z-30 border-t border-line bg-white p-3 lg:bottom-0 lg:left-60 dark:bg-night">
+          <div className="mx-auto flex max-w-3xl items-center gap-2">
+            <div className="min-w-0 flex-1 text-[13px]"><b>{picked.size}</b> selected</div>
+            <Button onClick={() => setPicked(picked.size === rows.length ? new Set() : new Set(rows.map((r) => r.id)))}>{picked.size === rows.length ? "Clear" : "Select all"}</Button>
+            <Button variant="primary" icon={Download} disabled={picked.size === 0 || !!busy} loading={!!busy} onClick={downloadZip}>{busy ? busy : "Download PDFs"}</Button>
+          </div>
+        </div>
+      )}
+      {!selecting && (direct || can("invoice.request")) && <Fab to="/billing/invoices/new" label="New invoice" />}
     </div>
   );
 }
@@ -71,6 +127,9 @@ export function InvoiceDetailPage() {
   const toast = useToast();
   const [pay, setPay] = useState(false);
   const [cancel, setCancel] = useState(false);
+  const [del, setDel] = useState(false);
+  const [rmPay, setRmPay] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const nav = useNavigate();
   const [amt, setAmt] = useState("");
   const [pmode, setPmode] = useState("UPI");
   const [reason, setReason] = useState("");
@@ -95,6 +154,16 @@ export function InvoiceDetailPage() {
   const cancelM = useMutation({
     mutationFn: () => bill.post(`/sales/invoices/${id}/cancel`, { reason }),
     onSuccess: () => (toast("success", "Invoice cancelled"), setCancel(false), refresh()),
+    onError: (e) => toast("error", errMsg(e)),
+  });
+  const delM = useMutation({
+    mutationFn: () => bill.del(`/sales/invoices/${id}`, { reason }),
+    onSuccess: (r) => (toast("success", `Invoice deleted. ${r.invoiceNo ?? "Its"} number can be used again.`), qc.invalidateQueries({ queryKey: ["billing-invoices"] }), qc.invalidateQueries({ queryKey: ["billing-free-numbers"] }), nav("/billing/invoices")),
+    onError: (e) => toast("error", errMsg(e)),
+  });
+  const rmM = useMutation({
+    mutationFn: () => bill.del(`/sales/payments/${rmPay.id}`, { reason }),
+    onSuccess: () => (toast("success", "Payment removed"), setRmPay(null), setReason(""), refresh()),
     onError: (e) => toast("error", errMsg(e)),
   });
   const cnM = useMutation({
@@ -135,7 +204,9 @@ export function InvoiceDetailPage() {
           {can("invoice.create") && inv.status !== "CANCELLED" && <Button onClick={() => (setRepFirst(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)), setRep(true))}>Repeat</Button>}
           {can("invoice.credit_note") && inv.status !== "CANCELLED" && <Button onClick={() => setCn(true)}>Credit note</Button>}
           {can("payment.receive") && open && <Button variant="primary" icon={Wallet} onClick={() => (setAmt(String(inv.balance_amount_paise / 100)), setPay(true))}>Record payment</Button>}
+          {can("invoice.edit") && inv.paid_amount_paise === 0 && <Link to={`/billing/invoices/new?edit=${inv.id}`}><Button icon={Pencil}>Edit</Button></Link>}
           {can("invoice.cancel") && inv.status !== "CANCELLED" && <Button icon={Ban} onClick={() => setCancel(true)}>Cancel</Button>}
+          {can("invoice.delete") && <Button variant="danger" icon={Trash2} onClick={() => (setReason(""), setDel(true))}>Delete</Button>}
         </>} />
       <div className="mx-auto max-w-3xl space-y-3 px-4 sm:px-6">
         <Card className="p-3.5">
@@ -161,6 +232,17 @@ export function InvoiceDetailPage() {
           <div className="flex justify-between font-medium"><span>Balance</span><span className="tabular-nums">{inr(inv.balance_amount_paise)}</span></div>
           {inv.amountInWords && <div className="pt-1 text-xs text-muted">{inv.amountInWords}</div>}
         </Card>
+        {(inv.payments ?? []).length > 0 && (
+          <Card className="divide-y divide-line">
+            <div className="px-3.5 py-2 text-xs font-medium text-muted">Payments received</div>
+            {inv.payments.map((p: any) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
+              <div key={p.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-[13px]">
+                <div className="min-w-0"><div className="font-medium">{inr(p.amount_paise)} <span className="font-normal text-muted">· {p.mode}</span></div><div className="text-xs text-muted">{p.payment_no} · {fmtDate(p.date)}</div></div>
+                {can("payment.remove") && <Button size="sm" variant="ghost" icon={Trash2} onClick={() => (setReason(""), setRmPay(p))}>Remove</Button>}
+              </div>
+            ))}
+          </Card>
+        )}
         {inv.notes && <Card className="p-3.5 text-[13px]"><div className="mb-0.5 text-xs text-muted">Notes</div>{inv.notes}</Card>}
         <Attachments type="invoice" id={inv.id} />
       </div>
@@ -181,6 +263,19 @@ export function InvoiceDetailPage() {
         <div className="space-y-3">
           <Field label="Reason" required><input className="input" value={cnReason} onChange={(e) => setCnReason(e.target.value)} placeholder="e.g. Service not delivered" /></Field>
           <Field label="Amount (₹)" help="Leave empty to credit the whole invoice"><input className="input" inputMode="decimal" value={cnAmt} onChange={(e) => setCnAmt(e.target.value)} /></Field>
+        </div>
+      </Dialog>
+      <Dialog open={del} onClose={() => setDel(false)} title="Delete this invoice?" footer={<><Button onClick={() => setDel(false)}>Keep it</Button><Button variant="danger" loading={delM.isPending} disabled={reason.trim().length < 3} onClick={() => delM.mutate()}>Delete invoice</Button></>}>
+        <div className="space-y-3">
+          <p className="text-[13px] text-muted">Delete removes the invoice completely and frees the bill number <b>{inv.invoice_no}</b> for a new invoice. If you only want to stop using it, use <b>Cancel</b>: the number stays on a cancelled invoice that you can edit and give to another client later.</p>
+          {inv.paid_amount_paise > 0 && <p className="rounded-md bg-amber-50 px-2.5 py-2 text-xs text-amber-800">This invoice has payments. Remove the payment records first (the Remove buttons under Payments received), then delete it.</p>}
+          <Field label="Reason"><input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why is it being deleted?" /></Field>
+        </div>
+      </Dialog>
+      <Dialog open={!!rmPay} onClose={() => setRmPay(null)} title="Remove this payment?" footer={<><Button onClick={() => setRmPay(null)}>Keep it</Button><Button variant="danger" loading={rmM.isPending} disabled={reason.trim().length < 3} onClick={() => rmM.mutate()}>Remove payment</Button></>}>
+        <div className="space-y-3">
+          <p className="text-[13px] text-muted">{rmPay ? `${inr(rmPay.amount_paise)} (${rmPay.mode}, ${rmPay.payment_no}) is taken back out of cash or bank, and the customer owes it again.` : ""}</p>
+          <Field label="Reason"><input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Entered twice, cheque bounced..." /></Field>
         </div>
       </Dialog>
       <Dialog open={cancel} onClose={() => setCancel(false)} title="Cancel this invoice?" footer={<><Button onClick={() => setCancel(false)}>Keep it</Button><Button variant="danger" loading={cancelM.isPending} disabled={reason.trim().length < 3} onClick={() => cancelM.mutate()}>Cancel invoice</Button></>}>

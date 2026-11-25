@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileSignature, Plus, Printer } from "lucide-react";
 import { PageHeader } from "../../components/layout";
@@ -92,16 +92,26 @@ function DocView({ id, onClose }: { id: string | null; onClose: () => void }) {
   const { can } = useBillingAccess();
   const qc = useQueryClient();
   const toast = useToast();
+  const nav = useNavigate();
   const q = useQuery({ queryKey: ["billing-doc", id], queryFn: () => bill.get(`/documents/${id}`), enabled: !!id });
   const d = q.data?.document ? { ...q.data.document, lines: q.data.lines ?? q.data.document.lines } : null;
   const convert = useMutation({
     mutationFn: (target: string) => bill.post(`/documents/${id}/convert`, { target }),
-    onSuccess: () => (toast("success", "Converted"), qc.invalidateQueries({ queryKey: ["billing-docs"] }), qc.invalidateQueries({ queryKey: ["billing-doc", id] })),
+    onSuccess: (r: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+      qc.invalidateQueries({ queryKey: ["billing-docs"] });
+      qc.invalidateQueries({ queryKey: ["billing-doc", id] });
+      if (r?.result?.target === "INVOICE" && r.result.id) {
+        qc.invalidateQueries({ queryKey: ["billing-invoices"] });
+        toast("success", `Tax invoice ${r.result.no ?? ""} created`);
+        return nav(`/billing/invoices/${r.result.id}`);
+      }
+      toast("success", "Converted");
+    },
     onError: (e) => toast("error", errMsg(e)),
   });
-  const targets: { to: string; label: string }[] = !d ? [] : d.doc_type === "QUOTATION" ? [{ to: "PROFORMA", label: "Make proforma" }, { to: "SALES_ORDER", label: "Make sales order" }] : d.doc_type === "PROFORMA" ? [{ to: "SALES_ORDER", label: "Make sales order" }] : [];
+  const targets: { to: string; label: string }[] = !d ? [] : (d.doc_type === "QUOTATION" ? [{ to: "PROFORMA", label: "Make proforma" }, { to: "SALES_ORDER", label: "Make sales order" }] : d.doc_type === "PROFORMA" ? [{ to: "SALES_ORDER", label: "Make sales order" }] : []).concat(["QUOTATION", "PROFORMA", "SALES_ORDER", "DELIVERY_CHALLAN"].includes(d.doc_type) && can("invoice.create") && d.status !== "CONVERTED" ? [{ to: "INVOICE", label: "Make tax invoice" }] : []);
   return (
-    <SlideOver open={!!id} onClose={onClose} title={d ? `${d.doc_no} · ${d.party_name}` : "Document"} width="max-w-xl" footer={<><Button icon={Printer} onClick={() => window.open(fileUrl(`/documents/${id}`, "pdf", true), "_blank", "noopener")}>PDF</Button><a href={fileUrl(`/documents/${id}`, "docx")}><Button>Word</Button></a>{can("documents.convert") && targets.map((t) => <Button key={t.to} variant="primary" loading={convert.isPending} onClick={() => convert.mutate(t.to)}>{t.label}</Button>)}</>}>
+    <SlideOver open={!!id} onClose={onClose} title={d ? `${d.doc_no} · ${d.party_name}` : "Document"} width="max-w-xl" footer={<><Button icon={Printer} onClick={() => window.open(fileUrl(`/documents/${id}`, "pdf", true), "_blank", "noopener")}>PDF</Button><a href={fileUrl(`/documents/${id}`, "docx")}><Button>Word</Button></a>{(can("documents.convert") || can("invoice.create")) && targets.map((t) => <Button key={t.to} variant="primary" loading={convert.isPending} onClick={() => convert.mutate(t.to)}>{t.label}</Button>)}</>}>
       {!d ? <Skeleton className="h-32" /> : (
         <div className="space-y-3 text-[13px]">
           <div className="flex justify-between text-muted"><span>{fmtDate(d.date)}</span><Badge>{d.status}</Badge></div>

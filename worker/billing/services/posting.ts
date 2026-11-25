@@ -275,6 +275,16 @@ export class PostingService {
   /**
    * Reverse an existing document's journal entries (used when editing or cancelling)
    */
+  /** An invoice number can be used again after a delete or an edit, but every journal entry number stays unique. */
+  private freeEntryNo(base: string): string {
+    let n = 0;
+    for (;;) {
+      const candidate = n === 0 ? base : `${base}-R${n}`;
+      if (this.sql.exec('SELECT 1 FROM journal_entries WHERE entry_no = ? LIMIT 1', candidate).toArray().length === 0) return candidate;
+      n++;
+    }
+  }
+
   reverseDocument(docType: string, docId: string, narrationPrefix = 'Reversal of'): boolean {
     const cursor = this.sql.exec(
       `SELECT * FROM journal_entries WHERE doc_type = ? AND doc_id = ?`,
@@ -292,6 +302,9 @@ export class PostingService {
     if (entries.length === 0) return false;
 
     for (const ent of entries) {
+      // Edited or deleted invoices are posted again later: an entry that already has its reversal must not be reversed twice.
+      const done = this.sql.exec("SELECT 1 FROM journal_entries WHERE doc_type = ? AND substr(entry_no, 1, ?) = ? LIMIT 1", `REV_${docType}`, String(ent.entry_no).length + 5, `REV-${ent.entry_no}-`).toArray();
+      if (done.length > 0) continue;
       // Find lines
       const lineCursor = this.sql.exec(
         `SELECT * FROM journal_lines WHERE entry_id = ?`,
@@ -453,7 +466,7 @@ export class PostingService {
     }
 
     const res = this.createJournalEntry({
-      entryNo: `JV-INV-${params.invoiceNo.replace(/[^A-Za-z0-9_-]/g, '_')}`,
+      entryNo: this.freeEntryNo(`JV-INV-${params.invoiceNo.replace(/[^A-Za-z0-9_-]/g, '_')}`),
       date: params.date,
       docType: 'INVOICE',
       docId: params.invoiceId,

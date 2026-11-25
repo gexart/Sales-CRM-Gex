@@ -47,6 +47,8 @@ export interface CreateInvoiceInput {
   transport?: { transporter?: string; vehicleNo?: string; lrNo?: string };
   bankAccountId?: string;
   signatoryName?: string;
+  /** Use this bill number instead of the next one (a number freed by a delete, or a cancelled invoice's own number). */
+  invoiceNo?: string;
   createdById: string;
 }
 
@@ -143,7 +145,7 @@ export class InvoiceService {
    * Performs line-by-line GST calculation with Decimal, persists header and lines,
    * creates public share token, and posts balancing double-entry journal lines.
    */
-  createInvoice(input: CreateInvoiceInput): {
+  createInvoice(input: CreateInvoiceInput, reuse?: { id: string; invoiceNo: string; seriesId: string; createdAt: string; createdById: string }): {
     invoice: any;
     lines: any[];
     shareToken: string;
@@ -225,13 +227,36 @@ export class InvoiceService {
     const partyGstin =
       (input.partyGstin && input.partyGstin.trim()) ||
       (input.partyId ? ([...this.sql.exec('SELECT gstin FROM parties WHERE id = ?', input.partyId)][0] as { gstin: string | null } | undefined)?.gstin || null : null);
-    const { docNumber: invoiceNo, seriesId } = this.nextDocNumber('INVOICE', input.branchId, { date: input.date, partyId: input.partyId });
+    let invoiceNo: string;
+    let seriesId: string;
+    if (reuse) {
+      invoiceNo = reuse.invoiceNo;
+      seriesId = reuse.seriesId;
+    } else if (input.invoiceNo && input.invoiceNo.trim()) {
+      invoiceNo = input.invoiceNo.trim();
+      if (this.sql.exec('SELECT 1 FROM invoices WHERE invoice_no = ? LIMIT 1', invoiceNo).toArray().length > 0) throw new Error(`Bill number ${invoiceNo} is already used by another invoice`);
+      const ser = this.sql.exec("SELECT id FROM document_series WHERE doc_type = 'INVOICE' AND branch_id = ? ORDER BY is_default DESC, financial_year DESC LIMIT 1", input.branchId).toArray()[0] as { id: string } | undefined;
+      seriesId = ser ? String(ser.id) : this.nextDocNumber('INVOICE', input.branchId, { date: input.date, partyId: input.partyId }).seriesId;
+    } else {
+      const alloc = this.nextDocNumber('INVOICE', input.branchId, { date: input.date, partyId: input.partyId });
+      invoiceNo = alloc.docNumber;
+      seriesId = alloc.seriesId;
+    }
 
-    const invoiceId = newId();
+    const invoiceId = reuse ? reuse.id : newId();
     const now = new Date().toISOString();
 
-    // 1. Insert Invoice Header (all values bound)
-    this.sql.exec(
+    // 1. Insert Invoice Header (all values bound). An edit rewrites the same row, so its id, link and attachments stay.
+    if (reuse) {
+      this.sql.exec(
+        `UPDATE invoices SET party_id = ?, party_name = ?, party_gstin = ?, party_state_code = ?, invoice_type = ?, date = ?, due_date = ?,
+          subtotal_paise = ?, discount_paise = ?, tax_total_paise = ?, round_off_paise = ?, total_paise = ?, paid_amount_paise = ?, balance_amount_paise = ?,
+          status = ?, notes = ?, terms = ?, warehouse_id = ?, updated_at = ? WHERE id = ?`,
+        input.partyId ?? null, input.partyName, partyGstin, buyerStateCode, input.invoiceType || 'REGULAR', input.date, input.dueDate,
+        subtotalPaise, discountPaise, taxTotalPaise, roundOffPaise, totalPaise, paidPaise, balancePaise, status,
+        input.notes ?? null, input.terms ?? null, input.warehouseId, now, invoiceId,
+      );
+    } else this.sql.exec(
       `INSERT INTO invoices (
         id, series_id, invoice_no, branch_id, warehouse_id, party_id,
         party_name, party_gstin, party_state_code, invoice_type, date, due_date,
@@ -340,13 +365,16 @@ export class InvoiceService {
       });
     }
 
-    // 4. Generate Public Share Token
-    const shareToken = this.generateShareToken();
-    const tokenId = newId();
-    this.sql.exec(
-      `INSERT INTO invoice_share_tokens (id, invoice_id, token, view_count, created_at) VALUES (?, ?, ?, 0, ?)`,
-      tokenId, invoiceId, shareToken, now,
-    );
+    // 4. Generate Public Share Token (an edit keeps the link the customer already has)
+    const oldToken = reuse ? (this.sql.exec('SELECT token FROM invoice_share_tokens WHERE invoice_id = ? LIMIT 1', invoiceId).toArray()[0] as { token: string } | undefined) : undefined;
+    const shareToken = oldToken ? String(oldToken.token) : this.generateShareToken();
+    if (!oldToken) {
+      const tokenId = newId();
+      this.sql.exec(
+        `INSERT INTO invoice_share_tokens (id, invoice_id, token, view_count, created_at) VALUES (?, ?, ?, 0, ?)`,
+        tokenId, invoiceId, shareToken, now,
+      );
+    }
 
     // Party outstanding is derived from the ledger (opening balance + documents − payments);
     // the opening balance itself is never modified by transactions.
@@ -434,6 +462,7 @@ export class InvoiceService {
       party_email: partyInfo?.email ?? null,
       transport,
       shareToken,
+      payments: this.sql.exec("SELECT id, payment_no, mode, amount_paise, date FROM payments WHERE invoice_id = ? AND type = 'IN' ORDER BY created_at", String(id)).toArray(),
       amountInWords: amountInWords(new Decimal(inv.total_paise || 0).div(100)),
     };
   }
@@ -671,6 +700,109 @@ export class InvoiceService {
     });
 
     return { creditNoteId: noteId, noteNo };
+  }
+
+  /** Payments on an invoice, newest first. */
+  private invoicePayments(invoiceId: string): any[] {
+    return this.sql.exec("SELECT * FROM payments WHERE invoice_id = ? AND type = 'IN' ORDER BY created_at DESC", invoiceId).toArray();
+  }
+
+  private creditNotesTotal(invoiceId: string): number {
+    const r = this.sql.exec("SELECT COALESCE(SUM(total_paise), 0) AS t FROM credit_notes WHERE invoice_id = ? AND status = 'ACTIVE'", invoiceId).toArray()[0] as { t: number } | undefined;
+    return Number(r?.t ?? 0);
+  }
+
+  private hasLiveEInvoice(invoiceId: string): boolean {
+    try {
+      const r = this.sql.exec("SELECT 1 FROM e_invoices WHERE invoice_id = ? AND irn IS NOT NULL AND COALESCE(status, '') != 'CANCELLED' LIMIT 1", invoiceId).toArray();
+      return r.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Remove a payment record (a wrong entry, a bounced cheque): the money is taken back out of cash or bank, the customer owes it again,
+   * and the invoice goes back to unpaid or partly paid. The journal keeps the original entry and the reversal.
+   */
+  removePayment(paymentId: string, reason: string): { invoiceId: string | null; balancePaise: number; status: string | null } {
+    const pay = this.sql.exec("SELECT * FROM payments WHERE id = ? AND type = 'IN'", paymentId).toArray()[0] as any;
+    if (!pay) throw new Error('Payment not found');
+    const note = `Payment ${pay.payment_no} (${pay.mode}, ${(Number(pay.amount_paise) / 100).toFixed(2)}, ${pay.date}) removed: ${reason}`;
+    const debtors = this.postingService.getAccountByCode('1100');
+    const amount = Number(pay.amount_paise);
+    this.postingService.createJournalEntry({
+      entryNo: `REV-PAY-${String(pay.payment_no).replace(/[^A-Za-z0-9_-]/g, '_')}-${Date.now().toString().slice(-5)}`,
+      date: new Date().toISOString().split('T')[0]!,
+      docType: 'REV_PAYMENT_IN',
+      docId: paymentId,
+      narration: note,
+      branchId: String(pay.branch_id),
+      lines: [
+        { accountId: String(debtors.id), partyId: String(pay.party_id), debitPaise: amount, creditPaise: 0, narration: note },
+        { accountId: String(pay.account_id), partyId: String(pay.party_id), debitPaise: 0, creditPaise: amount, narration: note },
+      ],
+    });
+    this.sql.exec('DELETE FROM payments WHERE id = ?', paymentId);
+    const invoiceId = pay.invoice_id ? String(pay.invoice_id) : null;
+    if (!invoiceId) return { invoiceId: null, balancePaise: 0, status: null };
+    const inv = this.sql.exec('SELECT total_paise, status FROM invoices WHERE id = ?', invoiceId).toArray()[0] as any;
+    const paid = this.invoicePayments(invoiceId).reduce((s: number, p: any) => s + Number(p.amount_paise), 0);
+    const balance = Math.max(0, Number(inv.total_paise) - paid - this.creditNotesTotal(invoiceId));
+    const status = inv.status === 'CANCELLED' ? 'CANCELLED' : balance === 0 ? 'PAID' : paid > 0 ? 'PARTIALLY_PAID' : 'UNPAID';
+    this.sql.exec('UPDATE invoices SET paid_amount_paise = ?, balance_amount_paise = ?, status = ?, updated_at = ? WHERE id = ?', paid, balance, status, new Date().toISOString(), invoiceId);
+    return { invoiceId, balancePaise: balance, status };
+  }
+
+  /**
+   * Change an invoice (customer, lines, dates, notes) and keep its number. Works on unpaid invoices and on cancelled ones:
+   * a cancelled invoice that is edited comes back to life, so its number can go to another client.
+   */
+  editInvoice(id: string, input: CreateInvoiceInput): any {
+    const inv = this.getInvoice(id);
+    if (!inv) throw new Error('Invoice not found');
+    if (this.invoicePayments(id).length > 0) throw new Error('This invoice has payments. Remove the payment records first, then edit it.');
+    if (this.creditNotesTotal(id) > 0) throw new Error('This invoice has a credit note, so it cannot be edited.');
+    if (this.hasLiveEInvoice(id)) throw new Error('An e-invoice (IRN) was generated for this invoice, so it cannot be edited. Cancel the IRN first.');
+    if (inv.status !== 'CANCELLED') this.postingService.reverseDocument('INVOICE', id, 'Edited');
+    this.sql.exec('DELETE FROM invoice_lines WHERE invoice_id = ?', id);
+    return this.createInvoice(
+      { ...input, paidAmountPaise: 0 },
+      { id, invoiceNo: String(inv.invoice_no), seriesId: String(inv.series_id), createdAt: String(inv.created_at), createdById: String(inv.created_by_id) },
+    );
+  }
+
+  /**
+   * Delete an invoice completely. Its figures are taken out of the books (a reversal entry stays in the journal), the record is hidden
+   * and its bill number is free again for a new invoice. Payments must be removed first.
+   */
+  deleteInvoice(id: string, reason: string): { invoiceNo: string } {
+    const inv = this.getInvoice(id);
+    if (!inv) throw new Error('Invoice not found');
+    if (this.invoicePayments(id).length > 0) throw new Error('This invoice has payments. Remove the payment records first, then delete it.');
+    if (this.creditNotesTotal(id) > 0) throw new Error('This invoice has a credit note, so it cannot be deleted. Cancel it instead.');
+    if (this.hasLiveEInvoice(id)) throw new Error('An e-invoice (IRN) was generated for this invoice, so it cannot be deleted. Cancel the IRN first.');
+    const now = new Date().toISOString();
+    if (inv.status !== 'CANCELLED') this.postingService.reverseDocument('INVOICE', id, `Deleted: ${reason}`);
+    const original = String(inv.invoice_no);
+    this.sql.exec('DELETE FROM invoice_share_tokens WHERE invoice_id = ?', id);
+    this.sql.exec(
+      `UPDATE invoices SET deleted_at = ?, invoice_no = ?, status = 'CANCELLED',
+         notes = CASE WHEN notes IS NULL THEN ? ELSE notes || ' | ' || ? END, updated_at = ? WHERE id = ?`,
+      now, `${original}~deleted-${id.slice(0, 6)}`, `Deleted: ${reason}`, `Deleted: ${reason}`, now, id,
+    );
+    return { invoiceNo: original };
+  }
+
+  /** Bill numbers of deleted invoices that no live invoice uses, so the form can offer them again. */
+  freeInvoiceNumbers(): string[] {
+    const rows = this.sql.exec("SELECT invoice_no FROM invoices WHERE deleted_at IS NOT NULL AND invoice_no LIKE '%~deleted-%' ORDER BY deleted_at DESC LIMIT 100").toArray() as { invoice_no: string }[];
+    const out: string[] = [];
+    for (const r of rows) {
+      const original = String(r.invoice_no).split('~deleted-')[0]!;
+      if (this.sql.exec('SELECT 1 FROM invoices WHERE invoice_no = ? LIMIT 1', original).toArray().length === 0 && !out.includes(original)) out.push(original);
+    }
+    return out;
   }
 
   /**

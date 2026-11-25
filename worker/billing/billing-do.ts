@@ -1,3 +1,4 @@
+import { buildGstSummary } from './services/gst-summary';
 import { DurableObject } from 'cloudflare:workers';
 import { applyColumnAdditions, ensureSystemAccounts, BUSINESS_MIGRATION_SQL } from './db/business/migrations';
 import { allocateDocNumber, listSeriesSettings, saveSeriesSetting } from './services/numbering';
@@ -744,6 +745,22 @@ export class BillingDO extends DurableObject {
     });
   }
 
+  async editSalesInvoice(id: string, input: CreateInvoiceInput): Promise<any> {
+    return (this.ctx.storage as any).transactionSync(() => this.invoiceService.editInvoice(id, input));
+  }
+
+  async deleteSalesInvoice(id: string, reason: string): Promise<{ invoiceNo: string }> {
+    return (this.ctx.storage as any).transactionSync(() => this.invoiceService.deleteInvoice(id, reason));
+  }
+
+  async removeSalesPayment(paymentId: string, reason: string): Promise<any> {
+    return (this.ctx.storage as any).transactionSync(() => this.invoiceService.removePayment(paymentId, reason));
+  }
+
+  async freeInvoiceNumbers(): Promise<string[]> {
+    return this.invoiceService.freeInvoiceNumbers();
+  }
+
   async cancelSalesInvoice(id: string, reason: string): Promise<boolean> {
     return (this.ctx.storage as any).transactionSync(() => {
       return this.invoiceService.cancelInvoice(id, reason);
@@ -858,6 +875,10 @@ export class BillingDO extends DurableObject {
 
   async getBalanceSheet(params?: { asOfDate?: string; branchId?: string }): Promise<any> {
     return this.reportService.getBalanceSheet(params);
+  }
+
+  async gstSummary(month: string): Promise<any> {
+    return buildGstSummary(this.ctx.storage.sql as any, month);
   }
 
   async getGstr1Report(params?: { returnPeriod?: string; branchId?: string }): Promise<any> {

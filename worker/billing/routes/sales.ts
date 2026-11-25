@@ -64,6 +64,9 @@ salesRoutes.get('/invoices', async (c) => {
   return c.json({ ok: true, ...result });
 });
 
+// 1b. Bill numbers freed by deleted invoices (offered again on the invoice form)
+salesRoutes.get('/invoices/free-numbers', async (c) => c.json({ ok: true, numbers: await c.get('businessStub').freeInvoiceNumbers() }));
+
 // 2. GET INVOICE DETAIL
 salesRoutes.get('/invoices/:id', async (c) => {
   const stub =
@@ -146,6 +149,8 @@ export const createInvoiceSchema = z.object({
   bankAccountId: z.string().max(64).optional(),
   /** Name printed under "Authorised signatory" */
   signatoryName: z.string().max(80).optional(),
+  /** A specific bill number (a freed one) instead of the next in the series */
+  invoiceNo: z.string().trim().min(1).max(40).optional(),
 });
 
 salesRoutes.post('/invoices', async (c) => {
@@ -330,6 +335,48 @@ salesRoutes.post('/invoices/:id/credit-note', async (c) => {
     return c.json({ ok: true, ...result }, 201);
   } catch (err: any) {
     return c.json({ error: err.message || 'Failed to create credit note' }, 400);
+  }
+});
+
+// 5b. EDIT INVOICE (keeps the bill number; a cancelled invoice that is edited comes back, so its number can go to another client)
+salesRoutes.put('/invoices/:id', async (c) => {
+  const stub = c.get('businessStub');
+  const parsed = createInvoiceSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: 'Validation failed', details: parsed.error.format() }, 400);
+  const ownOnly = c.get('ownOnlyUserId' as never) as string | undefined;
+  const existing = await stub.getSalesInvoice(c.req.param('id'));
+  if (!existing || (ownOnly && existing.created_by_id !== ownOnly)) return c.json({ error: 'Invoice not found' }, 404);
+  try {
+    const loc = await locate(c, { branchId: parsed.data.branchId ?? existing.branch_id, warehouseId: parsed.data.warehouseId });
+    const { invoiceNo: _ignored, ...data } = parsed.data;
+    const result = await stub.editSalesInvoice(c.req.param('id'), { ...data, branchId: loc.branchId, warehouseId: loc.warehouseId ?? undefined, createdById: String(c.get('userId') ?? 'system') });
+    return c.json({ ok: true, ...result });
+  } catch (err: any) {
+    return c.json({ error: err.message || 'Failed to edit invoice' }, 400);
+  }
+});
+
+// 5c. DELETE INVOICE (frees the bill number; payments must be removed first)
+salesRoutes.delete('/invoices/:id', async (c) => {
+  const stub = c.get('businessStub');
+  const body = await c.req.json().catch(() => ({}));
+  const reason = String(body?.reason || 'Deleted by user').slice(0, 300);
+  try {
+    return c.json({ ok: true, ...(await stub.deleteSalesInvoice(c.req.param('id'), reason)) });
+  } catch (err: any) {
+    return c.json({ error: err.message || 'Failed to delete invoice' }, 400);
+  }
+});
+
+// 5d. REMOVE A RECORDED PAYMENT
+salesRoutes.delete('/payments/:id', async (c) => {
+  const stub = c.get('businessStub');
+  const body = await c.req.json().catch(() => ({}));
+  const reason = String(body?.reason || 'Removed by user').slice(0, 300);
+  try {
+    return c.json({ ok: true, ...(await stub.removeSalesPayment(c.req.param('id'), reason)) });
+  } catch (err: any) {
+    return c.json({ error: err.message || 'Failed to remove payment' }, 400);
   }
 });
 

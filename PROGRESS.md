@@ -1,4 +1,4 @@
-# Gexart Sales CRM — Progress
+# Sales Gexart CRM — Progress
 
 Last updated: 2026-10-29
 

@@ -43,6 +43,22 @@ export function NewInvoicePage() {
   const [ref] = useState(newRef);
   const [draftId, setDraftId] = useState<string | null>(sp.get("draft"));
   const [loadedDefaults, setLoadedDefaults] = useState(false);
+  const editId = sp.get("edit");
+  const [billNo, setBillNo] = useState("");
+  const freeNos = useQuery({ queryKey: ["billing-free-numbers"], queryFn: () => bill.get("/sales/invoices/free-numbers"), enabled: direct && !editId, staleTime: 30_000 });
+  const editing = useQuery({ queryKey: ["billing-invoice-edit", editId], queryFn: () => bill.get(`/sales/invoices/${editId}`), enabled: !!editId, gcTime: 0 });
+  const editInv = editing.data?.invoice;
+  useEffect(() => {
+    if (!editInv) return;
+    setLoadedDefaults(true);
+    setParty({ id: editInv.party_id, name: editInv.party_name, phone: editInv.party_phone, stateCode: editInv.party_state_code, gstin: editInv.party_gstin ?? null });
+    setInv(editInv.date); setDue(editInv.due_date);
+    const lineDisc = editInv.lines.reduce((a: number, l: any) => a + (l.discount_paise || 0), 0); // eslint-disable-line @typescript-eslint/no-explicit-any
+    setLines(editInv.lines.map((l: any) => ({ itemId: l.item_id, name: l.name, hsnSac: l.hsn_sac || "", unitId: l.unit_id, qty: String(l.quantity_thousandths / 1000), price: String(l.unit_price_paise / 100), disc: l.discount_paise ? String(l.discount_paise / 100) : "", taxPct: l.tax_rate_basis_points / 100, inclusive: false }))); // eslint-disable-line @typescript-eslint/no-explicit-any
+    const extraPaise = Math.max(0, (editInv.discount_paise || 0) - lineDisc);
+    setExtra(extraPaise ? String(extraPaise / 100) : "");
+    setNotes(editInv.notes ?? ""); setTerms(editInv.terms ?? ""); setBank(editInv.bank_account_id ?? ""); setSignatory(editInv.signatory_name ?? "");
+  }, [editInv]);
 
   // Defaults from billing settings (credit days, notes, terms, bank, signatory), applied once.
   useEffect(() => {
@@ -89,6 +105,7 @@ export function NewInvoicePage() {
     paymentMode: firstPaid > 0 ? mode : "CREDIT", paidAmountPaise: firstPaid,
     items: lines.map((l) => ({ itemId: l.itemId, name: l.name, hsnSac: l.hsnSac, quantityThousandths: Math.round(Number(l.qty) * 1000), unitId: l.unitId, unitPricePaise: rupeesToPaise(l.price), discountPaise: rupeesToPaise(l.disc), taxRatePercent: l.taxPct, isTaxInclusive: l.inclusive })),
     extraDiscountPaise: rupeesToPaise(String(extraRupees)), enableRoundOff: roundOff, notes: notes || undefined, terms: terms || undefined, bankAccountId: bank || undefined, signatoryName: signatory || undefined,
+    invoiceNo: !editId && billNo ? billNo : undefined,
   });
   const formState = () => ({ party, inv, due, lines, extra, extraPct, roundOff, notes, terms, bank, signatory });
 
@@ -106,8 +123,16 @@ export function NewInvoicePage() {
     nav(`/billing/invoices/${i?.id}`);
   };
   const save = useMutation({
-    mutationFn: (_print: boolean) => bill.post("/sales/invoices", body(), { "x-client-ref": ref }),
-    onSuccess: (r, print) => finish(r, print),
+    mutationFn: (_print: boolean) => (editId ? bill.put(`/sales/invoices/${editId}`, body()) : bill.post("/sales/invoices", body(), { "x-client-ref": ref })),
+    onSuccess: (r, print) => {
+      if (editId) {
+        qc.invalidateQueries({ queryKey: ["billing-invoices"] });
+        qc.invalidateQueries({ queryKey: ["billing-invoice", editId] });
+        toast("success", `Invoice ${r.invoice?.invoiceNo ?? ""} updated`);
+        return nav(`/billing/invoices/${editId}`);
+      }
+      finish(r, print);
+    },
     onError: (e) => {
       if (!(e instanceof ApiError) && !direct) {
         queueInvoiceRequest(body(), party!.name, ref);
@@ -128,11 +153,14 @@ export function NewInvoicePage() {
   const row = (label: string, v: string, strong = false) => <div className={`flex justify-between ${strong ? "border-t border-line pt-2 text-lg font-semibold" : "text-[13px]"}`}><span className={strong ? "" : "text-muted"}>{label}</span><span className="tabular-nums">{v}</span></div>;
   return (
     <div className="pb-32">
-      <PageHeader title={direct ? "New invoice" : "Request invoice"} crumbs={[{ label: "Invoices", to: "/billing/invoices" }, { label: draftId ? "Draft" : "New" }]} subtitle={direct ? undefined : "It becomes a real invoice only after it is approved"} />
+      <PageHeader title={editId ? `Edit ${editInv?.invoice_no ?? "invoice"}` : direct ? "New invoice" : "Request invoice"} crumbs={[{ label: "Invoices", to: "/billing/invoices" }, { label: editId ? "Edit" : draftId ? "Draft" : "New" }]} subtitle={editId ? (editInv?.status === "CANCELLED" ? "This invoice is cancelled. Saving brings it back with the same number." : "The bill number stays the same") : direct ? undefined : "It becomes a real invoice only after it is approved"} />
       <div className="grid gap-4 px-4 sm:px-6 lg:grid-cols-[1fr_340px]">
         <div className="min-w-0 space-y-4">
           <Card className="space-y-3 p-3.5">
             <PartyPicker value={party} onPick={setParty} />
+            {direct && !editId && (freeNos.data?.numbers?.length ?? 0) > 0 && (
+              <Field label="Bill number" help="Numbers of deleted invoices can be used again"><Select value={billNo} onChange={(e) => setBillNo(e.target.value)} placeholder="Automatic (next number)" options={(freeNos.data?.numbers ?? []).map((n: string) => ({ value: n, label: n }))} /></Field>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Invoice date"><input className="input" type="date" value={inv} onChange={(e) => setInv(e.target.value)} /></Field>
               <Field label="Due date"><input className="input" type="date" value={due} onChange={(e) => setDue(e.target.value)} /></Field>
@@ -160,7 +188,7 @@ export function NewInvoicePage() {
           </Card>
           <Card className="space-y-3 p-3.5">
             <Field label="Bank on this invoice"><Select value={bank} placeholder="Default bank" onChange={(e) => setBank(e.target.value)} options={(banks.data?.bankAccounts ?? []).filter((b: any) => b.accountType === "BANK").map((b: any) => ({ value: b.id, label: `${b.name} ${b.maskedAccountNumber ?? ""}` }))} /></Field> {/* eslint-disable-line @typescript-eslint/no-explicit-any */}
-            {direct && (
+            {direct && !editId && (
               <div className="space-y-2 rounded-md border border-line p-2.5">
                 <div className="flex items-center justify-between text-[13px] font-medium"><span>Payment received</span><label className="flex items-center gap-1.5 text-xs font-normal"><input type="checkbox" className="size-4" checked={paidFull} onChange={(e) => setPaidFull(e.target.checked)} />Mark as fully paid</label></div>
                 <div className="grid grid-cols-2 gap-2">
@@ -183,7 +211,7 @@ export function NewInvoicePage() {
                 ? <Select value={signatory} placeholder="Default" onChange={(e) => setSignatory(e.target.value)} options={S.branding.signatures.map((x: any) => ({ value: x.name, label: x.name }))} /> // eslint-disable-line @typescript-eslint/no-explicit-any
                 : <input className="input" value={signatory} onChange={(e) => setSignatory(e.target.value)} placeholder="Authorised signatory name" />}
             </Field>
-            {direct && <label className="flex min-h-9 cursor-pointer items-center gap-2.5 text-[13px]"><input type="checkbox" className="size-4" checked={autoWa} onChange={(e) => (setAutoWa(e.target.checked), setAutoWhatsApp(e.target.checked))} />Open WhatsApp with the invoice after saving</label>}
+            {direct && !editId && <label className="flex min-h-9 cursor-pointer items-center gap-2.5 text-[13px]"><input type="checkbox" className="size-4" checked={autoWa} onChange={(e) => (setAutoWa(e.target.checked), setAutoWhatsApp(e.target.checked))} />Open WhatsApp with the invoice after saving</label>}
             {!direct && <p className="text-xs text-muted">Your role can only request invoices.</p>}
           </Card>
         </div>
@@ -191,9 +219,9 @@ export function NewInvoicePage() {
       <div className="fixed inset-x-0 bottom-14 z-30 border-t border-line bg-white p-3 lg:bottom-0 lg:left-60 dark:bg-night">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2">
           <div className="min-w-0 flex-1 basis-40"><div className="text-[11px] text-muted">Total</div><div className="text-lg font-semibold tabular-nums">{inr(total)}</div></div>
-          <Button loading={saveDraft.isPending} disabled={!party && lines.every((l) => !l.itemId)} onClick={() => saveDraft.mutate()}>Save as draft</Button>
-          {direct && <Button icon={Printer} disabled={!ready} loading={save.isPending && save.variables === true} onClick={() => save.mutate(true)}>Save &amp; print</Button>}
-          <Button variant="primary" className="h-10 px-5 text-sm" disabled={!ready} loading={save.isPending && save.variables === false} onClick={() => save.mutate(false)}>{direct ? "Save" : "Send for approval"}</Button>
+          {!editId && <Button loading={saveDraft.isPending} disabled={!party && lines.every((l) => !l.itemId)} onClick={() => saveDraft.mutate()}>Save as draft</Button>}
+          {direct && !editId && <Button icon={Printer} disabled={!ready} loading={save.isPending && save.variables === true} onClick={() => save.mutate(true)}>Save &amp; print</Button>}
+          <Button variant="primary" className="h-10 px-5 text-sm" disabled={!ready} loading={save.isPending && save.variables === false} onClick={() => save.mutate(false)}>{editId ? "Save changes" : direct ? "Save" : "Send for approval"}</Button>
         </div>
       </div>
     </div>

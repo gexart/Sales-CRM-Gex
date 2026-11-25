@@ -22,20 +22,29 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle?: Re
         <BrandMark variant="dark" className="pointer-events-none absolute -right-28 bottom-[-12%] w-[80%] opacity-[0.07]" />
         <div className="pointer-events-none absolute -top-40 -left-40 size-[480px] rounded-full bg-brand-500/20 blur-3xl" />
         <div className="relative mt-auto max-w-md">
-          <p className="text-[11px] font-semibold tracking-[0.2em] text-brand-400 uppercase">Gexart Sales</p>
+          <p className="text-[11px] font-semibold tracking-[0.2em] text-brand-400 uppercase">Sales Gexart</p>
           <h2 className="mt-3 text-3xl leading-tight font-semibold">Every account, audit, pitch and call in one place.</h2>
           <p className="mt-3 text-sm text-snow/55">Research prospects, run audits, send proposals and track every deal from first touch to close.</p>
         </div>
       </aside>
-      <main className="flex items-center justify-center p-6">
-        <div className="w-full max-w-sm">
-          <div className="mb-8 lg:hidden">
-            <Logo />
+      <main className="flex min-h-dvh flex-col lg:min-h-0 lg:items-center lg:justify-center lg:p-6">
+        {/* Phone: a navy brand header that sits under the status bar, then the form on a card. */}
+        <header className="relative overflow-hidden bg-night px-6 pb-14 pt-[calc(env(safe-area-inset-top)+2rem)] text-snow lg:hidden">
+          <BrandMark variant="dark" className="pointer-events-none absolute -right-10 -top-6 w-44 opacity-[0.09]" />
+          <div className="pointer-events-none absolute -left-24 -top-24 size-64 rounded-full bg-brand-500/25 blur-3xl" />
+          <div className="relative">
+            <Logo onDark />
+            <p className="mt-6 text-[11px] font-semibold tracking-[0.2em] text-brand-400 uppercase">Sales Gexart</p>
+            <p className="mt-1 text-[15px] text-snow/70">CRM, billing and calls in one place.</p>
           </div>
-          <h1 className="text-xl font-semibold">{title}</h1>
-          {subtitle && <p className="mt-1 text-[13px] text-muted">{subtitle}</p>}
-          {children}
-          <p className="mt-10 text-[11px] text-stone-400">© {new Date().getFullYear()} Gexart</p>
+        </header>
+        <div className="-mt-8 flex-1 rounded-t-3xl bg-canvas px-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-8 lg:mt-0 lg:flex-none lg:rounded-none lg:p-0">
+          <div className="mx-auto w-full max-w-sm">
+            <h1 className="text-2xl font-semibold tracking-tight lg:text-xl">{title}</h1>
+            {subtitle && <p className="mt-1.5 text-sm text-muted lg:text-[13px]">{subtitle}</p>}
+            {children}
+            <p className="mt-10 text-center text-[11px] text-stone-400 lg:text-left">© {new Date().getFullYear()} Gexart</p>
+          </div>
         </div>
       </main>
     </div>
@@ -73,14 +82,14 @@ export function AuthPage({ mode }: { mode: "login" | "setup" }) {
         )}
         {mode === "setup" && (
           <Field label="Full name">
-            <input className="input h-10" autoComplete="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <input className="input h-12 text-base lg:h-10 lg:text-sm" autoComplete="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </Field>
         )}
         <Field label="Work email">
-          <input className="input h-10" type="email" autoComplete="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <input className="input h-12 text-base lg:h-10 lg:text-sm" type="email" autoComplete="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         </Field>
         <Field label="Password" help={mode === "setup" ? "At least 10 characters." : undefined}>
-          <PasswordInput className="h-10" autoComplete={mode === "setup" ? "new-password" : "current-password"} required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          <PasswordInput className="h-12 text-base lg:h-10 lg:text-sm" autoComplete={mode === "setup" ? "new-password" : "current-password"} required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
         </Field>
         {mode === "login" && (
           <div className="-mt-2 text-right text-xs">
@@ -94,7 +103,7 @@ export function AuthPage({ mode }: { mode: "login" | "setup" }) {
           </div>
         )}
         {error && <Banner tone="error">{error}</Banner>}
-        <Button type="submit" variant="primary" loading={busy} className="h-10 w-full">
+        <Button type="submit" variant="primary" loading={busy} className="h-12 w-full text-base lg:h-10 lg:text-sm">
           {mode === "setup" ? "Create administrator" : "Sign in"}
         </Button>
       </form>
@@ -153,10 +162,10 @@ export function ForgotPasswordPage() {
     <AuthShell title="Forgot your password?" subtitle="Enter your work email and we will send you a link to choose a new one.">
       <form onSubmit={submit} className="mt-7 space-y-4">
         <Field label="Work email">
-          <input className="input h-10" type="email" autoComplete="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input className="input h-12 text-base lg:h-10 lg:text-sm" type="email" autoComplete="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         {error && <Banner tone="error">{error}</Banner>}
-        <Button type="submit" variant="primary" loading={busy} className="h-10 w-full">
+        <Button type="submit" variant="primary" loading={busy} className="h-12 w-full text-base lg:h-10 lg:text-sm">
           Email me a reset link
         </Button>
       </form>
@@ -204,20 +213,20 @@ export function ResetPasswordPage() {
           <span>Your new password is saved and any other signed-in sessions were ended. Sign in to continue.</span>
         </div>
         {/* Full page load so a stale signed-in state is cleared. */}
-        <a href="/?reset=1"><Button variant="primary" className="mt-5 h-10 w-full">Go to sign in</Button></a>
+        <a href="/?reset=1"><Button variant="primary" className="mt-5 h-12 w-full text-base lg:h-10 lg:text-sm">Go to sign in</Button></a>
       </AuthShell>
     );
   return (
     <AuthShell title="Choose a new password" subtitle="Use at least 10 characters. A passphrase of several words is easy to remember and hard to guess.">
       <form onSubmit={submit} className="mt-7 space-y-4">
         <Field label="New password" help="At least 10 characters.">
-          <PasswordInput className="h-10" autoComplete="new-password" required minLength={10} autoFocus value={pw} onChange={(e) => setPw(e.target.value)} />
+          <PasswordInput className="h-12 text-base lg:h-10 lg:text-sm" autoComplete="new-password" required minLength={10} autoFocus value={pw} onChange={(e) => setPw(e.target.value)} />
         </Field>
         <Field label="Confirm new password" error={mismatch ? "Passwords do not match" : undefined}>
-          <PasswordInput className="h-10" autoComplete="new-password" required minLength={10} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+          <PasswordInput className="h-12 text-base lg:h-10 lg:text-sm" autoComplete="new-password" required minLength={10} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         </Field>
         {error && <Banner tone="error">{error}</Banner>}
-        <Button type="submit" variant="primary" loading={busy} disabled={pw.length < 10 || mismatch} className="h-10 w-full">
+        <Button type="submit" variant="primary" loading={busy} disabled={pw.length < 10 || mismatch} className="h-12 w-full text-base lg:h-10 lg:text-sm">
           Save password
         </Button>
         {error && /expired|already used/i.test(error) && (

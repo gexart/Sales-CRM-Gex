@@ -34,6 +34,15 @@ reportRoutes.get('/balance-sheet', async (c) => {
   return c.json(report);
 });
 
+// GST for a month, worked out from the invoice lines
+reportRoutes.get('/gst-summary', async (c) => {
+  try {
+    return c.json({ ok: true, ...(await getStub(c).gstSummary(c.req.query('month') || new Date().toISOString().substring(0, 7))) });
+  } catch (err: any) {
+    return c.json({ error: err.message || 'Could not build the GST report' }, 400);
+  }
+});
+
 // 3. GET /api/reports/gstr1
 reportRoutes.get('/gstr1', async (c) => {
   const stub = getStub(c);

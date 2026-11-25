@@ -1,7 +1,7 @@
 {
-  "name": "Gexart Sales",
-  "short_name": "Gexart Sales",
-  "description": "Gexart Sales: CRM, billing, approvals, proposals and calls in one app.",
+  "name": "Sales Gexart",
+  "short_name": "Sales Gexart",
+  "description": "Sales Gexart: CRM, billing, approvals, proposals and calls in one app.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

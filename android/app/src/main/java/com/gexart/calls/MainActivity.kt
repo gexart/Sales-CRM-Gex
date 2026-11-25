@@ -105,18 +105,22 @@ class MainActivity : Activity() {
             setOnChildScrollUpCallback { _, _ -> web.scrollY > 0 }
             setOnRefreshListener { web.reload() }
         }
-        // Android 15 draws apps edge to edge: keep the page clear of the status bar, the gesture bar and the keyboard.
-        swipe.setBackgroundColor(Color.parseColor("#141E2E"))
-        swipe.setOnApplyWindowInsetsListener { v, insets ->
-            val bars = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(android.view.WindowInsets.Type.systemBars()) else null
-            val ime = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(android.view.WindowInsets.Type.ime()) else null
-            val top = bars?.top ?: insets.systemWindowInsetTop
-            val bottom = maxOf(bars?.bottom ?: insets.systemWindowInsetBottom, ime?.bottom ?: 0)
-            v.setPadding(0, top, 0, bottom)
-            insets
+        // Keep the page clear of the status bar, the gesture bar and the keyboard. The padding goes on a plain wrapper, never on the
+        // pull-to-refresh layout or the WebView, which can stop the page repainting.
+        val frame = android.widget.FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#141E2E"))
+            addView(swipe, android.widget.FrameLayout.LayoutParams(-1, -1))
+            setOnApplyWindowInsetsListener { v, insets ->
+                val top = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(android.view.WindowInsets.Type.systemBars()).top else insets.systemWindowInsetTop
+                val sysBottom = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(android.view.WindowInsets.Type.systemBars()).bottom else insets.systemWindowInsetBottom
+                val ime = if (Build.VERSION.SDK_INT >= 30) insets.getInsets(android.view.WindowInsets.Type.ime()).bottom else 0
+                v.setPadding(0, top, 0, maxOf(sysBottom, ime))
+                @Suppress("DEPRECATION")
+                if (Build.VERSION.SDK_INT >= 30) android.view.WindowInsets.CONSUMED else insets.consumeSystemWindowInsets()
+            }
         }
-        setContentView(swipe)
-        swipe.requestApplyInsets()
+        setContentView(frame)
+        frame.requestApplyInsets()
         if (savedInstanceState == null || web.restoreState(savedInstanceState) == null) web.loadUrl(deepLink() ?: home)
         // Light status-bar icons on the dark header.
         @Suppress("DEPRECATION")

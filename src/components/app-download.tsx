@@ -1,4 +1,4 @@
-// Settings → Phone app: download the Gexart Sales Android app (button or QR code) and, for admins,
+// Settings → Phone app: download the Sales Gexart Android app (button or QR code) and, for admins,
 // publish new builds (import from GitHub Actions or upload an .apk).
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -61,7 +61,7 @@ export function AndroidAppCard() {
           <div className="relative flex items-center gap-3">
             <span className="flex size-12 items-center justify-center rounded-[14px] bg-snow shadow-sm"><BrandMark className="h-8 w-[30px]" /></span>
             <div>
-              <div className="text-[15px] font-semibold">Gexart Sales for Android</div>
+              <div className="text-[15px] font-semibold">Sales Gexart for Android</div>
               <div className="text-xs text-snow/55">The whole app in one: CRM, billing, approvals and call recording</div>
             </div>
           </div>

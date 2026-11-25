@@ -49,7 +49,7 @@ async function upload<T>(path: string, form: FormData): Promise<T> {
 
 export const api = {
   upload: <T = { data: Row }>(path: string, form: FormData) => upload<T>(path, form),
-  del: <T = { data: Row }>(path: string) => request<T>("DELETE", path),
+  del: <T = { data: Row }>(path: string, body?: unknown) => request<T>("DELETE", path, body),
   get: <T = { data: Row }>(path: string) => request<T>("GET", path),
   post: <T = { data: Row }>(path: string, body?: unknown, headers?: Record<string, string>) => request<T>("POST", path, body ?? {}, headers),
   patch: <T = { data: Row }>(path: string, body: unknown) => request<T>("PATCH", path, body),

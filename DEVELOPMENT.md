@@ -1,4 +1,4 @@
-# Gexart Sales CRM — Development guide
+# Sales Gexart CRM — Development guide
 
 Internal sales CRM for Gexart. One Cloudflare Worker serves both the API (`/api/v1/*`, Hono) and the
 React single-page app (static assets). Data lives in D1; files (sales assets, generated PDFs/decks,
