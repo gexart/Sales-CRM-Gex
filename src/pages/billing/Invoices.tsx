@@ -238,7 +238,8 @@ export function InvoiceDetailPage() {
             {inv.payments.map((p: any) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
               <div key={p.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-[13px]">
                 <div className="min-w-0"><div className="font-medium">{inr(p.amount_paise)} <span className="font-normal text-muted">· {p.mode}</span></div><div className="text-xs text-muted">{p.payment_no} · {fmtDate(p.date)}</div></div>
-                {can("payment.remove") && <Button size="sm" variant="ghost" icon={Trash2} onClick={() => (setReason(""), setRmPay(p))}>Remove</Button>}
+                <div className="flex shrink-0 items-center gap-1"><Button size="sm" variant="ghost" onClick={() => window.open(`/api/v1/billing/payments/${p.id}/receipt?inline=1`, "_blank", "noopener")}>Receipt</Button>
+                {can("payment.remove") && <Button size="sm" variant="ghost" icon={Trash2} onClick={() => (setReason(""), setRmPay(p))}>Remove</Button>}</div>
               </div>
             ))}
           </Card>

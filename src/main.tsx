@@ -43,6 +43,7 @@ const BillingHome = lazy(() => import("./pages/billing/Home").then((m) => ({ def
 const ApprovalsPage = lazy(() => import("./pages/billing/Approvals").then((m) => ({ default: m.ApprovalsPage })));
 const AccessPage = lazy(() => import("./pages/billing/Access").then((m) => ({ default: m.AccessPage })));
 const InvoicesPage = lazy(() => import("./pages/billing/Invoices").then((m) => ({ default: m.InvoicesPage })));
+const PaymentsPage = lazy(() => import("./pages/billing/Payments").then((m) => ({ default: m.PaymentsPage })));
 const NewInvoicePage = lazy(() => import("./pages/billing/InvoiceForm").then((m) => ({ default: m.NewInvoicePage })));
 const PurchasesPage = lazy(() => import("./pages/billing/Purchases").then((m) => ({ default: m.PurchasesPage })));
 const CreditNotesPage = lazy(() => import("./pages/billing/Purchases").then((m) => ({ default: m.CreditNotesPage })));
@@ -129,6 +130,7 @@ function Gate() {
         <Route path="billing" element={<BillingHome />} />
         <Route path="billing/approvals" element={<ApprovalsPage />} />
         <Route path="billing/invoices" element={<InvoicesPage />} />
+        <Route path="billing/payments" element={<PaymentsPage />} />
         <Route path="billing/invoices/new" element={<NewInvoicePage />} />
         <Route path="billing/invoices/:id" element={<InvoiceDetailPage />} />
         <Route path="billing/documents" element={<DocumentsPage />} />

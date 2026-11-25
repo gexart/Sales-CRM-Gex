@@ -33,6 +33,8 @@ const fileSchema = z.object({
   })).min(1).max(500),
   dryRun: z.boolean().default(false),
   markPaid: z.boolean().default(true),
+  /** Add only the invoices that are not in the books yet (matched by bill number); company, numbering and settings stay as they are. */
+  addMissing: z.boolean().default(false),
 });
 
 historyImportRoutes.get("/status", async (c) => {
@@ -47,16 +49,20 @@ historyImportRoutes.post("/", async (c) => {
   const stub: any = c.env.BILLING_DO.get(c.env.BILLING_DO.idFromName("default"));
   await stub.initBusiness({ businessId: "default", businessName: c.env.APP_NAME || "Gexart", stateCode: "19", address: "", phone: "" });
   const existing: number = await stub.countInvoices();
-  if (existing > 0 && !f.dryRun) throw new ApiError(409, "not_empty", `This workspace already has ${existing} invoice(s). The old-invoice import only runs on an empty one.`);
+  if (existing > 0 && !f.dryRun && !f.addMissing) throw new ApiError(409, "not_empty", `This workspace already has ${existing} invoice(s). Use "Add only the missing invoices" to add new ones from the file.`);
 
-  const invoices = [...f.invoices].sort((a, b) => a.n - b.n);
+  const addOnly = f.addMissing && existing > 0;
+  const haveNos = new Set<string>(addOnly || f.dryRun ? ((await stub.listSalesInvoices({ limit: 5000 }))?.invoices ?? []).map((i: any) => String(i.invoice_no)) : []);
+  const skipped = addOnly || (f.dryRun && f.addMissing) ? f.invoices.filter((i) => haveNos.has(i.invoiceNo)).length : 0;
+  const invoices = [...f.invoices].filter((i) => !((addOnly || (f.dryRun && f.addMissing)) && haveNos.has(i.invoiceNo))).sort((a, b) => a.n - b.n);
+  if (invoices.length === 0) return c.json({ data: { dryRun: f.dryRun, existingInvoices: existing, customers: 0, products: 0, invoices: 0, skippedExisting: skipped, billedPaise: 0, receivedPaise: 0, createdInvoices: 0, paymentsRecorded: 0, totalMismatches: [], warnings: ["Every invoice in the file is already in your books, so nothing was added."] } });
   const partyKey = (p: { gstin?: string | null; name: string }) => (p.gstin || p.name).toUpperCase();
   const itemKey = (i: { name: string; hsn: string }) => `${i.name.toLowerCase()}|${i.hsn}`;
   const parties = new Map(invoices.map((i) => [partyKey(i.party), i.party]));
   const items = new Map<string, (typeof invoices)[number]["items"][number]>();
   for (const inv of invoices) for (const it of inv.items) items.set(itemKey(it), it); // last price wins
   const summary = {
-    dryRun: f.dryRun, existingInvoices: existing, customers: parties.size, products: items.size, invoices: invoices.length,
+    dryRun: f.dryRun, existingInvoices: existing, skippedExisting: skipped, customers: parties.size, products: items.size, invoices: invoices.length,
     billedPaise: invoices.reduce((a, i) => a + i.totalPaise, 0), receivedPaise: invoices.reduce((a, i) => a + i.paidPaise, 0),
   };
   if (f.dryRun) return c.json({ data: summary });
@@ -66,11 +72,12 @@ historyImportRoutes.post("/", async (c) => {
   const unitOf = (name: string) => units.find((u) => [u.code, u.symbol, u.name].some((x) => String(x || "").toLowerCase() === name.toLowerCase())) ?? units.find((u) => u.is_default) ?? units[0];
   const taxOf = (pct: number) => taxes.find((t) => t.rate_basis_points === Math.round(pct * 100)) ?? taxes.find((t) => t.rate_basis_points === 1800) ?? taxes[0];
 
-  // 1. Company, bank, notes and terms, signature
+  // 1. Company, bank, notes and terms, signature (left alone when only adding missing invoices)
+  let bankId = "";
+  if (!addOnly) {
   const branch = (await stub.listBranches())[0];
   const mobile = f.company.mobile.split(",")[0]!.trim();
   await stub.updateBranch(branch.id, { name: f.company.name, gstin: f.company.gstin || null, address: f.company.address, phone: mobile, stateCode: (f.company.gstin || "19").slice(0, 2) });
-  let bankId = "";
   const bd = f.company.bankDetails;
   if (bd?.bank && bd.account) {
     const existingBank = (await stub.listBankAccounts()).find((b: any) => b.last4 === bd.account!.slice(-4) && b.ifsc === bd.ifsc);
@@ -91,11 +98,16 @@ historyImportRoutes.post("/", async (c) => {
   // 2. Numbering: their format (GX/22/26-27), continuing after the last imported number
   await stub.saveNumbering({ docType: "INVOICE", prefix: f.numbering.prefix, suffix: f.numbering.suffix, padding: f.numbering.padding });
   await stub.setNextNumber("INVOICE", invoices[0]!.n);
+  }
 
   // 3. Customers and products
   const partyIds = new Map<string, string>();
   for (const [key, p] of parties) {
     const gstin = p.gstin?.trim().toUpperCase() || undefined;
+    if (addOnly) {
+      const found = ((await stub.listParties({ search: gstin || p.name, limit: 50 }))?.parties ?? []).find((x: any) => (gstin && String(x.gstin || "").toUpperCase() === gstin) || String(x.name).toLowerCase() === p.name.toLowerCase());
+      if (found) { partyIds.set(key, found.id); continue; }
+    }
     const rec = await stub.createParty({ type: "CUSTOMER", name: p.name, company: p.company || undefined, phone: "", gstin, billingAddress: p.address || undefined, stateCode: (gstin || "19").slice(0, 2), creditDays: 0 });
     partyIds.set(key, rec.id);
   }
@@ -103,6 +115,10 @@ historyImportRoutes.post("/", async (c) => {
   for (const [key, it] of items) {
     const pct = invoices.find((i) => i.items.some((x) => itemKey(x) === key))!.gstPercent;
     const u = unitOf(it.unit);
+    if (addOnly) {
+      const found = ((await stub.listItems({ search: it.name.slice(0, 40), limit: 50 }))?.items ?? []).find((x: any) => String(x.name).toLowerCase() === it.name.toLowerCase());
+      if (found) { itemIds.set(key, { id: found.id, unitId: found.unit_id ?? found.unitId ?? u.id }); continue; }
+    }
     const rec = await stub.createItem({ name: it.name, type: it.hsn.startsWith("99") ? "SERVICE" : "GOODS", hsnSac: it.hsn || undefined, unitId: u.id, salePricePaise: it.ratePaise, purchasePricePaise: 0, taxRateId: taxOf(pct).id, priceIncludesTax: false });
     itemIds.set(key, { id: rec.id, unitId: u.id });
   }
@@ -119,7 +135,7 @@ historyImportRoutes.post("/", async (c) => {
         const r: any = await stub.createSalesInvoice({
           invoiceType: "REGULAR", branchId: loc.branchId, warehouseId: loc.warehouseId ?? undefined, partyId: partyIds.get(partyKey(inv.party)), partyName: inv.party.name, partyGstin: inv.party.gstin || undefined,
           partyStateCode: (inv.party.gstin || inv.stateCode || "19").slice(0, 2), date: inv.date, dueDate: inv.dueDate, paymentMode: "CREDIT", enableRoundOff: true, bankAccountId: bankId || undefined,
-          signatoryName: f.company.signatoryName || undefined, notes: f.company.notes || undefined, terms: f.company.terms || undefined, createdById: user.id,
+          invoiceNo: addOnly ? inv.invoiceNo : undefined, signatoryName: f.company.signatoryName || undefined, notes: f.company.notes || undefined, terms: f.company.terms || undefined, createdById: user.id,
           items: inv.items.map((it) => ({ itemId: itemIds.get(itemKey(it))!.id, name: it.description ? `${it.name}\n${it.description}` : it.name, hsnSac: it.hsn, quantityThousandths: Math.round(it.qty * 1000), unitId: itemIds.get(itemKey(it))!.unitId, unitPricePaise: it.ratePaise, discountPaise: 0, taxRatePercent: inv.gstPercent, isTaxInclusive: false })),
         });
         const made = r?.invoice ?? r;

@@ -702,6 +702,16 @@ export class InvoiceService {
     return { creditNoteId: noteId, noteNo };
   }
 
+  /** Everything a payment receipt prints: the payment, who paid, the invoice it settles and the seller. */
+  paymentReceiptData(paymentId: string): any {
+    const p = this.sql.exec("SELECT * FROM payments WHERE id = ? AND type = 'IN'", paymentId).toArray()[0] as any;
+    if (!p) return null;
+    const party = this.sql.exec('SELECT name, gstin, phone, billing_address FROM parties WHERE id = ?', String(p.party_id)).toArray()[0] as any;
+    const inv = p.invoice_id ? (this.sql.exec('SELECT invoice_no, date, total_paise, paid_amount_paise, balance_amount_paise, branch_id FROM invoices WHERE id = ?', String(p.invoice_id)).toArray()[0] as any) : null;
+    const branch = this.sql.exec('SELECT name, gstin, address, phone FROM branches WHERE id = ?', String(inv?.branch_id ?? p.branch_id)).toArray()[0] as any;
+    return { payment: p, party: party ?? { name: 'Customer' }, invoice: inv ?? null, branch: branch ?? null };
+  }
+
   /** Payments on an invoice, newest first. */
   private invoicePayments(invoiceId: string): any[] {
     return this.sql.exec("SELECT * FROM payments WHERE invoice_id = ? AND type = 'IN' ORDER BY created_at DESC", invoiceId).toArray();

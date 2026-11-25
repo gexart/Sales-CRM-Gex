@@ -14,6 +14,7 @@ export function Fab({ to, onClick, label = "Create" }: { to?: string; onClick?: 
 }
 
 const MORE: { to: string; label: string; perm: string[] }[] = [
+  { to: "/billing/payments", label: "Payments & receipts", perm: ["collections.view"] },
   { to: "/billing/credit-notes", label: "Credit notes", perm: ["invoice.view"] },
   { to: "/billing/debit-notes", label: "Debit notes", perm: ["purchases.view"] },
   { to: "/billing/sales-orders", label: "Sales orders", perm: ["documents.view", "sales_order.create"] },

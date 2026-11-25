@@ -71,7 +71,7 @@ export function BillingHome() {
   const quick: Tile[] = [
     { to: "/billing/approvals", label: can("invoice.approve") ? "Approvals" : "My requests", icon: ClipboardCheck, show: can("invoice.approve") || can("invoice.request"), hint: pend.data?.pending ? String(pend.data.pending) : undefined },
     { to: "/billing/reports", label: "Reports", icon: BarChart3, show: any("reports.view", "accounting.view") },
-    { to: "/billing/reports", label: "Payments", icon: WalletCards, show: can("collections.view") },
+    { to: "/billing/payments", label: "Payments", icon: WalletCards, show: can("collections.view") },
     { to: "/billing/stock", label: "Stock", icon: Boxes, show: can("inventory.view") },
     { to: "/billing/invoices?tab=drafts", label: "Drafts", icon: FileText, show: any("invoice.create", "invoice.request") },
     { to: "/billing/settings?tab=format", label: "Invoice Templates", icon: FileSignature, show: any("settings.view", "settings.manage") },

@@ -180,7 +180,7 @@ function HistoryImport() {
       const json = JSON.parse(await f.text());
       setData(json);
       setResult(null);
-      const r = await access.post("/import", { ...json, dryRun: true });
+      const r = await access.post("/import", { ...json, dryRun: true, addMissing: true });
       setPreview(r.data);
     } catch (e) {
       setData(null);
@@ -191,7 +191,7 @@ function HistoryImport() {
   const run = async () => {
     setBusy(true);
     try {
-      const r = await access.post("/import", { ...data, markPaid, dryRun: false });
+      const r = await access.post("/import", { ...data, markPaid, dryRun: false, addMissing: preview?.existingInvoices > 0 });
       setResult(r.data);
       toast("success", `${r.data.createdInvoices} invoices imported`);
     } catch (e) {
@@ -203,7 +203,7 @@ function HistoryImport() {
   return (
     <>
       <Card className="p-4">
-        <p className="text-[13px] text-muted">Choose the file prepared from your old invoices. It sets up your company details, bank, notes and terms and signature, then creates every customer and product, every invoice with its original number and date, and the payments already received. It only runs on a workspace with no invoices yet.</p>
+        <p className="text-[13px] text-muted">Choose the file prepared from your old invoices. It sets up your company details, bank, notes and terms and signature, then creates every customer and product, every invoice with its original number and date, and the payments already received. If you already have invoices, it adds only the ones that are missing (matched by bill number) and leaves everything else as it is.</p>
         <label className="mt-3 flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-line text-sm hover:border-brand-300">
           <Upload className="size-5 text-slate-500" />
           <span>{data ? "File loaded. Choose another" : "Choose the .json file"}</span>
@@ -212,14 +212,14 @@ function HistoryImport() {
       </Card>
       {preview && !result && (
         <Card>
-          <CardHeader title="What will be created" subtitle={preview.existingInvoices ? `This workspace already has ${preview.existingInvoices} invoice(s), so the import will be refused.` : "Nothing has been saved yet"} />
+          <CardHeader title="What will be created" subtitle={preview.existingInvoices ? `You already have ${preview.existingInvoices} invoice(s). ${preview.skippedExisting ?? 0} in the file are already there and will be skipped; only the new ones are added.` : "Nothing has been saved yet"} />
           <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-3">
             {[["Customers", preview.customers], ["Products", preview.products], ["Invoices", preview.invoices], ["Billed", inr(preview.billedPaise)], ["Already received", inr(preview.receivedPaise)], ["Still due", inr(preview.billedPaise - preview.receivedPaise)]].map(([l, v]) => (
               <div key={String(l)} className="rounded-lg border border-line p-2.5"><div className="text-[11px] text-muted">{l}</div><div className="text-lg font-semibold tabular-nums">{v}</div></div>
             ))}
           </div>
           <label className="flex items-center gap-2 px-4 pb-3 text-[13px]"><input type="checkbox" className="size-4" checked={markPaid} onChange={(e) => setMarkPaid(e.target.checked)} />Record the payments that were already received (to the bank, on the invoice date)</label>
-          <div className="flex justify-end p-3"><Button variant="primary" loading={busy} disabled={preview.existingInvoices > 0} onClick={run}>Import everything</Button></div>
+          <div className="flex justify-end p-3"><Button variant="primary" loading={busy} disabled={preview.invoices === 0} onClick={run}>{preview.existingInvoices > 0 ? "Add the missing invoices" : "Import everything"}</Button></div>
         </Card>
       )}
       {result && (

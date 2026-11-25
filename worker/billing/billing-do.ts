@@ -757,6 +757,10 @@ export class BillingDO extends DurableObject {
     return (this.ctx.storage as any).transactionSync(() => this.invoiceService.removePayment(paymentId, reason));
   }
 
+  async paymentReceiptData(paymentId: string): Promise<any> {
+    return this.invoiceService.paymentReceiptData(paymentId);
+  }
+
   async freeInvoiceNumbers(): Promise<string[]> {
     return this.invoiceService.freeInvoiceNumbers();
   }

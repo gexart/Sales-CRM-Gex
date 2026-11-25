@@ -110,5 +110,17 @@ console.log("  October 2026:", g.invoiceCount, "invoices, taxable", g.totals.tax
 const tally = await admin.get("/billing/accounting/tally-xml?startDate=2026-10-01&endDate=2026-10-31&companyName=Gexart");
 check("Tally export answers", tally.status === 200, tally.status);
 
+console.log("Payment receipt and log");
+const ri = (await admin.post("/billing/sales/invoices", body(A, 3000, 100000))).body.invoice;
+const rg = await get(ri.id);
+await admin.post(`/billing/sales/invoices/${ri.id}/payments`, { amountPaise: 150000, paymentMode: "UPI", branchId: rg.branch_id, date: "2026-11-25", notes: "First instalment" });
+const rpay = (await get(ri.id)).payments[0];
+const rec = await admin.get(`/billing/payments/${rpay.id}/receipt`);
+check("receipt is a real PDF", rec.status === 200 && rec.bytes?.subarray(0, 4).toString() === "%PDF" && rec.bytes.length > 1500, rec.status);
+(await import("node:fs")).writeFileSync(process.env.RECEIPT_OUT || "receipt.pdf", rec.bytes);
+const log = (await admin.get("/billing/payments?type=IN&limit=5")).body;
+check("payment log lists it", (log.payments ?? []).some((p) => p.id === rpay.id) && log.totalPaise > 0, log.totalCount);
+check("unknown payment gives 404", (await admin.get("/billing/payments/nope/receipt")).status === 404);
+
 console.log(failures === 0 ? "All edit and delete checks passed" : failures + " check(s) failed");
 process.exit(failures ? 1 : 0);
