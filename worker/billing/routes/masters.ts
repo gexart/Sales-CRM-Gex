@@ -99,7 +99,9 @@ mastersRoutes.put('/parties/:id', async (c) => {
   }
 
   try {
-    const updated = await stub.updateParty(id, parsed.data);
+    // Only the fields that were sent: schema defaults must never overwrite the credit limit, opening balance, tags or numbering.
+    const sent = Object.fromEntries(Object.entries(parsed.data).filter(([k]) => Object.prototype.hasOwnProperty.call(body, k)));
+    const updated = await stub.updateParty(id, sent);
     return c.json({ success: true, party: updated });
   } catch (err: any) {
     return c.json({ error: err.message || 'Error updating party' }, 400);

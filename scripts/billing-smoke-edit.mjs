@@ -146,5 +146,14 @@ const clog = (await admin.get(`/billing/payments?type=IN&limit=50&search=UTRC${r
 check("that payment shows its UTR and its own date", clog.length === 1 && clog[0].date === "2026-11-17", clog[0]);
 check("books balanced after that", (await balanced()).ok);
 
+console.log("Edit a customer's details");
+const ep = (await admin.post("/billing/masters/parties", { name: `Edit Me ${run}`, phone: "9876543210", type: "CUSTOMER", stateCode: "19", creditLimitPaise: 500000, creditDays: 15, tags: ["vip"], billingAddress: "Old Road" })).body.party;
+const up = await admin.put(`/billing/masters/parties/${ep.id}`, { name: `Edited ${run}`, phone: "9123456780", billingAddress: "New Road, Kolkata" });
+check("details updated", up.status === 200, up.body);
+const eg = (await admin.get(`/billing/masters/parties/${ep.id}`)).body;
+const gp = eg.party ?? eg;
+check("name, phone and address changed", gp.name === `Edited ${run}` && gp.phone === "9123456780" && gp.billingAddress === "New Road, Kolkata", gp);
+check("credit limit, credit days and tags untouched", gp.creditLimitPaise === 500000 && gp.creditDays === 15 && (gp.tags ?? []).includes("vip"), gp);
+
 console.log(failures === 0 ? "All edit and delete checks passed" : failures + " check(s) failed");
 process.exit(failures ? 1 : 0);

@@ -1,3 +1,4 @@
+import { onDealWon } from "./billing/account-link";
 import type { EntityDef } from "./lib/entity";
 import { ApiError } from "./lib/http";
 import { activityStmt, auditStmt } from "./lib/audit-log";
@@ -258,6 +259,12 @@ export const opportunities: EntityDef = {
       const stage = String(d.stage ?? "new");
       if (d.probability === undefined) d.probability = STAGE_PROBABILITY[stage];
       d.closed_at = CLOSED_STAGES.includes(stage) ? now() : null;
+    }
+  },
+  async afterWrite(c, _id, after, existing) {
+    if (after.stage === "closed_won" && existing?.stage !== "closed_won") {
+      const user = c.get("user");
+      await onDealWon(c.env, c.req.header("X-Company-Id") || "default", after.account_id as string | null, { id: user.id, name: user.name });
     }
   },
   extraStatements(c, id, input, existing, after) {

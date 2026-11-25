@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Package, Plus, Search, Users } from "lucide-react";
+import { Package, Pencil, Plus, Search, Users } from "lucide-react";
 import { PageHeader } from "../../components/layout";
 import { useDebounced } from "../../components/forms";
 import { Badge, Button, Card, Dialog, EmptyState, ErrorState, Field, Select, Skeleton, Tabs, useToast } from "../../components/ui";
-import { bill, errMsg, inr, useBillingAccess } from "../../lib/billing";
+import { access, bill, errMsg, inr, useBillingAccess } from "../../lib/billing";
 import { PhoneActions } from "../../components/contact-actions";
 import { GstinStatus } from "./gstin";
 import { rupeesToPaise, useBillingMasters } from "./parts";
@@ -22,17 +22,40 @@ export function PartiesPage() {
   const dq = useDebounced(search, 300);
   const [sp] = useSearchParams();
   const [add, setAdd] = useState(sp.get("new") === "1" && can("parties.manage"));
+  const [editing, setEditing] = useState<string | null>(null);
   const [f, setF] = useState({ name: "", company: "", phone: "", gstin: "", email: "", billingAddress: "", stateCode: "19", creditDays: "0" });
   const q = useQuery({ queryKey: ["billing-parties", type, dq], queryFn: () => bill.get(`/masters/parties?type=${type}&search=${encodeURIComponent(dq)}&limit=100`) });
   const rows: any[] = q.data?.parties ?? []; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const blank = { name: "", company: "", phone: "", gstin: "", email: "", billingAddress: "", stateCode: "19", creditDays: "0" };
+  const openEdit = async (id: string) => {
+    try {
+      const r = await bill.get(`/masters/parties/${id}`);
+      const p = r.party ?? r;
+      setF({ name: p.name ?? "", company: p.company ?? "", phone: p.phone ?? "", gstin: p.gstin ?? "", email: p.email ?? "", billingAddress: p.billingAddress ?? "", stateCode: p.stateCode ?? "19", creditDays: String(p.creditDays ?? 0) });
+      setEditing(id);
+      setAdd(true);
+    } catch (e) {
+      toast("error", errMsg(e));
+    }
+  };
+  const close = () => (setAdd(false), setEditing(null), setF(blank));
+  /** Every CRM account with a won deal becomes a customer here (this also happens by itself when a deal is won). */
+  const syncWon = useMutation({
+    mutationFn: () => access.post("/from-account/sync-won", {}),
+    onSuccess: (r: any) => (toast("success", r.data.checked ? `${r.data.created} new customers added, ${r.data.linked} matched to existing ones` : "All won deals already have a customer"), qc.invalidateQueries({ queryKey: ["billing-parties"] })), // eslint-disable-line @typescript-eslint/no-explicit-any
+    onError: (e) => toast("error", errMsg(e)),
+  });
   const save = useMutation({
-    mutationFn: () => bill.post("/masters/parties", { name: f.name, company: f.company || undefined, type, phone: f.phone, gstin: f.gstin || undefined, email: f.email || undefined, billingAddress: f.billingAddress || undefined, stateCode: f.stateCode, creditDays: Number(f.creditDays) || 0 }),
-    onSuccess: () => (toast("success", "Saved"), setAdd(false), setF({ ...f, name: "", phone: "", gstin: "", email: "", billingAddress: "" }), qc.invalidateQueries({ queryKey: ["billing-parties"] })),
+    mutationFn: () => {
+      const fields = { name: f.name, company: f.company, phone: f.phone, gstin: f.gstin || undefined, email: f.email, billingAddress: f.billingAddress, stateCode: f.stateCode, creditDays: Number(f.creditDays) || 0 };
+      return editing ? bill.put(`/masters/parties/${editing}`, fields) : bill.post("/masters/parties", { ...fields, company: f.company || undefined, email: f.email || undefined, billingAddress: f.billingAddress || undefined, type });
+    },
+    onSuccess: () => (toast("success", editing ? "Details updated" : "Saved"), close(), qc.invalidateQueries({ queryKey: ["billing-parties"] })),
     onError: (e) => toast("error", errMsg(e)),
   });
   return (
     <div className="pb-8">
-      <PageHeader title="Parties" icon={Users} actions={can("parties.manage") && <Button variant="primary" icon={Plus} onClick={() => setAdd(true)}>{type === "CUSTOMER" ? "Add customer" : "Add vendor"}</Button>} />
+      <PageHeader title="Parties" icon={Users} actions={can("parties.manage") && <>{type === "CUSTOMER" && <Button loading={syncWon.isPending} onClick={() => syncWon.mutate()}>From won deals</Button>}<Button variant="primary" icon={Plus} onClick={() => setAdd(true)}>{type === "CUSTOMER" ? "Add customer" : "Add vendor"}</Button></>} />
       <div className="px-4 sm:px-6">
         <Tabs<PT> value={type} onChange={setType} tabs={[{ value: "CUSTOMER", label: "Customers" }, { value: "VENDOR", label: "Vendors" }]} />
         <div className="relative my-3"><Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-slate-400" /><input className="input pl-8" placeholder="Search name or phone" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
@@ -42,13 +65,14 @@ export function PartiesPage() {
               <div key={p.id} className="flex items-center gap-3 px-3.5 py-2.5">
                 <div className="min-w-0 flex-1"><div className="truncate font-medium">{p.name}</div><div className="mt-0.5 text-xs text-muted"><PhoneActions phone={p.phone} greeting={`Hello ${p.name},`} />{p.gstin ? ` · ${p.gstin}` : ""}</div></div>
                 {p.creditDays ? <Badge>{p.creditDays} days credit</Badge> : null}
+                {can("parties.manage") && <button type="button" aria-label={`Edit ${p.name}`} className="flex size-9 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-ink" onClick={() => openEdit(p.id)}><Pencil className="size-4" /></button>}
               </div>
             ))}
           </Card>
         )}
       </div>
       {can("parties.manage") && <Fab onClick={() => setAdd(true)} label="Add party" />}
-      <Dialog open={add} onClose={() => setAdd(false)} title={type === "CUSTOMER" ? "New customer" : "New vendor"} footer={<><Button onClick={() => setAdd(false)}>Cancel</Button><Button variant="primary" loading={save.isPending} disabled={!f.name || f.phone.replace(/\D/g, "").length < 10} onClick={() => save.mutate()}>Save</Button></>}>
+      <Dialog open={add} onClose={close} title={editing ? "Edit details" : type === "CUSTOMER" ? "New customer" : "New vendor"} footer={<><Button onClick={close}>Cancel</Button><Button variant="primary" loading={save.isPending} disabled={!f.name || f.phone.replace(/\D/g, "").length < 10} onClick={() => save.mutate()}>Save</Button></>}>
         <div className="space-y-3">
           <Field label="Name" required><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
           <Field label="Phone" required><input className="input" inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>

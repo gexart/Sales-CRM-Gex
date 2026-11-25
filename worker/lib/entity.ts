@@ -44,6 +44,8 @@ export interface EntityDef {
   derive?: (data: Row, existing: Row | null) => Row;
   beforeWrite?: (c: Ctx, data: Row, existing: Row | null) => Promise<void>;
   extraStatements?: (c: Ctx, id: string, input: Row, existing: Row | null, after: Row) => D1PreparedStatement[];
+  /** Runs after the record is saved (side effects such as creating a billing customer). Errors are logged, never thrown. */
+  afterWrite?: (c: Ctx, id: string, after: Row, existing: Row | null) => Promise<void>;
   redact?: (row: Row, user: SessionUser) => Row;
 }
 
@@ -164,6 +166,7 @@ export async function createRow(c: Ctx, def: EntityDef, input: Row) {
     ...(def.extraStatements?.(c, id, input, null, row) ?? []),
   ];
   await c.env.DB.batch(stmts);
+  try { await def.afterWrite?.(c, id, row, null); } catch (e) { console.warn(`afterWrite ${def.entityType}`, e instanceof Error ? e.message : e); }
   return fetchOne(c, def, id);
 }
 
@@ -202,6 +205,7 @@ export async function updateRow(c: Ctx, def: EntityDef, id: string, input: Row) 
       : []),
     ...extra,
   ]);
+  try { await def.afterWrite?.(c, id, { ...existing, ...patch }, existing); } catch (e) { console.warn(`afterWrite ${def.entityType}`, e instanceof Error ? e.message : e); }
   return fetchOne(c, def, id);
 }
 
