@@ -80,7 +80,7 @@ async function draw(d: ClassicDoc, mode: Mode, inter: boolean): Promise<{ pdf: U
     };
     rupee = await doc.embedFont(bytes(INTER_RUPEE), { subset: true });
   } else {
-    // Built-in PDF fonts: almost no CPU, so it fits the Free plan. The rupee sign is written "Rs."
+    // Built-in PDF fonts: almost no CPU, so it fits the Free plan. The rupee sign is left out (plain numbers, like the original table)
     const reg = await doc.embedFont(StandardFonts.Helvetica);
     const bold = await doc.embedFont(StandardFonts.HelveticaBold);
     f = { r: reg, s: bold, b: bold };
@@ -425,7 +425,7 @@ export const pdfOptions = { inter: false };
 
 export async function renderClassicInvoicePdf(input: ClassicDoc): Promise<Uint8Array> {
   const inter = pdfOptions.inter;
-  const d: ClassicDoc = inter ? input : JSON.parse(JSON.stringify(input).replace(/₹/g, "Rs. "));
+  const d: ClassicDoc = inter ? input : JSON.parse(JSON.stringify(input).replace(/₹/g, ""));
   const first = await draw(d, NORMAL, inter);
   if (first.pages === 1) return first.pdf;
   // Does the tighter layout keep it on one page (or fewer)? Use it; otherwise keep the roomier one.
