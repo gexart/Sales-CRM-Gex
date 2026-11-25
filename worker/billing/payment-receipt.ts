@@ -2,8 +2,9 @@
  * Payment receipt (A5, one page): who paid, how much, how, and what is still due on the invoice.
  * Uses the PDF built-in fonts and a drawn rupee sign, so it is cheap enough for the Free plan.
  */
-import { LineCapStyle, PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import { BRAND_LOGO } from "./brand-logo";
+import { RUPEE_ADVANCE, RUPEE_PATH, RUPEE_UPM } from "./rupee-glyph";
 import { inrWords } from "./invoice-docs";
 
 export interface ReceiptData {
@@ -58,12 +59,9 @@ export async function renderPaymentReceipt(d: ReceiptData): Promise<Uint8Array> 
   const stamp = await embed(doc, d.signature.stampDataUrl);
   const page: PDFPage = doc.addPage([W, H]);
 
-  const rupeeW = (size: number) => size * 0.6;
+  const rupeeW = (size: number) => (size * RUPEE_ADVANCE) / RUPEE_UPM + size * 0.04;
   const rupee = (x: number, base: number, size: number, isBold: boolean) => {
-    const h = size * 0.72;
-    page.drawSvgPath("M0.6 1.4 L9.4 1.4 M0.6 4.4 L9.4 4.4 M1.6 1.4 L4.6 1.4 C9.4 1.4 9.4 8 4.6 8 L1.6 8 L7.6 12", {
-      x: x + size * 0.04, y: base + h, scale: h / 12, borderColor: INK, borderWidth: isBold ? size * 0.105 : size * 0.075, borderLineCap: LineCapStyle.Round,
-    });
+    page.drawSvgPath(RUPEE_PATH, { x, y: base, scale: size / RUPEE_UPM, color: INK, ...(isBold ? { borderColor: INK, borderWidth: size * 0.03 } : {}) });
   };
   const fontOf = (b: boolean): PDFFont => (b ? bold : reg);
   const width = (t: string, size: number, b = false) => [...clean(t)].reduce((a, ch) => a + (ch === "₹" ? rupeeW(size) : fontOf(b).widthOfTextAtSize(ch, size)), 0);

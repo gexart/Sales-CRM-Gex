@@ -2,8 +2,9 @@
 // invoice facts, black table header with banded rows, tax lines, HSN summary, UPI QR + bank, signature, notes and terms.
 // Inter replaces Apple's SF UI (not licensed for embedding). One page for a normal invoice (it tightens itself if needed); a second
 // page only when the items or terms really do not fit.
-import { LineCapStyle, PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import { encode } from "uqr";
+import { RUPEE_ADVANCE, RUPEE_PATH, RUPEE_UPM } from "./rupee-glyph";
 
 export interface ClassicDoc {
   title: string;
@@ -97,17 +98,15 @@ async function draw(d: ClassicDoc, mode: Mode, inter: boolean): Promise<{ pdf: U
     pages.push(page);
   };
   /** Text width, with the rupee sign taken from the font that has it. */
-  const rupeeWidth = (size: number) => (inter ? rupee.widthOfTextAtSize("₹", size) : size * 0.6);
-  /** The built-in fonts have no rupee sign, so it is drawn as a small shape: costs almost no processing time. */
+  const rupeeWidth = (size: number) => (inter ? rupee.widthOfTextAtSize("₹", size) : (size * RUPEE_ADVANCE) / RUPEE_UPM + size * 0.04);
+  /** The built-in fonts have no rupee sign, so the real outline (traced from Inter) is drawn as a shape: almost no processing time. */
   const drawRupee = (x: number, base: number, size: number, w: Weight, color: ReturnType<typeof rgb>) => {
-    const h = size * 0.72;
-    page.drawSvgPath("M0.6 1.4 L9.4 1.4 M0.6 4.4 L9.4 4.4 M1.6 1.4 L4.6 1.4 C9.4 1.4 9.4 8 4.6 8 L1.6 8 L7.6 12", {
-      x: x + size * 0.04,
-      y: base + h,
-      scale: h / 12,
-      borderColor: color,
-      borderWidth: w === "r" ? size * 0.075 : size * 0.105,
-      borderLineCap: LineCapStyle.Round,
+    page.drawSvgPath(RUPEE_PATH, {
+      x,
+      y: base,
+      scale: size / RUPEE_UPM,
+      color,
+      ...(w === "r" ? {} : { borderColor: color, borderWidth: size * 0.03 }),
     });
   };
   const width = (t: string, size: number, w: Weight) => [...clean(t)].reduce((a, ch) => a + (ch === "₹" ? rupeeWidth(size) : f[w].widthOfTextAtSize(ch, size)), 0);
