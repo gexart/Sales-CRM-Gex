@@ -301,7 +301,7 @@ export function buildClassicDoc(inv: L, kind: string, ctx: ClassicContext): Clas
   if (interstate) totals.push({ label: `IGST${pctLabel(false)}`, value: inrs(sum("igst")) });
   else totals.push({ label: `CGST${pctLabel(true)}`, value: inrs(sum("cgst")) }, { label: `SGST${pctLabel(true)}`, value: inrs(sum("sgst")) });
   if (sum("cess")) totals.push({ label: "Cess", value: inrs(sum("cess")) });
-  if (inv.round_off_paise) totals.push({ label: "Round Off", value: inrs(inv.round_off_paise) });
+  if (inv.round_off_paise) totals.push({ label: "Round Off", value: plain(inv.round_off_paise) });
   totals.push({ label: "Total", value: inrs(inv.total_paise), strong: true });
 
   // HSN / SAC summary grouped by code and rate
