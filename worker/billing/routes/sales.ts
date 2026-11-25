@@ -247,7 +247,8 @@ salesRoutes.post('/invoices/:id/crm', async (c) => {
   const stub = c.get('businessStub');
   const env = c.env as any;
   const r = await pushInvoiceToCrm(env, stub, c.req.param('id'), env.APP_URL || new URL(c.req.url).origin, 'manual');
-  return c.json(r, r.ok ? 200 : 502);
+  // The reason goes in `error` so the screen shows it instead of a bare "502".
+  return r.ok ? c.json(r) : c.json({ ...r, error: r.message }, 502);
 });
 
 // 3a. CREDIT NOTES (list)

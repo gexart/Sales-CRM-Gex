@@ -81,6 +81,8 @@ export async function emailInvoiceEvent(env: Env, stub: any, invoiceId: string, 
   }
 }
 
+const CRM_ALT_HOSTS: Record<string, string> = { "crm.gexart.com": "gexart-crm-front.pages.dev" };
+
 /** Send an invoice (or its payment or cancellation) to the agency CRM's invoice webhook. */
 export async function pushInvoiceToCrm(env: Env, stub: any, invoiceId: string, origin: string, event: "invoice.created" | "payment.received" | "invoice.cancelled" | "manual", actor?: { id: string; name: string }, payment?: { amountPaise: number; mode?: string; date?: string; ref?: string }): Promise<{ ok: boolean; status?: number; message: string }> {
   const url = String(env.AGENCY_CRM_HOOK_URL || "").trim();
@@ -104,9 +106,21 @@ export async function pushInvoiceToCrm(env: Env, stub: any, invoiceId: string, o
       items: (inv.lines ?? []).map((l: L) => ({ name: l.name, hsn: l.hsn_sac, qty: l.quantity_thousandths / 1000, rate: l.unit_price_paise / 100, gst_percent: l.tax_rate_basis_points / 100, amount: l.line_total_paise / 100 })),
       ...(payment ? { payment: { amount: payment.amountPaise / 100, mode: payment.mode, date: payment.date, reference: payment.ref } } : {}),
     };
-    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const send = (target: string) => fetch(target, { method: "POST", headers: { "content-type": "application/json", "user-agent": "Gexart-Sales/1.0" }, body: JSON.stringify(body) });
+    let res = await send(url);
+    let host = new URL(url).host;
+    // crm.gexart.com is an alias for a Cloudflare Pages site; from another Cloudflare app that alias can answer 522. The Pages address serves the same API.
+    if (res.status >= 520 && res.status <= 527) {
+      const u = new URL(url);
+      const alt = String(env.AGENCY_CRM_ALT_HOST || CRM_ALT_HOSTS[u.host] || "").trim();
+      if (alt) {
+        u.host = alt;
+        const second = await send(u.toString());
+        if (second.status < 520) (res = second, (host = alt));
+      }
+    }
     const text = (await res.text()).slice(0, 300);
-    let message = res.ok ? "Sent to the CRM" : `CRM answered ${res.status}`;
+    let message = res.ok ? "Sent to the CRM" : `CRM answered ${res.status} (${host})`;
     try {
       const j = JSON.parse(text);
       const first = Array.isArray(j.results) ? j.results[0] : null;

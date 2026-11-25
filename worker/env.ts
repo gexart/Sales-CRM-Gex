@@ -26,6 +26,8 @@ export interface Env {
   RESEND_SENDER_NAME?: string;
   AGENCY_CRM_HOOK_URL?: string;
   AGENCY_CRM_PUSH?: string;
+  /** Direct address of the CRM, tried when its main address answers a Cloudflare 52x error */
+  AGENCY_CRM_ALT_HOST?: string;
   BREVO_SENDER_NAME?: string;
   QUOTA_GOOGLE_PLACES?: string;
   QUOTA_ENRICHMENT?: string;
