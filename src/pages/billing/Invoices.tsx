@@ -132,6 +132,8 @@ export function InvoiceDetailPage() {
   const nav = useNavigate();
   const [amt, setAmt] = useState("");
   const [pmode, setPmode] = useState("UPI");
+  const [pdate, setPdate] = useState(today());
+  const [putr, setPutr] = useState("");
   const [reason, setReason] = useState("");
   const [cn, setCn] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
@@ -147,8 +149,8 @@ export function InvoiceDetailPage() {
   const inv = q.data?.invoice;
   const refresh = () => (qc.invalidateQueries({ queryKey: ["billing-invoice", id] }), qc.invalidateQueries({ queryKey: ["billing-invoices"] }));
   const payM = useMutation({
-    mutationFn: () => bill.post(`/sales/invoices/${id}/payments`, { amountPaise: rupeesToPaise(amt), paymentMode: pmode, branchId: inv.branch_id, date: today() }),
-    onSuccess: () => (toast("success", "Payment recorded"), setPay(false), setAmt(""), refresh()),
+    mutationFn: () => bill.post(`/sales/invoices/${id}/payments`, { amountPaise: rupeesToPaise(amt), paymentMode: pmode, branchId: inv.branch_id, date: pdate, referenceNo: putr.trim() || undefined }),
+    onSuccess: () => (toast("success", "Payment recorded"), setPay(false), setAmt(""), setPutr(""), setPdate(today()), refresh()),
     onError: (e) => toast("error", errMsg(e)),
   });
   const cancelM = useMutation({
@@ -247,10 +249,14 @@ export function InvoiceDetailPage() {
         {inv.notes && <Card className="p-3.5 text-[13px]"><div className="mb-0.5 text-xs text-muted">Notes</div>{inv.notes}</Card>}
         <Attachments type="invoice" id={inv.id} />
       </div>
-      <Dialog open={pay} onClose={() => setPay(false)} title="Record payment" footer={<><Button onClick={() => setPay(false)}>Cancel</Button><Button variant="primary" loading={payM.isPending} disabled={rupeesToPaise(amt) <= 0} onClick={() => payM.mutate()}>Save</Button></>}>
+      <Dialog open={pay} onClose={() => setPay(false)} title="Record payment" footer={<><Button onClick={() => setPay(false)}>Cancel</Button><Button variant="primary" loading={payM.isPending} disabled={rupeesToPaise(amt) <= 0 || !pdate} onClick={() => payM.mutate()}>Save</Button></>}>
         <div className="space-y-3">
           <Field label="Amount (₹)"><input className="input" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} /></Field>
-          <Field label="Mode"><Select value={pmode} onChange={(e) => setPmode(e.target.value)} options={["UPI", "CASH", "BANK", "CARD", "NET_BANKING", "CHEQUE"].map((v) => ({ value: v, label: v.replace("_", " ") }))} /></Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Payment date"><input className="input" type="date" max={today()} value={pdate} onChange={(e) => setPdate(e.target.value)} /></Field>
+            <Field label="Mode"><Select value={pmode} onChange={(e) => setPmode(e.target.value)} options={["UPI", "CASH", "BANK", "CARD", "NET_BANKING", "CHEQUE"].map((v) => ({ value: v, label: v.replace("_", " ") }))} /></Field>
+          </div>
+          <Field label="UTR / transaction no. (optional)" help="For UPI or bank transfers. For a cheque, the cheque number."><input className="input" value={putr} maxLength={60} onChange={(e) => setPutr(e.target.value)} placeholder="e.g. 412345678901" /></Field>
         </div>
       </Dialog>
       <TdsDialog open={tds} onClose={() => setTds(false)} kind="sale" path={`/sales/invoices/${inv.id}/tds`} taxablePaise={inv.subtotal_paise - inv.discount_paise} duePaise={inv.balance_amount_paise} onDone={refresh} />

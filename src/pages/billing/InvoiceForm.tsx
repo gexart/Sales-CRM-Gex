@@ -38,6 +38,8 @@ export function NewInvoicePage() {
   const [paidFull, setPaidFull] = useState(false);
   const [paid, setPaid] = useState("");
   const [mode, setMode] = useState("UPI");
+  const [payDate, setPayDate] = useState("");
+  const [payUtr, setPayUtr] = useState("");
   const [splits, setSplits] = useState<{ amt: string; mode: string }[]>([]);
   const [autoWa, setAutoWa] = useState(getAutoWhatsApp);
   const [ref] = useState(newRef);
@@ -106,6 +108,8 @@ export function NewInvoicePage() {
     items: lines.map((l) => ({ itemId: l.itemId, name: l.name, hsnSac: l.hsnSac, quantityThousandths: Math.round(Number(l.qty) * 1000), unitId: l.unitId, unitPricePaise: rupeesToPaise(l.price), discountPaise: rupeesToPaise(l.disc), taxRatePercent: l.taxPct, isTaxInclusive: l.inclusive })),
     extraDiscountPaise: rupeesToPaise(String(extraRupees)), enableRoundOff: roundOff, notes: notes || undefined, terms: terms || undefined, bankAccountId: bank || undefined, signatoryName: signatory || undefined,
     invoiceNo: !editId && billNo ? billNo : undefined,
+    paymentDate: firstPaid > 0 && payDate ? payDate : undefined,
+    paymentReference: firstPaid > 0 && payUtr.trim() ? payUtr.trim() : undefined,
   });
   const formState = () => ({ party, inv, due, lines, extra, extraPct, roundOff, notes, terms, bank, signatory });
 
@@ -195,6 +199,12 @@ export function NewInvoicePage() {
                   <Field label="Amount (₹)"><input className="input" inputMode="decimal" disabled={paidFull} value={paidFull ? String(total / 100) : paid} onChange={(e) => setPaid(e.target.value)} placeholder="0" /></Field>
                   <Field label="Mode"><Select value={mode} onChange={(e) => setMode(e.target.value)} options={["UPI", "CASH", "BANK", "CARD"].map((v) => ({ value: v, label: v[0] + v.slice(1).toLowerCase() }))} /></Field>
                 </div>
+                {(paidFull || Number(paid) > 0) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Payment date"><input className="input" type="date" max={today()} value={payDate || inv} onChange={(e) => setPayDate(e.target.value)} /></Field>
+                    <Field label="UTR no. (optional)"><input className="input" value={payUtr} maxLength={60} onChange={(e) => setPayUtr(e.target.value)} /></Field>
+                  </div>
+                )}
                 {!paidFull && splits.map((sp, i) => (
                   <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
                     <Field label={`Payment ${i + 2} (₹)`}><input className="input" inputMode="decimal" value={sp.amt} onChange={(e) => setSplits(splits.map((x, j) => (j === i ? { ...x, amt: e.target.value } : x)))} /></Field>

@@ -96,11 +96,17 @@ export function ItemsPage() {
         {q.isError ? <ErrorState error={q.error} /> : q.isLoading ? <Skeleton className="h-24" /> : rows.length === 0 ? <Card><EmptyState icon={Package} title="No items yet" /></Card> : (
           <Card className="divide-y divide-line">
             {rows.map((it) => (
-              <div key={it.id} className="relative flex items-center gap-3 px-3.5 py-3.5">
-                {it.type !== "SERVICE" && stock.data && <span className={`absolute top-1.5 right-2 rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold ${qtyOf(it.id) < 0 ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>Qty: {qtyOf(it.id)}</span>}
-                <div className="min-w-0 flex-1"><div className="truncate font-medium">{it.name}</div><div className="text-xs text-muted">{it.type === "SERVICE" ? "Service" : "Goods"}{it.hsnSac ? ` · HSN/SAC ${it.hsnSac}` : ""} · GST {taxOf(it.taxRateId)}%</div></div>
-                <button type="button" className="text-xs font-medium text-brand-700 underline" onClick={() => setLabelItem(it)}>Label</button>
-                <div className="text-right"><div className="font-semibold tabular-nums">{inr(it.salePricePaise)}</div>{it.purchasePricePaise !== undefined && <div className="text-xs text-muted tabular-nums">cost {inr(it.purchasePricePaise)}</div>}</div>
+              <div key={it.id} className="flex items-start gap-3 px-3.5 py-3.5">
+                <div className="min-w-0 flex-1">
+                  <div className="line-clamp-2 font-medium leading-snug">{it.name}</div>
+                  <div className="mt-0.5 text-xs text-muted">{it.type === "SERVICE" ? "Service" : "Goods"}{it.hsnSac ? ` · HSN/SAC ${it.hsnSac}` : ""} · GST {taxOf(it.taxRateId)}%</div>
+                  <button type="button" className="mt-1 text-xs font-medium text-brand-700 underline underline-offset-2" onClick={() => setLabelItem(it)}>Print label</button>
+                </div>
+                <div className="shrink-0 text-right">
+                  {it.type !== "SERVICE" && stock.data && <span className={`mb-1 inline-block rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold ${qtyOf(it.id) < 0 ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>Qty: {qtyOf(it.id)}</span>}
+                  <div className="font-semibold tabular-nums">{inr(it.salePricePaise)}</div>
+                  {it.purchasePricePaise !== undefined && <div className="text-xs text-muted tabular-nums">cost {inr(it.purchasePricePaise)}</div>}
+                </div>
               </div>
             ))}
           </Card>

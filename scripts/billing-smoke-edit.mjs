@@ -122,5 +122,29 @@ const log = (await admin.get("/billing/payments?type=IN&limit=5")).body;
 check("payment log lists it", (log.payments ?? []).some((p) => p.id === rpay.id) && log.totalPaise > 0, log.totalCount);
 check("unknown payment gives 404", (await admin.get("/billing/payments/nope/receipt")).status === 404);
 
+console.log("Payment date and UTR");
+const di = (await admin.post("/billing/sales/invoices", body(A, 2000, 100000))).body.invoice;
+const dg = await get(di.id);
+const dp = await admin.post(`/billing/sales/invoices/${di.id}/payments`, { amountPaise: 100000, paymentMode: "UPI", branchId: dg.branch_id, date: "2026-11-18", referenceNo: "UTR" + run });
+check("payment with date and UTR saved", dp.status === 200 || dp.status === 201, dp.body);
+const dlog = (await admin.get(`/billing/payments?type=IN&limit=50&search=UTR${run}`)).body.payments ?? [];
+check("log shows the UTR and the chosen date", dlog.length === 1 && dlog[0].reference_no === "UTR" + run && dlog[0].date === "2026-11-18", dlog[0]);
+const nu = await admin.post(`/billing/sales/invoices/${di.id}/payments`, { amountPaise: 50000, paymentMode: "CASH", branchId: dg.branch_id, date: "2026-11-19" });
+check("UTR is optional", nu.status === 200 || nu.status === 201, nu.body);
+check("books balanced after dated payments", (await balanced()).ok);
+const vend = (await admin.post("/billing/masters/parties", { name: `Pay Vendor ${run}`, phone: "9876500002", type: "VENDOR", stateCode: "19" })).body.party;
+const pb = await admin.post("/billing/purchases/bills", { partyId: vend.id, vendorBillNo: `PV-${run}`, date: "2026-11-20", dueDate: "2026-12-20", lines: [{ itemId: item.id, quantityThousandths: 1000, unitPricePaise: 100000, taxRateBasisPoints: 1800 }] });
+const pbId = pb.body.bill?.id ?? pb.body.id ?? pb.body.result?.id;
+const pp = await admin.post(`/billing/purchases/bills/${pbId}/payments`, { amountPaise: 50000, paymentMode: "BANK", date: "2026-11-21", referenceNo: "UTRP" + run });
+check("vendor payment with UTR saved", pp.status === 200 || pp.status === 201, pp.body);
+const plog = (await admin.get(`/billing/payments?type=OUT&limit=50&search=UTRP${run}`)).body.payments ?? [];
+check("vendor payment log shows UTR and date", plog.length === 1 && plog[0].date === "2026-11-21", plog[0]);
+
+const ci = await admin.post("/billing/sales/invoices", { ...body(A, 1000, 100000, {}), paymentMode: "UPI", paidAmountPaise: 50000, paymentDate: "2026-11-17", paymentReference: "UTRC" + run });
+check("invoice created with a dated, referenced payment", ci.status === 201, ci.body);
+const clog = (await admin.get(`/billing/payments?type=IN&limit=50&search=UTRC${run}`)).body.payments ?? [];
+check("that payment shows its UTR and its own date", clog.length === 1 && clog[0].date === "2026-11-17", clog[0]);
+check("books balanced after that", (await balanced()).ok);
+
 console.log(failures === 0 ? "All edit and delete checks passed" : failures + " check(s) failed");
 process.exit(failures ? 1 : 0);

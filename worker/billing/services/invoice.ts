@@ -49,6 +49,8 @@ export interface CreateInvoiceInput {
   signatoryName?: string;
   /** Use this bill number instead of the next one (a number freed by a delete, or a cancelled invoice's own number). */
   invoiceNo?: string;
+  paymentDate?: string;
+  paymentReference?: string;
   createdById: string;
 }
 
@@ -71,6 +73,8 @@ export interface RecordPaymentInput {
   paymentAccountId?: string;
   branchId: string;
   date: string;
+  /** UTR / transaction or cheque number */
+  referenceNo?: string;
   notes?: string;
   createdById: string;
 }
@@ -357,7 +361,8 @@ export class InvoiceService {
         type: 'IN',
         mode,
         amountPaise: paidPaise,
-        date: input.date,
+        date: input.paymentDate || input.date,
+        referenceNo: input.paymentReference?.trim() || null,
         invoiceId,
         accountId: moneyAccountFor(this.sql, mode === 'BANK' || mode === 'UPI' ? 'BANK' : 'CASH', input.paymentAccountId),
         notes: `Received with ${invoiceNo}`,
@@ -613,9 +618,9 @@ export class InvoiceService {
     if (!payAccId) throw new Error('No cash/bank account configured');
     this.sql.exec(
       `INSERT INTO payments (
-        id, payment_no, branch_id, party_id, type, mode, amount_paise, date, invoice_id, account_id, notes, created_by_id, created_at
-      ) VALUES (?, ?, ?, ?, 'IN', ?, ?, ?, ?, ?, ?, ?, ?)`,
-      paymentId, paymentNo, input.branchId, inv.party_id, input.paymentMode, amount, input.date, input.invoiceId,
+        id, payment_no, branch_id, party_id, type, mode, amount_paise, date, reference_no, invoice_id, account_id, notes, created_by_id, created_at
+      ) VALUES (?, ?, ?, ?, 'IN', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      paymentId, paymentNo, input.branchId, inv.party_id, input.paymentMode, amount, input.date, input.referenceNo?.trim() || null, input.invoiceId,
       payAccId, input.notes ?? null, input.createdById, now,
     );
 
@@ -634,7 +639,7 @@ export class InvoiceService {
       partyId: inv.party_id,
       paymentAccountId: payAccId,
       amountPaise: amount,
-      narration: `Payment received for ${inv.invoice_no}`,
+      narration: `Payment received for ${inv.invoice_no}${input.referenceNo?.trim() ? ` (UTR ${input.referenceNo.trim()})` : ''}`,
     });
 
     return {

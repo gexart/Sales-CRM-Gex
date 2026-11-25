@@ -86,17 +86,23 @@ function PayBill({ bill: b, onClose }: { bill: any; onClose: () => void }) { // 
   const toast = useToast();
   const [amt, setAmt] = useState("");
   const [mode, setMode] = useState("UPI");
+  const [pdate, setPdate] = useState(today());
+  const [putr, setPutr] = useState("");
   const due = b ? (b.total_paise ?? 0) - (b.paid_amount_paise ?? 0) : 0;
   const save = useMutation({
-    mutationFn: () => bill.post(`/purchases/bills/${b.id}/payments`, { amountPaise: rupeesToPaise(amt || String(due / 100)), paymentMode: mode, date: today() }),
-    onSuccess: () => (toast("success", "Payment recorded"), qc.invalidateQueries({ queryKey: ["billing-bills"] }), setAmt(""), onClose()),
+    mutationFn: () => bill.post(`/purchases/bills/${b.id}/payments`, { amountPaise: rupeesToPaise(amt || String(due / 100)), paymentMode: mode, date: pdate, referenceNo: putr.trim() || undefined }),
+    onSuccess: () => (toast("success", "Payment recorded"), qc.invalidateQueries({ queryKey: ["billing-bills"] }), setAmt(""), setPutr(""), setPdate(today()), onClose()),
     onError: (e) => toast("error", errMsg(e)),
   });
   return (
     <Dialog open={!!b} onClose={onClose} title={`Pay ${b?.bill_no ?? ""}`} footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>Record payment</Button></>}>
       <div className="space-y-3">
         <Field label="Amount (₹)" help={`Balance ${inr(due)}`}><input className="input" inputMode="decimal" placeholder={String(due / 100)} value={amt} onChange={(e) => setAmt(e.target.value)} /></Field>
-        <Field label="Mode"><Select value={mode} onChange={(e) => setMode(e.target.value)} options={["UPI", "CASH", "BANK"].map((v) => ({ value: v, label: v[0] + v.slice(1).toLowerCase() }))} /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Payment date"><input className="input" type="date" max={today()} value={pdate} onChange={(e) => setPdate(e.target.value)} /></Field>
+          <Field label="Mode"><Select value={mode} onChange={(e) => setMode(e.target.value)} options={["UPI", "CASH", "BANK"].map((v) => ({ value: v, label: v[0] + v.slice(1).toLowerCase() }))} /></Field>
+        </div>
+        <Field label="UTR / transaction no. (optional)"><input className="input" value={putr} maxLength={60} onChange={(e) => setPutr(e.target.value)} /></Field>
       </div>
     </Dialog>
   );

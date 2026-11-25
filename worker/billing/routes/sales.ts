@@ -151,6 +151,9 @@ export const createInvoiceSchema = z.object({
   signatoryName: z.string().max(80).optional(),
   /** A specific bill number (a freed one) instead of the next in the series */
   invoiceNo: z.string().trim().min(1).max(40).optional(),
+  /** When the money received with the invoice came in, and its UTR / cheque number (both optional) */
+  paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  paymentReference: z.string().trim().max(60).optional(),
 });
 
 salesRoutes.post('/invoices', async (c) => {
@@ -268,6 +271,8 @@ const recordPaymentSchema = z.object({
   paymentAccountId: z.string().optional(),
   branchId: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  /** UTR / transaction or cheque number (optional) */
+  referenceNo: z.string().trim().max(60).optional(),
   notes: z.string().optional(),
 });
 

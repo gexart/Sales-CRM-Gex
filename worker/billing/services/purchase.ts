@@ -466,8 +466,8 @@ export class PurchaseService {
     this.run(
       `INSERT INTO payments (
         id, payment_no, branch_id, party_id, type, mode, amount_paise, date,
-        account_id, notes, created_by_id, created_at
-      ) VALUES (?, ?, ?, ?, 'OUT', ?, ?, ?, ?, ?, 'system', ?)`,
+        reference_no, account_id, notes, created_by_id, created_at
+      ) VALUES (?, ?, ?, ?, 'OUT', ?, ?, ?, ?, ?, ?, 'system', ?)`,
       paymentId,
       paymentNo,
       bill.branch_id,
@@ -475,6 +475,7 @@ export class PurchaseService {
       input.paymentMode,
       payAmountPaise,
       payDate,
+      input.referenceNo?.trim() || null,
       accountId,
       input.notes || `Payment for bill ${bill.bill_no}`,
       new Date().toISOString(),
