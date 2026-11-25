@@ -42,4 +42,7 @@ export const today = () => new Date().toISOString().slice(0, 10);
 export const addDays = (iso: string, n: number) => new Date(new Date(iso).getTime() + n * 86400000).toISOString().slice(0, 10);
 
 export const INVOICE_STATUS_TONE: Record<string, "green" | "amber" | "red" | "gray" | "blue"> = { PAID: "green", UNPAID: "amber", PARTIALLY_PAID: "amber", PENDING: "amber", OVERDUE: "red", CANCELLED: "gray", DRAFT: "gray", OPEN: "blue" };
-export const fileUrl = (path: string, fmt: "pdf" | "docx", inline = false) => `/api/v1/billing${path}/${fmt}${inline ? "?inline=1" : ""}`;
+export const fileUrl = (path: string, fmt: "pdf" | "docx", inline = false, name?: string) => {
+  const q = [inline ? "inline=1" : "", name ? `name=${encodeURIComponent(name)}` : ""].filter(Boolean).join("&");
+  return `/api/v1/billing${path}/${fmt}${q ? `?${q}` : ""}`;
+};

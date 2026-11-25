@@ -92,7 +92,7 @@ export function PaymentsPage() {
                 <div className="text-right">
                   <div className="font-semibold tabular-nums">{inr(r.amount_paise)}</div>
                   {dir === "IN" && (
-                    <button type="button" className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-brand-700 underline-offset-2 hover:underline" onClick={() => window.open(`/api/v1/billing/payments/${r.id}/receipt?inline=1`, "_blank", "noopener")}>
+                    <button type="button" className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-brand-700 underline-offset-2 hover:underline" onClick={() => window.open(`/api/v1/billing/payments/${r.id}/receipt?inline=1&name=${encodeURIComponent(r.payment_no)}`, "_blank", "noopener")}>
                       <Receipt className="size-3.5" /> Receipt
                     </button>
                   )}

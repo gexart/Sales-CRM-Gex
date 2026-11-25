@@ -195,8 +195,8 @@ export function InvoiceDetailPage() {
         actions={<>
           {hasDigits(inv.party_phone ?? "") && <a href={telHref(inv.party_phone)}><Button icon={Phone}>Call</Button></a>}
           {hasDigits(inv.party_phone ?? "") && inv.status !== "CANCELLED" && <Button icon={MessageCircle} onClick={() => openWhatsApp(inv.party_phone, inv.balance_amount_paise > 0 && inv.paid_amount_paise === 0 && new Date(inv.due_date) < new Date() ? reminderMessage({ party: inv.party_name, outstandingPaise: inv.balance_amount_paise }) : invoiceMessage({ party: inv.party_name, invoiceNo: inv.invoice_no, totalPaise: inv.total_paise, balancePaise: inv.balance_amount_paise, dueDate: inv.due_date, token: inv.shareToken }))}>WhatsApp</Button>}
-          <Button icon={Printer} onClick={() => window.open(fileUrl(`/sales/invoices/${inv.id}`, "pdf", true), "_blank", "noopener")}>PDF</Button>
-          <a href={fileUrl(`/sales/invoices/${inv.id}`, "docx")}><Button icon={Download}>Word</Button></a>
+          <Button icon={Printer} onClick={() => window.open(fileUrl(`/sales/invoices/${inv.id}`, "pdf", true, inv.invoice_no), "_blank", "noopener")}>PDF</Button>
+          <a href={fileUrl(`/sales/invoices/${inv.id}`, "docx", false, inv.invoice_no)}><Button icon={Download}>Word</Button></a>
           <Button onClick={() => window.open(`/api/v1/billing/sales/invoices/${inv.id}/thermal?inline=1`, "_blank", "noopener")}>Receipt</Button>
           {can("payment.receive") && open && <Button onClick={() => setTds(true)}>TDS</Button>}
           {inv.status !== "CANCELLED" && <Button icon={Mail} onClick={() => (setMailTo(inv.party_email ?? ""), setMailOpen(true))}>Email</Button>}
@@ -238,7 +238,7 @@ export function InvoiceDetailPage() {
             {inv.payments.map((p: any) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
               <div key={p.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-[13px]">
                 <div className="min-w-0"><div className="font-medium">{inr(p.amount_paise)} <span className="font-normal text-muted">· {p.mode}</span></div><div className="text-xs text-muted">{p.payment_no} · {fmtDate(p.date)}</div></div>
-                <div className="flex shrink-0 items-center gap-1"><Button size="sm" variant="ghost" onClick={() => window.open(`/api/v1/billing/payments/${p.id}/receipt?inline=1`, "_blank", "noopener")}>Receipt</Button>
+                <div className="flex shrink-0 items-center gap-1"><Button size="sm" variant="ghost" onClick={() => window.open(`/api/v1/billing/payments/${p.id}/receipt?inline=1&name=${encodeURIComponent(p.payment_no)}`, "_blank", "noopener")}>Receipt</Button>
                 {can("payment.remove") && <Button size="sm" variant="ghost" icon={Trash2} onClick={() => (setReason(""), setRmPay(p))}>Remove</Button>}</div>
               </div>
             ))}

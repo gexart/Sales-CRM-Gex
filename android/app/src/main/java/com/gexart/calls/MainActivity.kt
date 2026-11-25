@@ -75,6 +75,8 @@ class MainActivity : Activity() {
 
             override fun onPageFinished(view: WebView, url: String?) {
                 swipe.isRefreshing = false
+                // Files the page builds itself (zip, CSV) arrive without a name; remember the one the page's link asked for.
+                view.evaluateJavascript("if(!window.__gxHook){window.__gxHook=1;document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[download]'):null;if(a)window.__gxName=a.getAttribute('download')||''},true)}", null)
             }
 
             // The web view's own process was killed (low memory): rebuild the screen instead of leaving it white.
@@ -148,7 +150,8 @@ class MainActivity : Activity() {
 
         // Pull down at the top of a page to reload it.
         swipe = SwipeRefreshLayout(this).apply {
-            addView(web)
+            // Must fill the container: with the default wrap-content size the web view reports 0 for every vh/dvh unit, and the whole app collapses to nothing.
+            addView(web, android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT))
             setColorSchemeColors(Color.parseColor("#F47A20"))
             setProgressBackgroundColorSchemeColor(Color.parseColor("#1E2A3F"))
             setOnChildScrollUpCallback { _, _ -> web.scrollY > 0 }
@@ -274,18 +277,29 @@ class MainActivity : Activity() {
         }
     }
 
+    /** The server names its files (GX_21_26-27.pdf); take that name, and make sure a PDF ends in .pdf. */
+    private fun fileNameFor(url: String, contentDisposition: String?, mimeType: String?): String {
+        val fromHeader = contentDisposition?.let { Regex("filename\\*?=(?:UTF-8'')?\"?([^\";]+)\"?", RegexOption.IGNORE_CASE).find(it)?.groupValues?.get(1)?.trim() }
+        var name = fromHeader?.takeIf { it.isNotBlank() } ?: URLUtil.guessFileName(url, contentDisposition, mimeType)
+        if ((mimeType ?: "").contains("pdf", true) && !name.endsWith(".pdf", true)) name = name.substringBeforeLast('.', name) + ".pdf"
+        return name
+    }
+
     /** Files need the signed-in session, so the app downloads them itself instead of handing the link to the browser. */
     private fun download(url: String, userAgent: String?, contentDisposition: String?, mimeType: String?) {
         if (url.startsWith("blob:")) {
             // Files the page builds itself (the zip of invoices, CSV exports): read them out of the page.
-            val name = URLUtil.guessFileName(url, contentDisposition, mimeType)
-            val js = "(function(){fetch('" + url + "').then(function(r){return r.blob()}).then(function(b){var f=new FileReader();f.onloadend=function(){GexartApp.saveBlob(" +
-                org.json.JSONObject.quote(name) + "," + org.json.JSONObject.quote(mimeType ?: "application/octet-stream") + ",f.result)};f.readAsDataURL(b)})})()"
-            web.evaluateJavascript(js, null)
+            web.evaluateJavascript("(window.__gxName||'')") { raw ->
+                val picked = try { org.json.JSONTokener(raw ?: "\"\"").nextValue() as? String } catch (e: Exception) { null }
+                val name = picked?.takeIf { it.isNotBlank() } ?: fileNameFor(url, contentDisposition, mimeType)
+                val js = "(function(){fetch('" + url + "').then(function(r){return r.blob()}).then(function(b){var f=new FileReader();f.onloadend=function(){GexartApp.saveBlob(" +
+                    org.json.JSONObject.quote(name) + "," + org.json.JSONObject.quote(mimeType ?: "application/octet-stream") + ",f.result)};f.readAsDataURL(b)})})()"
+                web.evaluateJavascript(js, null)
+            }
             return
         }
         try {
-            val name = URLUtil.guessFileName(url, contentDisposition, mimeType)
+            val name = fileNameFor(url, contentDisposition, mimeType)
             val req = DownloadManager.Request(Uri.parse(url))
                 .setTitle(name)
                 .setMimeType(mimeType)
@@ -307,7 +321,13 @@ class MainActivity : Activity() {
         val path = uri.path.orEmpty()
         val isFile = path.endsWith("/pdf") || path.endsWith("/docx") || path.endsWith("/thermal") || path.endsWith("/receipt") || path.endsWith("/tally-xml") || path.endsWith(".pdf")
         when {
-            sameApp && isFile -> download(uri.toString(), web.settings.userAgentString, null, null)
+            sameApp && isFile -> {
+                // The page adds ?name=<invoice or receipt number>; it becomes the file name.
+                val ext = when { path.endsWith("/docx") -> "docx"; path.endsWith("/tally-xml") -> "xml"; else -> "pdf" }
+                val mime = when (ext) { "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"; "xml" -> "application/xml"; else -> "application/pdf" }
+                val base = uri.getQueryParameter("name")?.replace(Regex("[\\/:*?\"<>|]"), "-")?.takeIf { it.isNotBlank() }
+                download(uri.toString(), web.settings.userAgentString, base?.let { "attachment; filename=\"$it.$ext\"" }, mime)
+            }
             sameApp -> web.loadUrl(uri.toString())
             else -> openExternal(uri)
         }
