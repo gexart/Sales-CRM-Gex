@@ -10,6 +10,7 @@ import { AppShell } from "./components/layout";
 import { Spinner, ToastProvider } from "./components/ui";
 import { OfflineSync } from "./components/offline-sync";
 import { AppPairing } from "./components/app-pairing";
+import { ErrorBoundary } from "./components/error-boundary";
 
 // Pages load on demand so the first screen is small and fast on a phone connection.
 const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
@@ -184,6 +185,7 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
+    <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <ToastProvider>
@@ -193,5 +195,6 @@ createRoot(document.getElementById("root")!).render(
         </ToastProvider>
       </BrowserRouter>
     </QueryClientProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

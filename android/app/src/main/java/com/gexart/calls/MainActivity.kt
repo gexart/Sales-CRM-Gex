@@ -77,6 +77,12 @@ class MainActivity : Activity() {
                 swipe.isRefreshing = false
             }
 
+            // The web view's own process was killed (low memory): rebuild the screen instead of leaving it white.
+            override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
+                runOnUiThread { recreate() }
+                return true
+            }
+
             override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
                 if (request.isForMainFrame && errorResponse.statusCode >= 500) showOffline(view)
             }
@@ -179,28 +185,39 @@ class MainActivity : Activity() {
     private var lastJsError = ""
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
 
-    /** If the web app has drawn nothing a few seconds after loading, clear its saved files once and reload; if still empty, say why. */
-    private fun watchForBlank(attempt: Int = 0) {
+    private var blankStrikes = 0
+    private var healed = false
+
+    /**
+     * Every 10 seconds: has the page drawn any text? Two empty checks in a row (a white screen) clear the saved web files and reload once;
+     * if it is still empty, say why instead of leaving a blank screen.
+     */
+    private fun watchForBlank() {
         handler.postDelayed({
-            if (isFinishing) return@postDelayed
-            web.evaluateJavascript("(function(){var r=document.getElementById('root');return r?r.children.length:-1})()") { v ->
-                val empty = (v ?: "0").trim().let { it == "0" || it == "-1" || it == "null" }
-                if (!empty) return@evaluateJavascript
-                if (attempt == 0) {
-                    web.clearCache(true)
-                    android.webkit.WebStorage.getInstance().deleteAllData()
-                    web.loadUrl(home)
-                    watchForBlank(1)
-                } else {
-                    val why = android.text.Html.escapeHtml(lastJsError.ifBlank { "the page did not respond" })
-                    web.loadDataWithBaseURL(null,
-                        "<html><body style='font-family:sans-serif;background:#141E2E;color:#fff;padding:48px 24px'>" +
-                            "<h2>The app could not start</h2><p style='opacity:.7'>Please update Android System WebView and Google Chrome from the Play Store, then reopen.</p>" +
-                            "<p style='font-size:12px;opacity:.5'>$why</p><p><a href='$home' style='color:#F47A20;font-size:18px'>Try again</a></p></body></html>",
-                        "text/html", "UTF-8", null)
+            if (isFinishing || isDestroyed) return@postDelayed
+            web.evaluateJavascript("(function(){var r=document.getElementById('root');return r?r.innerText.trim().length:-1})()") { v ->
+                val n = (v ?: "0").trim().toIntOrNull() ?: 0
+                if (n >= 3) {
+                    blankStrikes = 0
+                } else if (++blankStrikes >= 2) {
+                    blankStrikes = 0
+                    if (!healed) {
+                        healed = true
+                        web.clearCache(true)
+                        android.webkit.WebStorage.getInstance().deleteAllData()
+                        web.loadUrl(home)
+                    } else {
+                        val why = android.text.Html.escapeHtml(lastJsError.ifBlank { "the page did not respond" })
+                        web.loadDataWithBaseURL(null,
+                            "<html><body style='font-family:sans-serif;background:#141E2E;color:#fff;padding:48px 24px'>" +
+                                "<h2>The app could not start</h2><p style='opacity:.7'>Please update Android System WebView and Google Chrome from the Play Store, then reopen.</p>" +
+                                "<p style='font-size:12px;opacity:.5'>$why</p><p><a href='$home' style='color:#F47A20;font-size:18px'>Try again</a></p></body></html>",
+                            "text/html", "UTF-8", null)
+                    }
                 }
             }
-        }, 9000)
+            watchForBlank()
+        }, 10000)
     }
 
     /** Opened from an app shortcut or a link to this CRM: go straight there. */
