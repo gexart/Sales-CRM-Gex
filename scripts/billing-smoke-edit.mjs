@@ -155,5 +155,13 @@ const gp = eg.party ?? eg;
 check("name, phone and address changed", gp.name === `Edited ${run}` && gp.phone === "9123456780" && gp.billingAddress === "New Road, Kolkata", gp);
 check("credit limit, credit days and tags untouched", gp.creditLimitPaise === 500000 && gp.creditDays === 15 && (gp.tags ?? []).includes("vip"), gp);
 
+console.log("Delete a service");
+const sv = (await admin.post("/billing/masters/items", { name: `Temp Service ${run}`, type: "SERVICE", unitId: unit.id, salePricePaise: 100000, taxRateId: tax.id, hsnSac: "9983" })).body.item;
+const svi = (await admin.post("/billing/sales/invoices", { ...body(A), items: [{ itemId: sv.id, name: sv.name, hsnSac: "9983", quantityThousandths: 1000, unitId: unit.id, unitPricePaise: 100000, discountPaise: 0, taxRatePercent: 18 }] })).body.invoice;
+check("service deleted", (await admin.delete(`/billing/masters/items/${sv.id}`)).status === 200);
+const left = (await admin.get(`/billing/masters/items?search=${encodeURIComponent(`Temp Service ${run}`)}`)).body.items ?? [];
+check("gone from the list", left.length === 0, left.length);
+check("the invoice already made keeps it", (await get(svi.id)).lines[0].name === `Temp Service ${run}`);
+
 console.log(failures === 0 ? "All edit and delete checks passed" : failures + " check(s) failed");
 process.exit(failures ? 1 : 0);

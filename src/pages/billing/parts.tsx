@@ -85,7 +85,8 @@ export function LineEditor({ lines, onChange }: { lines: Line[]; onChange: (l: L
         <div key={i} className="rounded-lg border border-line p-3">
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1"><ItemSearch pct={pct} value={l.name} onPick={(it) => set(i, { itemId: it.id, name: it.name, hsnSac: it.hsnSac ?? "", unitId: it.unitId || defaultUnit || "", price: String((it.salePricePaise ?? 0) / 100), taxPct: pct(it.taxRateId), inclusive: !!it.priceIncludesTax })} /></div>
-            {lines.length > 1 && <Button variant="ghost" size="sm" aria-label="Remove line" icon={Trash2} onClick={() => onChange(lines.filter((_, j) => j !== i))} />}
+            {/* Always there: with a single line it empties it, so a wrongly picked item or service can be removed. */}
+            <Button variant="ghost" size="sm" aria-label="Remove item or service" title="Remove" icon={Trash2} disabled={lines.length === 1 && !l.itemId && !l.price} onClick={() => onChange(lines.length > 1 ? lines.filter((_, j) => j !== i) : [blankLine()])} />
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Field label="Qty"><input className="input" inputMode="decimal" value={l.qty} onChange={(e) => set(i, { qty: e.target.value })} /></Field>

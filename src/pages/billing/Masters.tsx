@@ -94,6 +94,12 @@ export function ItemsPage() {
   const qc = useQueryClient();
   const toast = useToast();
   const { taxes, units, defaultUnit } = useBillingMasters();
+  const [removing, setRemoving] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const remove = useMutation({
+    mutationFn: (itemId: string) => bill.del(`/masters/items/${itemId}`),
+    onSuccess: () => (toast("success", "Deleted"), setRemoving(null), qc.invalidateQueries({ queryKey: ["billing-items"] }), qc.invalidateQueries({ queryKey: ["billing-item-search"] })),
+    onError: (e) => toast("error", errMsg(e)),
+  });
   const [search, setSearch] = useState("");
   const dq = useDebounced(search, 300);
   const [sp] = useSearchParams();
@@ -124,7 +130,10 @@ export function ItemsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="line-clamp-2 font-medium leading-snug">{it.name}</div>
                   <div className="mt-0.5 text-xs text-muted">{it.type === "SERVICE" ? "Service" : "Goods"}{it.hsnSac ? ` · HSN/SAC ${it.hsnSac}` : ""} · GST {taxOf(it.taxRateId)}%</div>
-                  <button type="button" className="mt-1 text-xs font-medium text-brand-700 underline underline-offset-2" onClick={() => setLabelItem(it)}>Print label</button>
+                  <div className="mt-1 flex items-center gap-4">
+                    <button type="button" className="text-xs font-medium text-brand-700 underline underline-offset-2" onClick={() => setLabelItem(it)}>Print label</button>
+                    {can("items.manage") && <button type="button" className="text-xs font-medium text-red-600 underline underline-offset-2" onClick={() => setRemoving(it)}>Delete</button>}
+                  </div>
                 </div>
                 <div className="shrink-0 text-right">
                   {it.type !== "SERVICE" && stock.data && <span className={`mb-1 inline-block rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold ${qtyOf(it.id) < 0 ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>Qty: {qtyOf(it.id)}</span>}
@@ -137,6 +146,9 @@ export function ItemsPage() {
         )}
       </div>
       {can("items.manage") && <Fab onClick={() => setAdd(true)} label="Add item" />}
+      <Dialog open={!!removing} onClose={() => setRemoving(null)} title={`Delete ${removing?.type === "SERVICE" ? "service" : "item"}?`} footer={<><Button onClick={() => setRemoving(null)}>Keep it</Button><Button variant="danger" loading={remove.isPending} onClick={() => remove.mutate(removing.id)}>Delete</Button></>}>
+        <p className="text-[13px] text-muted"><b>{removing?.name}</b> is removed from this list and can no longer be added to new invoices. Invoices already made keep it as it was.</p>
+      </Dialog>
       <Dialog open={!!labelItem} onClose={() => setLabelItem(null)} title={`Print labels: ${labelItem?.name ?? ""}`} footer={<><Button onClick={() => setLabelItem(null)}>Cancel</Button><Button variant="primary" onClick={() => (window.open(`/api/v1/billing/masters/items/labels?ids=${labelItem.id}&copies=${Math.max(1, Number(copies) || 1)}&inline=1`, "_blank", "noopener"), setLabelItem(null))}>Open labels</Button></>}>
         <Field label="How many labels" help="Size and what prints are set in Billing settings, Print"><input className="input" inputMode="numeric" value={copies} onChange={(e) => setCopies(e.target.value)} /></Field>
       </Dialog>
