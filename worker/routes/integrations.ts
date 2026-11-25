@@ -40,7 +40,7 @@ function configured(env: Env, i: Catalog) {
   return !!(i.secret && env[i.secret]) && (i.extra ?? []).every((k) => !!env[k]);
 }
 
-integrationRoutes.get("/", requireRole("admin", "manager"), async (c) => {
+integrationRoutes.get("/", requireRole("admin"), async (c) => {
   const rows = await c.env.DB.prepare("SELECT * FROM integrations").all<Record<string, unknown>>();
   const usage = await c.env.DB.prepare("SELECT provider, calls FROM integration_usage WHERE day = ?").bind(new Date().toISOString().slice(0, 10)).all<{ provider: string; calls: number }>();
   const state = new Map(rows.results.map((r) => [r.provider, r]));

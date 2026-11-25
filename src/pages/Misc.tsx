@@ -123,8 +123,9 @@ export function SettingsPage() {
   const tabs = [
     { value: "profile" as const, label: "Profile" },
     { value: "devices" as const, label: "Phone app" },
-    ...(isAdmin ? [{ value: "config" as const, label: "Configuration" }, { value: "users" as const, label: "Users & roles" }] : []),
-    ...(isManager ? [{ value: "integrations" as const, label: "Integrations" }, { value: "audit" as const, label: "Audit log" }] : []),
+    // Keys, integrations and user roles are for administrators only; managers keep the audit log.
+    ...(isAdmin ? [{ value: "config" as const, label: "Configuration" }, { value: "users" as const, label: "Users & roles" }, { value: "integrations" as const, label: "Integrations" }] : []),
+    ...(isManager ? [{ value: "audit" as const, label: "Audit log" }] : []),
   ];
   return (
     <div className="pb-10">
