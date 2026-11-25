@@ -154,8 +154,9 @@ class MainActivity : Activity() {
             addView(web, android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT))
             setColorSchemeColors(Color.parseColor("#F47A20"))
             setProgressBackgroundColorSchemeColor(Color.parseColor("#1E2A3F"))
-            setOnChildScrollUpCallback { _, _ -> web.scrollY > 0 }
-            setOnRefreshListener { web.reload() }
+            // Pull-down refresh is off: the page scrolls inside its own container, which this layout cannot see, so it fired while scrolling.
+            // The app has a Refresh button (round arrow) in its top bar instead.
+            isEnabled = false
         }
         // Keep the page clear of the status bar, the gesture bar and the keyboard. The padding goes on a plain wrapper, never on the
         // pull-to-refresh layout or the WebView, which can stop the page repainting.

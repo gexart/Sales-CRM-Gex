@@ -1,8 +1,8 @@
 import { Suspense, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useIsFetching, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  BarChart3, Bell, Briefcase, Building2, CheckSquare, ChevronRight, FolderOpen, LayoutDashboard, LogOut, Megaphone, Menu as MenuIcon, Moon, Rocket, Sun,
+  BarChart3, Bell, RefreshCw, Briefcase, Building2, CheckSquare, ChevronRight, FolderOpen, LayoutDashboard, LogOut, Megaphone, Menu as MenuIcon, Moon, Rocket, Sun,
   Package, Plus, Search, Send, Settings, Users, X, Telescope, Boxes, FileUp, Repeat, ClipboardCheck, ClipboardList, FileMinus2, FileSignature, FileText, FileX2, Landmark, PackageCheck, Receipt, ShieldCheck, ShoppingCart, Truck, WalletCards, type LucideIcon,
 } from "lucide-react";
 import { api, qs, type Page, type Row } from "../lib/api";
@@ -112,6 +112,29 @@ export function Logo({ onDark = false, subtitle = true }: { onDark?: boolean; su
         {subtitle && <span className={cn("mt-1 block text-[9.5px] font-semibold tracking-[0.2em] uppercase", onDark ? "text-snow/45" : "text-muted")}>Sales &amp; Billing</span>}
       </span>
     </span>
+  );
+}
+
+/** Round-arrow button: reloads the data on the screen (the page itself stays put). Replaces the easy-to-trigger pull-down refresh. */
+function RefreshButton() {
+  const qc = useQueryClient();
+  const fetching = useIsFetching() > 0;
+  const [spin, setSpin] = useState(false);
+  const busy = fetching || spin;
+  return (
+    <button
+      type="button"
+      aria-label="Refresh"
+      title="Refresh"
+      onClick={() => {
+        setSpin(true);
+        void qc.invalidateQueries();
+        window.setTimeout(() => setSpin(false), 900);
+      }}
+      className="flex size-10 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-ink sm:size-8"
+    >
+      <RefreshCw className={`size-[18px] sm:size-4 ${busy ? "animate-spin" : ""}`} />
+    </button>
   );
 }
 
@@ -460,6 +483,7 @@ export function AppShell() {
               <Search className="size-[18px]" />
             </button>
             <QuickCreate />
+            <RefreshButton />
             <ThemeToggle />
             <Reminders />
             <UserMenu />
