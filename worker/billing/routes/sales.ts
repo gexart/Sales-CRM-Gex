@@ -301,7 +301,7 @@ salesRoutes.post('/invoices/:id/payments', async (c) => {
     const origin = env.APP_URL || new URL(c.req.url).origin;
     const exec = (c as any).executionCtx;
     if (String(env.BILLING_EMAIL_AUTO || 'on').toLowerCase() !== 'off') exec.waitUntil(emailInvoiceEvent(env, stub, invoiceId, 'payment', origin, { paidPaise: parsed.data.amountPaise }));
-    if (String(env.AGENCY_CRM_PUSH || 'on').toLowerCase() !== 'off' && env.AGENCY_CRM_HOOK_URL) exec.waitUntil(pushInvoiceToCrm(env, stub, invoiceId, origin, 'payment.received', undefined, { amountPaise: parsed.data.amountPaise, mode: parsed.data.paymentMode, date: parsed.data.date }));
+    if (String(env.AGENCY_CRM_PUSH || 'on').toLowerCase() !== 'off' && env.AGENCY_CRM_HOOK_URL) exec.waitUntil(pushInvoiceToCrm(env, stub, invoiceId, origin, 'payment.received', undefined, { amountPaise: parsed.data.amountPaise, mode: parsed.data.paymentMode, date: parsed.data.date, ref: parsed.data.referenceNo }));
     return c.json({ ok: true, ...result });
   } catch (err: any) {
     return c.json({ error: err.message || 'Failed to record payment' }, 400);
