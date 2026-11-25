@@ -1,6 +1,17 @@
 package com.gexart.calls
 
 import android.annotation.SuppressLint
+import android.app.DownloadManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
+import android.os.Environment
+import android.os.Message
+import android.util.Base64
+import android.webkit.URLUtil
+import android.webkit.WebResourceResponse
+import androidx.core.content.FileProvider
+import java.io.File
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -52,6 +63,8 @@ class MainActivity : Activity() {
             javaScriptEnabled = true
             domStorageEnabled = true
             setSupportZoom(false)
+            javaScriptCanOpenWindowsAutomatically = true
+            setSupportMultipleWindows(true)
             userAgentString = "$userAgentString GexartApp/2"
         }
         CookieManager.getInstance().setAcceptCookie(true)
@@ -64,9 +77,17 @@ class MainActivity : Activity() {
                 swipe.isRefreshing = false
             }
 
+            override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
+                if (request.isForMainFrame && errorResponse.statusCode >= 500) showOffline(view)
+            }
+
             // No signal: show a clear page with a retry link instead of the browser's error screen.
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 if (!request.isForMainFrame) return
+                showOffline(view)
+            }
+
+            private fun showOffline(view: WebView) {
                 view.loadDataWithBaseURL(
                     null,
                     "<html><body style='font-family:sans-serif;background:#141E2E;color:#fff;text-align:center;padding:64px 24px'>" +
@@ -77,6 +98,27 @@ class MainActivity : Activity() {
             }
         }
         web.webChromeClient = object : WebChromeClient() {
+            override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message): Boolean {
+                val popup = WebView(this@MainActivity)
+                popup.webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(v: WebView, request: WebResourceRequest): Boolean {
+                        handleLink(request.url)
+                        v.destroy()
+                        return true
+                    }
+                    override fun onPageStarted(v: WebView, url: String?, favicon: android.graphics.Bitmap?) {
+                        if (!url.isNullOrBlank() && url != "about:blank") {
+                            handleLink(Uri.parse(url))
+                            v.stopLoading()
+                            v.destroy()
+                        }
+                    }
+                }
+                (resultMsg.obj as WebView.WebViewTransport).webView = popup
+                resultMsg.sendToTarget()
+                return true
+            }
+
             override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
                 if (m.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR) lastJsError = "${m.message()} (${m.sourceId().substringAfterLast('/')}:${m.lineNumber()})"
                 return true
@@ -95,7 +137,8 @@ class MainActivity : Activity() {
             }
         }
         // PDFs and Word files the CRM generates: hand them to the phone's viewer.
-        web.setDownloadListener { url, _, _, _, _ -> openExternal(Uri.parse(url)) }
+        web.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ -> download(url, userAgent, contentDisposition, mimeType) }
+        registerDownloadDone()
 
         // Pull down at the top of a page to reload it.
         swipe = SwipeRefreshLayout(this).apply {
@@ -183,6 +226,81 @@ class MainActivity : Activity() {
         }
     }
 
+    // ---- Files: PDFs, receipts, Word, zip, CSV and Tally files ----
+    private val waiting = mutableMapOf<Long, String>()
+    private var doneReceiver: BroadcastReceiver? = null
+
+    private fun registerDownloadDone() {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) {
+                val id = i.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+                if (waiting.remove(id) == null) return
+                val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                val uri = dm.getUriForDownloadedFile(id)
+                if (uri == null) {
+                    Toast.makeText(this@MainActivity, "The file could not be downloaded", Toast.LENGTH_LONG).show()
+                    return
+                }
+                openFile(uri, dm.getMimeTypeForDownloadedFile(id))
+            }
+        }
+        doneReceiver = receiver
+        val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED) else registerReceiver(receiver, filter)
+    }
+
+    private fun openFile(uri: Uri, mime: String?) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime ?: "*/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, "Saved in Downloads. Install a PDF viewer to open it.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /** Files need the signed-in session, so the app downloads them itself instead of handing the link to the browser. */
+    private fun download(url: String, userAgent: String?, contentDisposition: String?, mimeType: String?) {
+        if (url.startsWith("blob:")) {
+            // Files the page builds itself (the zip of invoices, CSV exports): read them out of the page.
+            val name = URLUtil.guessFileName(url, contentDisposition, mimeType)
+            val js = "(function(){fetch('" + url + "').then(function(r){return r.blob()}).then(function(b){var f=new FileReader();f.onloadend=function(){GexartApp.saveBlob(" +
+                org.json.JSONObject.quote(name) + "," + org.json.JSONObject.quote(mimeType ?: "application/octet-stream") + ",f.result)};f.readAsDataURL(b)})})()"
+            web.evaluateJavascript(js, null)
+            return
+        }
+        try {
+            val name = URLUtil.guessFileName(url, contentDisposition, mimeType)
+            val req = DownloadManager.Request(Uri.parse(url))
+                .setTitle(name)
+                .setMimeType(mimeType)
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, name)
+            CookieManager.getInstance().getCookie(url)?.let { req.addRequestHeader("Cookie", it) }
+            if (!userAgent.isNullOrBlank()) req.addRequestHeader("User-Agent", userAgent)
+            val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            waiting[dm.enqueue(req)] = name
+            Toast.makeText(this, "Downloading $name", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "The file could not be downloaded", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /** A link the page opened in a new window: files download, other pages of this app load here, anything else opens in its own app. */
+    private fun handleLink(uri: Uri) {
+        val sameApp = (uri.scheme == "https" || uri.scheme == "http") && uri.host == Uri.parse(home).host
+        val path = uri.path.orEmpty()
+        val isFile = path.endsWith("/pdf") || path.endsWith("/docx") || path.endsWith("/thermal") || path.endsWith("/receipt") || path.endsWith("/tally-xml") || path.endsWith(".pdf")
+        when {
+            sameApp && isFile -> download(uri.toString(), web.settings.userAgentString, null, null)
+            sameApp -> web.loadUrl(uri.toString())
+            else -> openExternal(uri)
+        }
+    }
+
+    override fun onDestroy() {
+        doneReceiver?.let { try { unregisterReceiver(it) } catch (e: Exception) { } }
+        super.onDestroy()
+    }
+
     /** true = handled outside the app; false = load inside the WebView. */
     private fun route(uri: Uri): Boolean {
         val scheme = uri.scheme ?: return false
@@ -239,6 +357,25 @@ class MainActivity : Activity() {
             CallSyncWorker.schedulePeriodic(this@MainActivity)
             NotifyWorker.schedule(this@MainActivity)
             return true
+        }
+
+        /** The page hands over a file it built (zip, CSV): save it and open it. */
+        @JavascriptInterface
+        fun saveBlob(name: String, mime: String, dataUrl: String) {
+            try {
+                val bytes = Base64.decode(dataUrl.substringAfter(','), Base64.DEFAULT)
+                val dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: cacheDir
+                val safe = name.replace(Regex("[\\\\/:*?\"<>|]"), "-")
+                val file = File(dir, safe)
+                file.writeBytes(bytes)
+                val uri = FileProvider.getUriForFile(this@MainActivity, "$packageName.files", file)
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Saved $safe", Toast.LENGTH_SHORT).show()
+                    openFile(uri, mime)
+                }
+            } catch (e: Exception) {
+                runOnUiThread { Toast.makeText(this@MainActivity, "The file could not be saved", Toast.LENGTH_LONG).show() }
+            }
         }
 
         /** Folder, permissions and activity log for the call recorder. */
